@@ -174,3 +174,48 @@ Ba chỗ cần bạn duyệt: `confirm`, `plan`, `review`. Duyệt bằng `/dev-
 - [ ] Thay đổi đúng kế hoạch đã duyệt, không có việc ngoài phạm vi.
 - [ ] `summary.md` và kết quả scan (`.agentflow/tasks/<task>/scans/`) không còn phát hiện chặn nào chưa giải thích.
 - [ ] "Bài học đề xuất" đáng giữ thì đưa về kho: `agentflow knowledge push .agentflow/tasks/<task>/lessons/L1.md`.
+
+## Lệnh của người
+
+Các lệnh dưới đây mang quyền quyết định của bạn. Hook của `dev-core` từ chối khi agent tự chạy (`agentflow guard` trả `deny`), nên bạn tự chạy.
+
+| Lệnh | Việc |
+|---|---|
+| `agentflow decide --answer Q1 --text "..." --check review` | Trả lời câu hỏi "Chưa có quy ước" của plan (`Q1`) hoặc của setup (`S1`) |
+| `agentflow decide --suppress <id> --reason "..."` | Bỏ qua một phát hiện scan mà bạn xác nhận là báo nhầm |
+| `agentflow project confirm PC-01 PC-02` (hoặc `--all`) | Xác nhận quy ước trong hồ sơ dự án |
+| `agentflow knowledge init` / `pull <file...>` / `push <file>` | Tạo kho cá nhân; chép file vào dự án; đưa một bài học về kho |
+| `agentflow ext add <extension.yaml>` / `ext sync` | Đăng ký, đồng bộ extension của plugin con |
+| `agentflow config set <khóa> <giá trị>` | Đặt cài đặt dự án (ví dụ `backend.*`) |
+| `agentflow task seal <id>` | Ghi `summary.md` và tag duyệt cho task đã xong mà chưa có |
+| `agentflow role grant\|revoke\|sync` | Cấp, thu hồi, sinh lại tool MCP theo dự án cho role |
+
+Hai lệnh sau không bị hook từ chối nhưng phải luôn hỏi bạn nhờ quy tắc `ask` trong khối permissions: `agentflow task approve` (hoặc `/dev-core:approve`) và `agentflow task cancel`.
+
+**Cách chạy.**
+- Claude Code: gõ với tiền tố `!` ở đầu dòng, ví dụ `! agentflow project confirm --all`. Lệnh chạy ngay trong phiên và kết quả đi vào cuộc trò chuyện.
+- Antigravity CLI: tài liệu của nó không có tiền tố tương đương; mở một terminal riêng, vào thư mục dự án và chạy lệnh ở đó.
+
+Merge và push là việc của bạn, không phải của agent: agent không bao giờ push, merge hay tạo PR.
+
+## Tiết kiệm token
+
+Chi phí tăng theo kích thước ngữ cảnh: mỗi yêu cầu gửi lại cả cuộc trò chuyện (theo [trang chi phí](https://code.claude.com/docs/en/costs) của Claude Code).
+
+- **Mỗi task một phiên.** Xong task (hoặc chuyển việc không liên quan) thì `/clear` để bắt đầu phiên mới. Trạng thái task không mất: nó nằm trong `.agentflow/`, phiên mới chạy `/dev-core:continue` hoặc `/dev-core:status` là biết đang ở đâu.
+- **Xem ngữ cảnh đang chứa gì:** `/context`.
+- **Xem mức dùng:** `/usage` (Claude Code), hiện cả mức dùng của phiên và phần nào do skill, subagent, plugin hay MCP server. Antigravity: `/usage` mở bảng hạn mức theo từng model.
+- Phiên mở cả ngày vẫn tốn cho toàn bộ lịch sử ở mỗi lần hỏi; quay lại sau một khoảng nghỉ dài cũng làm cache hết hạn. `/clear` không tốn gì.
+- Dùng Sonnet cho phiên, hạ effort khi chạy (xem [Chọn chế độ](#chọn-chế-độ)), và chọn `small` cho việc nhỏ.
+
+## Xử lý tình huống
+
+**Task `blocked`.** Một task fail quá 3 vòng ở `test`, `security` hoặc `review` thì chuyển `blocked`. Chạy `agentflow status`, đọc báo cáo mới nhất ở `.agentflow/tasks/<task>/reports/`, rồi chọn: cho làm tiếp bằng `agentflow task approve --reason "<lý do>"` (số vòng về 0, lý do được ghi vào `decisions/`), hoặc hủy bằng `agentflow task cancel`.
+
+**Scan báo nhầm.** Chạy `agentflow scan` và đọc id của phát hiện. Chỉ khi bạn chắc là báo nhầm: `agentflow decide --suppress <id> --reason "<vì sao chấp nhận được>"`. Agent không có đường nào tự hạ mức.
+
+**Câu hỏi "Chưa có quy ước".** Plan có mục `## Chưa có quy ước` bị chặn tới khi bạn trả lời từng câu: `agentflow decide --answer Q1 --text "<quy ước, một dòng>" --check plan|semgrep|review` (thêm `--global` để ghi cả vào kho cá nhân). Sau đó để agent chạy tiếp bằng `/dev-core:continue`.
+
+**Workflow gốc đổi.** Khi file `workflow.yaml` gốc của plugin đổi (sau khi cập nhật plugin), `agentflow status` cảnh báo. Khi không có task đang chạy, đồng bộ bằng `agentflow workflow sync`; có task đang chạy thì lệnh bị từ chối, trừ khi bạn thêm `--force`. Tương tự, `agentflow ext sync` cho extension và `agentflow role sync` cho agent cấp theo dự án.
+
+**Task xong nhưng thiếu tag duyệt.** `agentflow task new` từ chối khi task xong gần nhất chưa có tag `agentflow/<task>/approved`. Tạo bù bằng `agentflow task seal <id>`.

@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
@@ -20,7 +20,9 @@ from agentflow.constants import (
     WORKSPACE_DIR,
     CliKind,
     Command,
+    ConfigCommand,
     DriftStatus,
+    ExtCommand,
     GateKind,
     PlanCommand,
     ExitCode,
@@ -41,10 +43,13 @@ from agentflow.git import GitBranchLookup, SubprocessGit
 from agentflow.guard import evaluate, parse_request, verdict_to_dict
 from agentflow.hook import handle_hook
 from agentflow.models import State, ToolCheck, Workflow
-from agentflow.plan import parse_plan
+from agentflow.plan import PlanItem, parse_plan
 from agentflow.projectcontext import load_project_context
 from agentflow.render import NONE_TEXT, describe_action, describe_step
+from agentflow.extension import Extension
+from agentflow.extensions import add_extension, copy_path, drift, load_registered, sync_extensions
 from agentflow.models import Task
+from agentflow.settings import coerce, get_value, set_value, settings_problems
 from agentflow.scan import ScanService, all_tools, summary_lines, tools_for_step, unsuppressed_blocking
 from agentflow.scan_store import ScanStore, suppressed_ids, write_suppression
 from agentflow.scan_tools import VAR_RANGE
@@ -71,6 +76,7 @@ from agentflow.workspace import (
     load_config,
     load_workspace_workflow,
     GitWorkspaceLookup,
+    save_config,
 )
 
 CLI_OPTION = "--cli"
@@ -125,6 +131,24 @@ def build_parser() -> argparse.ArgumentParser:
     seal = task_commands.add_parser(TaskCommand.SEAL, help="for a person: write summary.md and the approval tag of a finished task")
     seal.add_argument("task_id", help="id of a finished task, e.g. T-001")
     seal.add_argument(COMMIT_OPTION, help="tag this commit instead of the task branch's tip (e.g. after the branch was deleted)")
+
+    ext = commands.add_parser(Command.EXT, help="extensions: what child plugins add (roles, rules, scan tools, gates)")
+    ext_commands = ext.add_subparsers(dest="ext_command", metavar="<ext command>", required=True)
+    ext_add = ext_commands.add_parser(ExtCommand.ADD, help="for a person: check an extension.yaml and register it in this workspace")
+    ext_add.add_argument("path", type=Path, help="the plugin's extension.yaml")
+    ext_commands.add_parser(ExtCommand.LIST, help="registered extensions and whether their source changed")
+    ext_sync = ext_commands.add_parser(ExtCommand.SYNC, help="for a person: replace the copies with their checked sources")
+    ext_sync.add_argument("name", nargs="?", help="only this extension")
+    ext_sync.add_argument(FORCE_OPTION, action="store_true", help="sync even while tasks are in progress")
+
+    config = commands.add_parser(Command.CONFIG, help="project settings that extensions read (.agentflow/config.yaml)")
+    config_commands = config.add_subparsers(dest="config_command", metavar="<config command>", required=True)
+    config_get = config_commands.add_parser(ConfigCommand.GET, help="print a setting (exit 29 when it is not set)")
+    config_get.add_argument("key", help="dotted key, for example area.group.name")
+    config_set = config_commands.add_parser(ConfigCommand.SET, help="for a person: set a setting")
+    config_set.add_argument("key")
+    config_set.add_argument("value")
+    config_commands.add_parser(ConfigCommand.CHECK, help="check the settings against what the extensions declare")
 
     scan = commands.add_parser(Command.SCAN, help="run the scanners of the current step in containers (--all: every configured scan)")
     scan.add_argument(ALL_OPTION, action="store_true", help="run every configured scan, not only the current step's")
@@ -300,8 +324,8 @@ def _sealer(opened: _Opened) -> TaskSealer:
     return TaskSealer(SubprocessGit(opened.paths.root), opened.paths.dir, opened.workflow, utc_now, scan_lines)
 
 
-def _plan_item_codes(opened: _Opened) -> set[str] | None:
-    """Item codes of the active task's plan, or ``None`` while there is no plan report."""
+def _plan_items(opened: _Opened) -> dict[str, PlanItem] | None:
+    """Items of the active task's plan by code, or ``None`` while there is no plan report."""
     task = opened.state.active_task()
     step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
     if task is None or step is None:
@@ -309,7 +333,7 @@ def _plan_item_codes(opened: _Opened) -> set[str] | None:
     path = plan_report_path(opened.paths.dir, task.id, step.id)
     if not path.is_file():
         return None
-    return {item.code for item in parse_plan(path.read_text(encoding=ENCODING)).items}
+    return {item.code: item for item in parse_plan(path.read_text(encoding=ENCODING)).items}
 
 
 def _gates(opened: _Opened) -> WorkspaceGates:
@@ -324,6 +348,67 @@ def _semgrep_rulesets(lookup) -> tuple[str, ...]:
     if isinstance(configured, str):
         return (configured,)
     return tuple(configured) if configured else SEMGREP_DEFAULT_RULESETS
+
+
+def cmd_ext(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    match args.ext_command:
+        case ExtCommand.ADD:
+            extension = add_extension(opened.paths, opened.workflow, args.path)
+            print(f"registered extension '{extension.name}' (copy: {copy_path(opened.paths, extension.name)})")
+            _describe_extension(extension)
+            missing = settings_problems([extension], load_config(opened.paths).settings)
+            if missing:
+                print("settings still to set (a person runs `agentflow config set <key> <value>`):")
+                for problem in missing:
+                    print(f"  - {problem}")
+        case ExtCommand.LIST:
+            registered = load_registered(opened.paths)
+            if not registered:
+                print("no extensions registered")
+            for item in registered:
+                print(f"{item.extension.name}: {drift(item.ref)}")
+                _describe_extension(item.extension)
+        case ExtCommand.SYNC:
+            in_flight = [t.id for t in opened.state.tasks if t.status in IN_FLIGHT_TASK_STATUSES]
+            for report in sync_extensions(opened.paths, opened.workflow, args.name, in_flight, args.force):
+                print(f"{report.name}: {report.outcome}")
+    return ExitCode.OK
+
+
+def _describe_extension(extension: Extension) -> None:
+    if extension.roles:
+        print(f"  roles: {', '.join(extension.role_ids)}")
+    for tool in extension.scan_tools:
+        print(f"  scan tool: {tool.id} (image {tool.image}, step {tool.step}, network {tool.network})")
+    if extension.gates:
+        print("  gates: " + ", ".join(f"{kind} on {step}" for step, kind in extension.gates))
+    for rule in extension.path_rules:
+        print(f"  path rule {rule.id}: {', '.join(rule.paths)} -> {', '.join(rule.roles)}")
+
+
+def cmd_config(args: argparse.Namespace) -> ExitCode:
+    paths = find_workspace(Path.cwd())
+    config = load_config(paths)
+    extensions = [item.extension for item in load_registered(paths)]
+    match args.config_command:
+        case ConfigCommand.GET:
+            value = get_value(config.settings, args.key)
+            if value is None:
+                raise AgentflowError(f"setting '{args.key}' is not set", ExitCode.SETTINGS_INVALID)
+            print(value if isinstance(value, str) else json.dumps(value, ensure_ascii=False))
+        case ConfigCommand.SET:
+            value = coerce(extensions, args.key, args.value)
+            save_config(paths, replace(config, settings=set_value(config.settings, args.key, value)))
+            print(f"{args.key} set")
+        case ConfigCommand.CHECK:
+            problems = settings_problems(extensions, config.settings)
+            for problem in problems:
+                print(f"- {problem}")
+            if problems:
+                raise AgentflowError(f"{len(problems)} problem(s) in the project settings", ExitCode.SETTINGS_INVALID)
+            print("settings ok")
+    return ExitCode.OK
 
 
 def cmd_scan(args: argparse.Namespace) -> ExitCode:
@@ -423,8 +508,9 @@ def cmd_report(args: argparse.Namespace) -> ExitCode:
 def cmd_commit(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     scanner = ContainerGitleaksScanner(SubprocessRunner())
+    project = load_project_context(opened.paths.dir, opened.workflow)
     result = commit_staged(
-        _store(opened), SubprocessGit(opened.paths.root), scanner, args.message, args.item, _plan_item_codes(opened)
+        _store(opened), SubprocessGit(opened.paths.root), scanner, args.message, args.item, _plan_items(opened), project.rules
     )
     print(f"committed {result.sha[:SHORT_SHA_LENGTH]}: {result.message}")
     return ExitCode.OK
@@ -457,6 +543,8 @@ HANDLERS: dict[str, Handler] = {
     Command.NEXT: cmd_next,
     Command.WORKFLOW: cmd_workflow,
     Command.TASK: cmd_task,
+    Command.EXT: cmd_ext,
+    Command.CONFIG: cmd_config,
     Command.SCAN: cmd_scan,
     Command.DECIDE: cmd_decide,
     Command.PLAN: cmd_plan,

@@ -7,6 +7,20 @@
   "required": ["schema_version", "workflow"],
   "properties": {
     "schema_version": { "const": 1 },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source_path", "sha256"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "source_path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "settings": { "type": "object" },
     "workflow": {
       "type": "object",
       "additionalProperties": false,

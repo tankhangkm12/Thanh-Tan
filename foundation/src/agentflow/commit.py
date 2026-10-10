@@ -1,12 +1,18 @@
 """`agentflow commit`: commit staged changes on the task's own branch, after a clean secret scan."""
 
-from collections.abc import Collection
+from collections.abc import Mapping, Sequence
+from typing import Protocol
 
 from agentflow.constants import COMMIT_PREFIX_SEPARATOR, PLAN_ITEM_TRAILER, ExitCode
 from agentflow.errors import AgentflowError
 from agentflow.interfaces import GitClient, SecretScanner, StateStore
 from agentflow.models import CommitResult
+from agentflow.plan import PlanItem
 from agentflow.tasks import require_active_task
+
+class CommitRules(Protocol):
+    def commit_problems(self, item: PlanItem | None, staged: Sequence[str]) -> list[str]: ...
+
 
 LEAKS_HINT = "secrets were found in the staged changes; nothing was committed. Remove them, restage and retry"
 
@@ -17,9 +23,13 @@ def commit_staged(
     scanner: SecretScanner,
     message: str,
     item: str | None = None,
-    plan_items: Collection[str] | None = None,
+    plan_items: Mapping[str, PlanItem] | None = None,
+    rules: CommitRules | None = None,
 ) -> CommitResult:
-    """Commit what is staged. ``item`` ties the commit to a plan item; ``plan_items`` (when known) must contain it."""
+    """Commit what is staged. ``item`` ties the commit to a plan item; ``plan_items`` (when known) must contain it.
+
+    ``rules`` (from extensions) may refuse the commit: for example a path only one role may change.
+    """
     message = message.strip()
     if not message:
         raise AgentflowError("the commit message is empty", ExitCode.INVALID_INPUT)
@@ -39,6 +49,10 @@ def commit_staged(
     if not git.has_staged_changes():
         raise AgentflowError("nothing is staged; `git add` the files to commit first", ExitCode.NOTHING_STAGED)
 
+    if rules is not None:
+        problems = rules.commit_problems(plan_items.get(item) if item and plan_items else None, git.staged_files())
+        if problems:
+            raise AgentflowError("the commit is refused:\n  - " + "\n  - ".join(problems), ExitCode.PLAN_INVALID)
     scan = scanner.scan_staged(git.root)
     if not scan.clean:
         raise AgentflowError(f"{LEAKS_HINT}:\n{scan.output}", ExitCode.SECRETS_FOUND)

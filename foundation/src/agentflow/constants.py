@@ -30,6 +30,9 @@ SCHEMAS_DIR = "schemas"
 WORKFLOW_SCHEMA_FILE = "workflow.schema.json"
 STATE_SCHEMA_FILE = "state.schema.json"
 CONFIG_SCHEMA_FILE = "config.schema.json"
+EXTENSION_SCHEMA_FILE = "extension.schema.json"
+EXTENSIONS_DIR = "extensions"
+YAML_SUFFIX = ".yaml"
 
 # Git plumbing.
 GIT_EXECUTABLE = "git"
@@ -209,6 +212,8 @@ class Command(StrEnum):
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
+    EXT = "ext"
+    CONFIG = "config"
 
 
 class WorkflowCommand(StrEnum):
@@ -351,6 +356,18 @@ class PlanCommand(StrEnum):
     CHECK = "check"
 
 
+class ExtCommand(StrEnum):
+    ADD = "add"
+    LIST = "list"
+    SYNC = "sync"
+
+
+class ConfigCommand(StrEnum):
+    GET = "get"
+    SET = "set"
+    CHECK = "check"
+
+
 class StateKey(StrEnum):
     SCHEMA_VERSION = "schema_version"
     UPDATED_AT = "updated_at"
@@ -375,6 +392,9 @@ class ConfigKey(StrEnum):
     FAMILY = "family"
     SOURCE_PATH = "source_path"
     SHA256 = "sha256"
+    EXTENSIONS = "extensions"
+    SETTINGS = "settings"
+    NAME = "name"
 
 
 # ----------------------------------------------------------------- plan

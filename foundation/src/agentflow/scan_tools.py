@@ -54,7 +54,7 @@ TRIVY_SPEC = ScanToolSpec(
     id=TRIVY,
     image=TRIVY_IMAGE,
     args=("fs", "--scanners", "vuln", "--format", "json", "--quiet", "/repo"),
-    # The vulnerability database is downloaded into the cache volume, so this one needs the network.
+    # The vulnerability data is downloaded into the cache volume, so this one needs the network.
     network=NetworkMode.BRIDGE,
     mounts=(MountSpec(TRIVY_CACHE_VOLUME, TRIVY_CACHE_MOUNT, readonly=False, volume=True),),
     result=ResultSpec(

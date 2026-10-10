@@ -1,6 +1,6 @@
 """``${...}`` placeholders in extension rules and scan tool arguments.
 
-Forms: ``${config:backend.migrations_dir}`` (a project setting), ``${host_url:backend.openapi.url}`` (a setting
+Forms: ``${config:area.folder}`` (a project setting), ``${host_url:area.url}`` (a setting
 holding a URL, with ``localhost`` rewritten so a container can reach the host), ``${files}`` (the task's files,
 one argument each) and ``${var:name}`` (a value the scan run provides, used by built-in tools).
 """

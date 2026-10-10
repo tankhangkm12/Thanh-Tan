@@ -145,7 +145,7 @@ def test_real_generated_agents_are_all_declared_in_the_manifest():
     manifest = json.loads((REAL_PLUGIN / build.CLAUDE_MANIFEST).read_text(encoding="utf-8"))
     declared = {Path(item).name for item in manifest["agents"]}
     on_disk = {path.name for path in (REAL_PLUGIN / build.CLAUDE_AGENTS_DIR).glob("*.md")}
-    assert declared == on_disk and len(declared) == 7
+    assert declared == on_disk and len(declared) == 8  # implementer has a fast and a deep variant
     assert all(item.startswith("./") for item in manifest["agents"])
 
 
@@ -301,3 +301,76 @@ def test_roles_save_reports_with_the_tool_and_keep_the_command_as_fallback(role)
 def test_the_continue_skill_prefers_the_tool_too():
     text = (CORE_DIR / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
     assert "`report_write`" in text and "only when the tool is not available" in text
+
+
+# ------------------------------------------------------------- model tiers
+
+VARIANTS = (
+    "variants:\n  fast:\n    claude: {model: sonnet, effort: low}\n    antigravity: {model: flash}\n"
+    "  deep:\n    claude: {model: opus, effort: medium}\n    antigravity: {model: pro}\n"
+)
+
+
+def add_tiered_role(plugin: Path, name: str, extra: str) -> None:
+    text = f"---\nname: {name}\ndescription: Does {name} things.\ncapabilities: [read, run]\n{extra}---\nYou are {name}.\n"
+    (plugin / build.ROLES_DIR / f"{name}.md").write_text(text, encoding="utf-8")
+
+
+def test_a_role_with_variants_gets_one_agent_per_tier(plugin):
+    add_tiered_role(plugin, "coder", VARIANTS)
+    build.build(plugin)
+    fast = frontmatter(plugin / "claude" / "agents" / "coder-fast.md")
+    deep = frontmatter(plugin / "claude" / "agents" / "coder-deep.md")
+    assert (fast["name"], fast["model"], fast["effort"]) == ("coder-fast", "sonnet", "low")
+    assert (deep["name"], deep["model"], deep["effort"]) == ("coder-deep", "opus", "medium")
+    assert "tier is fast" in fast["description"] and "no tier" in deep["description"]
+    assert not (plugin / "claude" / "agents" / "coder.md").exists()
+    agy = frontmatter(plugin / "agents" / "coder-fast.md")
+    assert agy["model"] == "flash" and "effort" not in agy and frontmatter(plugin / "agents" / "coder-deep.md")["model"] == "pro"
+    manifest = json.loads((plugin / build.CLAUDE_MANIFEST).read_text(encoding="utf-8"))
+    assert manifest["agents"] == ["./claude/agents/coder-deep.md", "./claude/agents/coder-fast.md"]
+    assert build.check(plugin) == []
+
+
+def test_a_single_agent_can_pin_its_model(plugin):
+    add_tiered_role(plugin, "solo", "settings:\n  claude: {model: opus, effort: medium}\n  antigravity: {model: pro}\n")
+    build.build(plugin)
+    assert frontmatter(plugin / "claude" / "agents" / "solo.md")["effort"] == "medium"
+    assert frontmatter(plugin / "agents" / "solo.md")["model"] == "pro"
+
+
+@pytest.mark.parametrize(
+    ("extra", "message"),
+    [
+        ("settings:\n  claude: {model: gpt, effort: low}\n  antigravity: {model: pro}\n", "'gpt' is not one of"),
+        ("settings:\n  claude: {model: opus, effort: turbo}\n  antigravity: {model: pro}\n", "'turbo' is not one of"),
+        ("settings:\n  claude: {model: opus}\n  antigravity: {model: pro, effort: low}\n", "no 'effort' setting"),
+        ("settings:\n  claude: {model: opus}\n", "lacks settings for antigravity"),
+        ("settings:\n  codex: {model: x}\n", "unknown CLI"),
+        ("variants:\n  fast:\n    claude: {model: sonnet}\n    antigravity: {model: flash}\n", "exactly the tiers"),
+        (VARIANTS + "settings:\n  claude: {model: opus}\n  antigravity: {model: pro}\n", "not both"),
+    ],
+)
+def test_model_settings_are_checked_against_the_documented_values(plugin, extra, message):
+    add_tiered_role(plugin, "bad", extra)
+    with pytest.raises(build.BuildError, match=message):
+        build.build(plugin)
+
+
+def test_the_real_implementer_has_a_fast_and_a_deep_agent_and_db_engineer_is_deep():
+    for cli_dir, expected in (("claude/agents", ("sonnet", "opus")), ("agents", ("flash", "pro"))):
+        fast = frontmatter(CORE_DIR / cli_dir / "implementer-fast.md")
+        deep = frontmatter(CORE_DIR / cli_dir / "implementer-deep.md")
+        assert (fast["model"], deep["model"]) == expected
+    assert frontmatter(CORE_DIR / "claude/agents/implementer-fast.md")["effort"] == "low"
+    assert frontmatter(CORE_DIR / "claude/agents/implementer-deep.md")["effort"] == "medium"
+    assert frontmatter(BACKEND_DIR / "claude/agents/db-engineer.md")["model"] == "opus"
+    assert frontmatter(BACKEND_DIR / "agents/db-engineer.md")["model"] == "pro"
+
+
+def test_the_workflow_names_the_tiered_role_and_every_tier_has_an_agent():
+    workflow = yaml.safe_load((CORE_DIR / "workflow.yaml").read_text(encoding="utf-8"))
+    assert workflow["tiered_roles"] == ["implementer"]
+    for tier in ("fast", "deep"):
+        assert (CORE_DIR / "claude" / "agents" / f"implementer-{tier}.md").is_file()
+        assert (CORE_DIR / "agents" / f"implementer-{tier}.md").is_file()

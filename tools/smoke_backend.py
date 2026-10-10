@@ -323,7 +323,7 @@ def install_check(repo: Path, with_session: bool = True) -> None:
         events = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
         init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
         text = json.dumps(init)
-        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:setup", f"{CORE_NAME}:scout", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
+        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:setup", f"{CORE_NAME}:scout", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{CORE_NAME}:implementer-fast", f"{CORE_NAME}:implementer-deep", f"{BACKEND_NAME}:db-engineer"):
             expect(needle in text, f"Claude Code loaded {needle}", text[:400])
         servers = {server["name"]: server.get("status") for server in init.get("mcp_servers", [])}
         expect(servers.get(f"plugin:{CORE_NAME}:agentflow") == "connected", "Claude Code connected dev-core's MCP server", str(servers))
@@ -346,7 +346,7 @@ def install_check(repo: Path, with_session: bool = True) -> None:
     for name in (CORE_NAME, BACKEND_NAME):
         expect(name in plugins, f"agy lists {name}", plugins)
     agents = cli("agy", "agents").stdout
-    for role in ("orchestrator", "planner", "implementer", "tester", "security", "reviewer", "scout", "db-engineer"):
+    for role in ("orchestrator", "planner", "implementer-fast", "implementer-deep", "tester", "security", "reviewer", "scout", "db-engineer"):
         expect(role in agents, f"agy agents lists {role}", agents)
     expect("hooks" in plugins.lower(), "agy shows hooks for dev-core", plugins)
     core_entry = plugins.split(f'"name": "{CORE_NAME}"')[1].split("}")[0]

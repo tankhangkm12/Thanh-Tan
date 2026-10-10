@@ -6,6 +6,8 @@
 schema_version: 1
 family: software-dev
 max_rounds: 3
+# Roles with one agent per plan-item tier (`tier: fast|deep`): implementer-fast and implementer-deep.
+tiered_roles: [implementer]
 steps:
   - id: confirm
     name: Xác nhận task

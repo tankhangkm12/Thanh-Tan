@@ -288,6 +288,7 @@ uv run pytest
 uv run --python 3.12 pytest
 cd ..
 uv run tools/build.py --check
+uv run tools/docs_standard.py
 uv run --with pyyaml --with pytest pytest tools
 claude plugin validate --strict families/software-dev/core
 agy plugin validate families/software-dev/core

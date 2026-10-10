@@ -11,6 +11,9 @@ Repo chứa nhiều thành phần có số phiên bản riêng: `agentflow` (fou
 - Tài liệu release gitflow cho người làm tay: [docs/release.md](docs/release.md).
 - `CHANGELOG.md`.
 
+- Hướng dẫn sử dụng nhóm software-dev: [families/software-dev/USAGE.md](families/software-dev/USAGE.md) (chọn plugin theo loại dự án, chuẩn bị một lần, khuôn yêu cầu task, chọn chế độ, checklist duyệt, lệnh của người, tiết kiệm token, xử lý tình huống). Mục "Dùng cùng dev-core" trong README của `dev-backend` (dữ liệu cần thêm, ví dụ done-when cho Squawk và Schemathesis) và của `dev-design`, `dev-frontend`, `dev-infra` (còn là khung). README gốc và `families/software-dev/README.md` link tới USAGE.md.
+- Chuẩn tài liệu của plugin trong [docs/architecture.md](docs/architecture.md): core của nhóm có `USAGE.md` với mục `## Khuôn yêu cầu task`, plugin con có mục `## Dùng cùng <tên core>`, README gốc link tới USAGE.md của mọi nhóm có core. `tools/docs_standard.py` và `tools/test_docs_standard.py` cưỡng chế chuẩn này (thiếu USAGE.md, thiếu mục khuôn hoặc khối code, thiếu mục "Dùng cùng ...", README gốc thiếu link, link tương đối hỏng; lỗi nêu tên file).
+
 - Tier theo mục kế hoạch: `tier: fast|deep` (thiếu là deep), `plan check` kiểm giá trị, `agentflow plan assign` cho biết agent nào nhận mục nào, `tiered_roles` trong `workflow.yaml`.
 - `dev-core`: hai agent `implementer-fast` (Claude Code `sonnet`/`low`, Antigravity `flash`) và `implementer-deep` (`opus`/`medium`, `pro`) sinh từ `variants` trong nguồn role; `db-engineer` là một agent ở mức mạnh nhất. `tools/build.py` kiểm model/effort theo tài liệu từng CLI. Skill `continue` giao từng mục cho đúng agent.
 - Luật plan `layer-order`: quy ước `layers:` (thứ tự các lớp) và `scope:` (tùy chọn) do dự án khai báo; mặc định kiểm trên toàn bộ kế hoạch. `agentflow decide --layers --scope`.

@@ -13,6 +13,7 @@ Script build và bảo trì repo. Viết bằng Python, chạy qua uv (`uv run`)
 | `trial_cli.py` | Phiên **thật** của `claude -p` và `agy -p` với plugin đã cài, trong repo tạm: mặc định thử hook (ghi vào `.agentflow/` và `git push` bị chặn, `git status` vẫn chạy); `--mcp` thử tool `status`/`report_write`; `--setup` thử skill `setup` và scout; `--modes` (chỉ Antigravity, không tốn giới hạn Claude Code) thử agent `implementer-fast` làm một mục kế hoạch thật qua agentflow và một grant với plugin MCP giả (agent gọi được tool dù `tools:` của agent không liệt kê). Kết luận dựa trên hiệu ứng thật (file có tồn tại không, log hook `AGENTFLOW_HOOK_LOG`), không dựa vào lời model; mỗi CLI được thử lại một lần |
 | `test_setup.py`, `test_conventions_prompts.py` | Test câu chữ của role `scout`, skill `setup` và prompt làm việc theo quy ước |
 | `test_smoke_backend.py` | Test của các hàm phụ trợ trong smoke_backend (không cần Docker) |
+| `docs_standard.py`, `test_docs_standard.py` | Kiểm chuẩn tài liệu của plugin ([architecture](../docs/architecture.md#chuẩn-tài-liệu-của-plugin)): nhóm có core thì cần `USAGE.md` với mục `## Khuôn yêu cầu task` (có khối code), mỗi plugin con có mục `## Dùng cùng <tên core>`, README gốc link tới USAGE.md, link tương đối trong các file đó trỏ đúng. Chạy `uv run tools/docs_standard.py`; test có ca thiếu cố ý trên bản tạm và ca repo thật |
 | `test_backend.py` | Test của dev-backend: role `db-engineer`, 6 skill không giả định stack, agent sinh ra khớp nguồn |
 
 ```

@@ -1,0 +1,11 @@
+{
+  "name": "dev-design",
+  "version": "0.1.0",
+  "description": "Software design for the software-dev family: requirements, architecture and API design",
+  "author": {
+    "name": "tankhangkm12"
+  },
+  "dependencies": [
+    "dev-core"
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Runs the confirm step of a software-dev task. Restates the request, checks it is clear and in scope, and prepares it for the person's approval. Use at the start of every task.
-capabilities: [read, run]
+capabilities: [read, run, workspace]
 ---
 You are the **orchestrator** of the software-dev workflow (step `confirm`).
 

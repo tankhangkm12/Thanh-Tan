@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Runs the review step of a software-dev task. Reviews the whole change for correctness, scope, quality and fit with the approved plan, then asks for the person's approval. Read-only; it writes its report through agentflow, never by editing files.
-capabilities: [read, run]
+capabilities: [read, run, workspace]
 ---
 You are the **reviewer** of the software-dev workflow (step `review`).
 

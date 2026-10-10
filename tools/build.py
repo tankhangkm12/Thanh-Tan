@@ -37,6 +37,9 @@ class Capability(StrEnum):
     READ = "read"
     EDIT = "edit"
     RUN = "run"
+    # The agentflow MCP tools: the ones every role uses, and the one that writes project documents.
+    WORKSPACE = "workspace"
+    PROJECT = "project"
 
 
 class ManifestKey(StrEnum):
@@ -45,20 +48,35 @@ class ManifestKey(StrEnum):
 
 # Tool names, from each CLI's documentation. Antigravity's names are the ones its hooks reference
 # documents for the CLI (its SDK uses other names and must not be mixed in).
+# The MCP server belongs to dev-core, so every plugin's agents name its tools with dev-core's prefix:
+# mcp__plugin_<plugin>_<server>__<tool> (checked in a real session, see docs/mcp-notes.md).
+MCP_SERVER_PREFIX = "mcp__plugin_dev-core_agentflow__"
+WORKSPACE_TOOL_NAMES = ("status", "next_step", "plan_check", "report_write", "scan_summary", "knowledge_search", "knowledge_read")
+PROJECT_TOOL_NAMES = ("project_write",)
+WORKSPACE_TOOLS = tuple(MCP_SERVER_PREFIX + name for name in WORKSPACE_TOOL_NAMES)
+PROJECT_TOOLS = tuple(MCP_SERVER_PREFIX + name for name in PROJECT_TOOL_NAMES)
 CLAUDE_TOOLS = {
     Capability.READ: ("Read", "Glob", "Grep"),
     Capability.EDIT: ("Edit", "Write"),
     Capability.RUN: ("Bash", "PowerShell"),
+    Capability.WORKSPACE: WORKSPACE_TOOLS,
+    Capability.PROJECT: PROJECT_TOOLS,
 }
+# Antigravity's `tools:` takes built-in tools only, and MCP tools reach every agent whatever it lists, so these
+# capabilities add nothing there.
 ANTIGRAVITY_TOOLS = {
     Capability.READ: ("view_file", "list_dir", "find_by_name", "grep_search"),
     Capability.EDIT: ("write_to_file", "replace_file_content", "multi_replace_file_content"),
     Capability.RUN: ("run_command",),
+    Capability.WORKSPACE: (),
+    Capability.PROJECT: (),
 }
 # Everything a tool list is allowed to contain. Edit tools are the ones a read-only role must never get;
 # Bash, PowerShell and run_command can change files too, which is why those roles also write through agentflow.
 CLAUDE_ALLOWED = frozenset(
     {"Agent", "Bash", "Edit", "Glob", "Grep", "LSP", "NotebookEdit", "PowerShell", "Read", "Skill", "TodoWrite", "WebFetch", "WebSearch", "Write"}
+    | set(WORKSPACE_TOOLS)
+    | set(PROJECT_TOOLS)
 )
 CLAUDE_EDIT_TOOLS = frozenset({"Edit", "Write", "NotebookEdit"})
 ANTIGRAVITY_ALLOWED = frozenset(
@@ -76,6 +94,8 @@ ANTIGRAVITY_ALLOWED = frozenset(
 ANTIGRAVITY_EDIT_TOOLS = frozenset({"write_to_file", "replace_file_content", "multi_replace_file_content"})
 # Roles that must never get an edit tool. Tester may (it writes tests); implementer is the code writer.
 READ_ONLY_ROLES = frozenset({"orchestrator", "planner", "security", "reviewer"})
+# The only role that writes project documents (with the `project` capability).
+PROJECT_WRITERS = frozenset({"scout"})
 
 
 class BuildError(Exception):
@@ -122,6 +142,8 @@ def load_role(path: Path) -> Role:
         raise BuildError(f"{path}: the prompt is empty")
     if name in READ_ONLY_ROLES and Capability.EDIT in capabilities:
         raise BuildError(f"{path}: role '{name}' is read-only and must not have the 'edit' capability")
+    if Capability.PROJECT in capabilities and name not in PROJECT_WRITERS:
+        raise BuildError(f"{path}: only {', '.join(sorted(PROJECT_WRITERS))} may have the 'project' capability")
     return Role(name, description.strip(), capabilities, prompt, path)
 
 

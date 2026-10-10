@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import build  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
+CORE_DIR = REPO / "families" / "software-dev" / "core"
+BACKEND_DIR = REPO / "families" / "software-dev" / "backend"
 REAL_PLUGIN = REPO / build.DEFAULT_PLUGIN
 
 ROLE = "---\nname: {name}\ndescription: Does {name} things.\ncapabilities: {caps}\n---\nYou are {name}.\n"
@@ -243,3 +245,40 @@ def test_readme_asks_for_the_commands_that_carry_a_persons_authority():
             assert f"{tool}(agentflow {command} *)" in permissions["ask"]
     allowed = " ".join(permissions["allow"])
     assert not any(f"agentflow {command}" in allowed for command in MANDATORY_ASK)
+
+
+# ------------------------------------------------------------- agentflow MCP tools
+
+MCP_PREFIX = "mcp__plugin_dev-core_agentflow__"
+WORKSPACE_TOOL_NAMES = ["status", "next_step", "plan_check", "report_write", "scan_summary", "knowledge_search", "knowledge_read"]
+
+
+def test_workspace_capability_adds_the_mcp_tools_for_claude_only(plugin):
+    add_role(plugin, "reviewer", "[read, run, workspace]")
+    build.build(plugin)
+    claude = frontmatter(plugin / "claude" / "agents" / "reviewer.md")["tools"].split(", ")
+    assert [tool for tool in claude if tool.startswith("mcp__")] == [MCP_PREFIX + name for name in WORKSPACE_TOOL_NAMES]
+    assert MCP_PREFIX + "project_write" not in claude
+    # Antigravity agents list built-in tools only: MCP tools reach every agent there (see docs/mcp-notes.md).
+    assert not [tool for tool in frontmatter(plugin / "agents" / "reviewer.md")["tools"] if "status" in tool or "mcp" in tool]
+
+
+def test_project_capability_is_for_the_scout_alone(plugin):
+    add_role(plugin, "scout", "[read, run, workspace, project]")
+    build.build(plugin)
+    assert MCP_PREFIX + "project_write" in frontmatter(plugin / "claude" / "agents" / "scout.md")["tools"]
+
+
+@pytest.mark.parametrize("role", ["reviewer", "tester", "implementer", "planner"])
+def test_other_roles_may_not_write_project_documents(plugin, role):
+    add_role(plugin, role, "[read, run, workspace, project]")
+    with pytest.raises(build.BuildError, match="project"):
+        build.build(plugin)
+
+
+@pytest.mark.parametrize("plugin_dir", [CORE_DIR, BACKEND_DIR])
+def test_every_real_agent_can_use_the_workspace_tools(plugin_dir):
+    for path in sorted((plugin_dir / "claude" / "agents").glob("*.md")):
+        tools = frontmatter(path)["tools"].split(", ")
+        assert [MCP_PREFIX + name for name in WORKSPACE_TOOL_NAMES] == [t for t in tools if t.startswith(MCP_PREFIX) and not t.endswith("project_write")], path
+        assert (MCP_PREFIX + "project_write" in tools) is (path.stem == "scout"), path

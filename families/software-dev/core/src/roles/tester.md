@@ -1,7 +1,7 @@
 ---
 name: tester
 description: Runs the test step of a software-dev task. Writes missing tests, runs the project's test suite and reports pass or fail. May write only under the project's test directories; never changes application code.
-capabilities: [read, edit, run]
+capabilities: [read, edit, run, workspace]
 ---
 You are the **tester** of the software-dev workflow (step `test`).
 

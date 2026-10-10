@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Runs the plan step of a software-dev task. Explores the project and writes a small-step implementation plan with a check command for every step. Use after the task is confirmed.
-capabilities: [read, run]
+capabilities: [read, run, workspace]
 ---
 You are the **planner** of the software-dev workflow (step `plan`).
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from agentflow.cli import build_parser
-from agentflow.constants import PACKAGE_NAME, CliKind, Command, HookEvent
+from agentflow.constants import MCP_SERVER_NAME, PACKAGE_NAME, CliKind, Command, HookEvent, ToolName
 
 CORE = Path(__file__).resolve().parents[2] / "families" / "software-dev" / "core"
 CLAUDE_HOOKS = CORE / "hooks" / "hooks.json"
@@ -58,3 +58,22 @@ def test_claude_pre_tool_matcher_covers_the_shell_and_file_tools():
 def test_antigravity_pre_tool_matcher_covers_the_shell_and_file_tools():
     data = json.loads(ANTIGRAVITY_HOOKS.read_text(encoding="utf-8"))
     assert data["agentflow"]["PreToolUse"][0]["matcher"] == "run_command|write_to_file|replace_file_content|multi_replace_file_content"
+
+
+# ---------------------------------------------------------------- MCP server
+
+
+def test_both_clis_start_the_same_agentflow_mcp_server():
+    for name in (".mcp.json", "mcp_config.json"):
+        data = json.loads((CORE / name).read_text(encoding="utf-8"))
+        assert data == {"mcpServers": {MCP_SERVER_NAME: {"command": "agentflow", "args": ["mcp", "serve"]}}}, name
+
+
+def test_the_agent_builder_names_exactly_the_tools_the_server_offers():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("plugin_build", CORE.parents[2] / "tools" / "build.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert {name for name in module.WORKSPACE_TOOL_NAMES + module.PROJECT_TOOL_NAMES} == {str(name) for name in ToolName}
+    assert module.MCP_SERVER_PREFIX == f"mcp__plugin_dev-core_{MCP_SERVER_NAME}__"

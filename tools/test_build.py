@@ -147,6 +147,16 @@ def test_real_generated_agents_are_all_declared_in_the_manifest():
     assert all(item.startswith("./") for item in manifest["agents"])
 
 
+def test_real_skills_use_only_portable_frontmatter():
+    skills = {path.parent.name: path for path in (REAL_PLUGIN / "skills").glob("*/SKILL.md")}
+    assert set(skills) == {"start", "continue", "status", "approve"}
+    for name, path in skills.items():
+        data = frontmatter(path)
+        assert set(data) == {"name", "description"} and data["name"] == name
+        body = path.read_text(encoding="utf-8")
+        assert "agentflow" in body
+
+
 def test_tool_lists_in_real_agents_are_documented_names():
     for path in (REAL_PLUGIN / build.CLAUDE_AGENTS_DIR).glob("*.md"):
         tools = {tool.strip() for tool in frontmatter(path)["tools"].split(",")}

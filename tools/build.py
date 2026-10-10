@@ -205,7 +205,8 @@ def write_text(path: Path, text: str) -> None:
 
 
 def read_text(path: Path) -> str | None:
-    return path.read_bytes().decode(ENCODING) if path.is_file() else None
+    # A checkout with autocrlf turns LF into CRLF; that is not drift.
+    return path.read_bytes().decode(ENCODING).replace("\r\n", "\n") if path.is_file() else None
 
 
 def build(plugin: Path) -> list[Path]:

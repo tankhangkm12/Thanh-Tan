@@ -1,3 +1,3 @@
 # dev-core
 
-Core plugin of the **software-dev** family. It carries what every `dev-*` plugin shares: the 7-step workflow, the gitflow rules and the tool-based gates described in [`../README.md`](../README.md). The other `dev-*` plugins depend on it and add only their own domain on top. Skeleton only: no skills or agents yet.
+Plugin lõi của nhóm **software-dev**. Plugin giữ những gì mọi plugin `dev-*` dùng chung: quy trình 7 bước, quy tắc gitflow và các gate bằng tool, mô tả trong [`../README.md`](../README.md). Các plugin `dev-*` còn lại phụ thuộc vào `dev-core` và chỉ thêm phần nghiệp vụ riêng. Hiện mới là bộ khung, chưa có skill hay agent.

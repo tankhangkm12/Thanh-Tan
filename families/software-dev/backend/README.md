@@ -1,3 +1,5 @@
 # dev-backend
 
-Covers server-side work in the software-dev workflow: services, API implementation, data models, persistence and the backend tests and gates that go with them. Depends on `dev-core`, which provides the shared workflow, gitflow and gates; this plugin adds only its own domain. Skeleton only: no skills or agents yet.
+Plugin phát triển phía server của nhóm **software-dev**. Phạm vi: service, triển khai API, data model, lưu trữ dữ liệu, cùng các test và gate đi kèm.
+
+Plugin phụ thuộc vào `dev-core` (quy trình, gitflow, gate dùng chung) và chỉ thêm phần nghiệp vụ backend của riêng nó. Hiện mới là bộ khung, chưa có skill hay agent.

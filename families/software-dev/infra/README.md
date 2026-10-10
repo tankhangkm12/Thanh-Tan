@@ -1,3 +1,5 @@
 # dev-infra
 
-Covers delivery work in the software-dev workflow: CI/CD pipelines, containers, environments and deployment, including the automated gates that run there. Depends on `dev-core`, which provides the shared workflow, gitflow and gates; this plugin adds only its own domain. Skeleton only: no skills or agents yet.
+Plugin hạ tầng và phân phối của nhóm **software-dev**. Phạm vi: pipeline CI/CD, container, môi trường và triển khai, kể cả các gate tự động chạy ở đó.
+
+Plugin phụ thuộc vào `dev-core` (quy trình, gitflow, gate dùng chung) và chỉ thêm phần nghiệp vụ hạ tầng của riêng nó. Hiện mới là bộ khung, chưa có skill hay agent.

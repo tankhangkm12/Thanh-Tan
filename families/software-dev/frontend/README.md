@@ -1,3 +1,5 @@
 # dev-frontend
 
-Covers client-side work in the software-dev workflow: UI components, client state, accessibility and the frontend tests and gates that go with them. Depends on `dev-core`, which provides the shared workflow, gitflow and gates; this plugin adds only its own domain. Skeleton only: no skills or agents yet.
+Plugin phát triển phía client của nhóm **software-dev**. Phạm vi: component giao diện, state phía client, khả năng truy cập (accessibility), cùng các test và gate đi kèm.
+
+Plugin phụ thuộc vào `dev-core` (quy trình, gitflow, gate dùng chung) và chỉ thêm phần nghiệp vụ frontend của riêng nó. Hiện mới là bộ khung, chưa có skill hay agent.

@@ -109,6 +109,12 @@ def load_decision_conventions(workspace_dir: Path) -> list[Convention]:
     return [item for item in map(_read_answer, _answer_files(workspace_dir)) if isinstance(item, Convention)]
 
 
+def answered_questions(workspace_dir: Path, scope: str) -> set[str]:
+    """Codes of the questions of ``scope`` (a task id, or ``project``) a person has answered."""
+    prefix, infix = f"{scope}-{DECISION_ANSWER_INFIX}-", MARKDOWN_SUFFIX
+    return {path.name[len(prefix) : -len(infix)] for path in _answer_files(workspace_dir) if path.name.startswith(prefix)}
+
+
 def next_code(workspace_dir: Path) -> str:
     numbers = [int(c.code.split("-")[1]) for c in load_decision_conventions(workspace_dir)]
     return f"{ConventionPrefix.DECISION}-{max(numbers, default=0) + 1:02d}"

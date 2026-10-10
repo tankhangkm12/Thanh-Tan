@@ -11,7 +11,9 @@ from pathlib import Path
 
 from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
-from agentflow.constants import McpCommand, ProjectCommand
+from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand
+from agentflow.knowledge import init_store, pull_files, push_file
+from agentflow.userconfig import knowledge_dir, save_knowledge_dir
 from agentflow.project import confirm_conventions, unconfirmed_conventions
 from agentflow.constants import (
     CONTAINER_TOOLS,
@@ -184,6 +186,16 @@ def build_parser() -> argparse.ArgumentParser:
     confirm = project_commands.add_parser(ProjectCommand.CONFIRM, help="for a person: confirm conventions (PC-01 ... or --all)")
     confirm.add_argument("codes", nargs="*", metavar="CODE")
     confirm.add_argument("--all", action="store_true", dest="everything", help="confirm every convention")
+
+    knowledge = commands.add_parser(Command.KNOWLEDGE, help="your personal knowledge store (outside every repository)")
+    knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", metavar="<knowledge command>", required=True)
+    k_init = knowledge_commands.add_parser(KnowledgeCommand.INIT, help="for a person: create the store's folders and files")
+    k_init.add_argument("--dir", type=Path, default=None, help="the store's folder (default: the one in the user config, else ~/knowledge)")
+    k_pull = knowledge_commands.add_parser(KnowledgeCommand.PULL, help="for a person: copy files of the store into .agentflow/knowledge/")
+    k_pull.add_argument("files", nargs="+", metavar="FILE", help="paths inside the store")
+    k_push = knowledge_commands.add_parser(KnowledgeCommand.PUSH, help="for a person: copy a lesson from the workspace into the store")
+    k_push.add_argument("file", type=Path)
+    k_push.add_argument("--as", dest="place", default=str(KnowledgePlace.LESSONS), choices=[str(p) for p in KnowledgePlace])
 
     mcp = commands.add_parser(Command.MCP, help="the MCP server that gives agents the agentflow tools")
     mcp_commands = mcp.add_subparsers(dest="mcp_command", metavar="<mcp command>", required=True)
@@ -538,6 +550,24 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_knowledge(args: argparse.Namespace) -> ExitCode:
+    match args.knowledge_command:
+        case KnowledgeCommand.INIT:
+            store = args.dir or knowledge_dir()
+            created = init_store(store)
+            save_knowledge_dir(store)
+            print(f"knowledge store: {store}")
+            print(f"created: {', '.join(created)}" if created else "created: nothing, the store was complete")
+        case KnowledgeCommand.PULL:
+            paths = find_workspace(Path.cwd())
+            for path in pull_files(knowledge_dir(), paths.dir, args.files):
+                print(f"pulled: {path}")
+        case KnowledgeCommand.PUSH:
+            paths = find_workspace(Path.cwd())
+            print(f"pushed: {push_file(knowledge_dir(), paths.dir, args.file, args.place)}")
+    return ExitCode.OK
+
+
 def cmd_conventions(args: argparse.Namespace) -> ExitCode:
     paths = find_workspace(Path.cwd())
     items = WorkspaceServices(paths).conventions()
@@ -609,6 +639,7 @@ HANDLERS: dict[str, Handler] = {
     Command.MCP: cmd_mcp,
     Command.PROJECT: cmd_project,
     Command.CONVENTIONS: cmd_conventions,
+    Command.KNOWLEDGE: cmd_knowledge,
 }
 
 

@@ -8,10 +8,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agentflow.constants import GateKind
+from agentflow.constants import CheckKind, GateKind, PlanRuleKind
+from agentflow.convention_sources import load_effective_conventions
+from agentflow.plan_rules import ItemOrderRule
 from agentflow.ext_rules import ExtensionRules
 from agentflow.extensions import load_registered
-from agentflow.interfaces import PlanRule
+from agentflow.interfaces import PlanRule, PlanWideRule
 from agentflow.models import Workflow
 from agentflow.scan_types import ScanToolSpec
 from agentflow.settings import get_value
@@ -35,6 +37,8 @@ class ProjectContext:
     # Added by extensions: scan tools, gates (step id, kind), a project-settings lookup and commit rules.
     scan_tools: tuple[ScanToolSpec, ...] = ()
     extra_gates: tuple[tuple[str, GateKind], ...] = ()
+    # Checks on a whole plan that enforced conventions switch on (such as the order of interface and implement items).
+    plan_wide_rules: tuple[PlanWideRule, ...] = ()
     lookup: Callable[[str], Any] = field(default=lambda key: None)
     rules: ExtensionRules | None = None
 
@@ -43,8 +47,13 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
     paths = WorkspacePaths(workspace_dir.parent)
     roles = {step.role for step in workflow.steps}
     registered = load_registered(paths)
+    wide = tuple(
+        ItemOrderRule(item.convention.code)
+        for item in load_effective_conventions(workspace_dir).checked_by(CheckKind.PLAN)
+        if item.convention.rule == PlanRuleKind.ITEM_ORDER
+    )
     if not registered:
-        return ProjectContext(RoleSet(frozenset(roles)))
+        return ProjectContext(RoleSet(frozenset(roles)), plan_wide_rules=wide, require_files=bool(wide))
     settings = load_config(paths).settings
     extensions = [item.extension for item in registered]
     roles |= {role for extension in extensions for role in extension.role_ids}
@@ -56,7 +65,8 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
     return ProjectContext(
         roles=RoleSet(frozenset(roles)),
         plan_rules=(rules,),
-        require_files=rules.requires_files,
+        require_files=rules.requires_files or bool(wide),
+        plan_wide_rules=wide,
         scan_tools=tuple(tool for extension in extensions for tool in extension.scan_tools),
         extra_gates=tuple(gate for extension in extensions for gate in extension.gates),
         lookup=lookup,

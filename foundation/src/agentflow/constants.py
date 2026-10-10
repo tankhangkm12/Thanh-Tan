@@ -48,6 +48,8 @@ SHELL_PWD_ENV = "PWD"
 USER_DIR_ENV = "AGENTFLOW_HOME"
 USER_DIR_NAME = ".agentflow"
 ACTIVE_PROJECT_FILE = "active-project.txt"
+USER_CONFIG_FILE = "user.yaml"
+DEFAULT_KNOWLEDGE_DIR_NAME = "knowledge"
 # When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
 HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15
@@ -328,6 +330,7 @@ class Command(StrEnum):
     MCP = "mcp"
     PROJECT = "project"
     CONVENTIONS = "conventions"
+    KNOWLEDGE = "knowledge"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
@@ -337,6 +340,23 @@ class Command(StrEnum):
 
 class ProjectCommand(StrEnum):
     CONFIRM = "confirm"
+
+
+class UserConfigKey(StrEnum):
+    KNOWLEDGE_DIR = "knowledge_dir"
+
+
+class KnowledgePlace(StrEnum):
+    """Where in the personal store a pushed file goes."""
+
+    LESSONS = "lessons"
+    PATTERNS = "patterns"
+
+
+class KnowledgeCommand(StrEnum):
+    INIT = "init"
+    PULL = "pull"
+    PUSH = "push"
 
 
 class McpCommand(StrEnum):
@@ -543,9 +563,24 @@ class PlanField(StrEnum):
     FILES = "files"
     DONE_WHEN = "done-when"
     DOCS = "docs"
+    KIND = "kind"
+    # Fields of a question under "Chưa có quy ước".
+    ASK = "ask"
+    OPTIONS = "options"
+    NEEDED_BY = "needed-by"
+
+
+class PlanItemKind(StrEnum):
+    """What a plan item does to its files, for the ``item-order`` convention."""
+
+    INTERFACE = "interface"
+    IMPLEMENT = "implement"
+    OTHER = "other"
 
 
 PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
+PLAN_QUESTION_CODE_PATTERN = r"Q[0-9]+"
+PLAN_QUESTIONS_HEADING = "Chưa có quy ước"
 PLAN_NO_DOCS_PREFIX = "không có"
 PLAN_NO_FILES_PREFIX = "không có"
 

@@ -169,7 +169,12 @@ Ghi chú:
 uv run tools/smoke.py
 ```
 
-Chạy `init → task → advance/approve → commit (Gitleaks thật) → guard → hook` trên một repo tạm, không đụng repo nào khác. Cần Docker đang chạy.
+Chạy `init → task → plan check → advance/approve → commit (Gitleaks thật) → scan (Semgrep, Trivy, Gitleaks thật) → guard → hook` trên một repo tạm, không đụng repo nào khác. Cần Docker đang chạy.
+
+```
+uv run tools/smoke_backend.py                    # dev-core + dev-backend trên dự án mẫu (PostgreSQL trong Docker)
+uv run tools/smoke_backend.py --only-install-check   # cài lại hai plugin vào Claude Code và Antigravity rồi kiểm tra
+```
 
 ### Scan bảo mật
 

@@ -174,6 +174,18 @@ class ConventionField(StrEnum):
     CODE = "code"
 
 
+class ConventionSource(StrEnum):
+    """Where an effective convention came from, in the order of priority."""
+
+    DECISION = "decisions"
+    PROJECT = "project"
+    PERSONAL = "knowledge"
+
+
+CONVENTIONS_FILE = "conventions.md"
+DECISION_ANSWER_INFIX = "answer"
+DECISION_ANSWER_KIND = "convention-answer"
+DECISION_SCOPE_PROJECT = "project"
 OPEN_QUESTIONS_HEADING = "## Câu hỏi mở"
 SETUP_QUESTION_PATTERN = r"S\d+"
 SEMGREP_RULE_SUFFIXES = (".yaml", ".yml")

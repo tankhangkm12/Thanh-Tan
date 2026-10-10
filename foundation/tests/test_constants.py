@@ -15,6 +15,8 @@ ENUMS = [
     c.SyncOutcome,
     c.Tool,
     c.ToolStatus,
+    c.Command,
+    c.WorkflowCommand,
     c.WorkflowKey,
     c.StateKey,
     c.ConfigKey,

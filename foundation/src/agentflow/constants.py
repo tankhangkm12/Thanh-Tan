@@ -129,6 +129,18 @@ INSTALL_URLS = {
 }
 
 
+class Command(StrEnum):
+    DOCTOR = "doctor"
+    INIT = "init"
+    STATUS = "status"
+    NEXT = "next"
+    WORKFLOW = "workflow"
+
+
+class WorkflowCommand(StrEnum):
+    SYNC = "sync"
+
+
 class WorkflowKey(StrEnum):
     SCHEMA_VERSION = "schema_version"
     FAMILY = "family"

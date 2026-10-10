@@ -1,6 +1,6 @@
 # Nhóm software-dev
 
-> **Bản nháp (MVP).** Mới `dev-core` có nội dung dùng được; các plugin `dev-*` còn lại vẫn là khung.
+> **Bản nháp (MVP).** `dev-core` và `dev-backend` có nội dung dùng được; các plugin `dev-*` còn lại vẫn là khung.
 
 Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn chung của nhóm; các plugin con (`dev-design`, `dev-backend`, `dev-frontend`, `dev-infra`) phụ thuộc vào `dev-core` và chỉ thêm phần nghiệp vụ riêng.
 
@@ -8,7 +8,7 @@ Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn ch
 |---|---|
 | `dev-core` | Quy trình, gitflow, gate, hook an toàn, 4 skill và 6 role dùng chung |
 | `dev-design` | Thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract API OpenAPI, data model) |
-| `dev-backend` | Service, API, dữ liệu |
+| `dev-backend` | Service, API, dữ liệu: role `db-engineer`, 6 skill, Squawk và Schemathesis qua extension (xem [README](backend/README.md)) |
 | `dev-frontend` | Giao diện, state phía client |
 | `dev-infra` | CI/CD, container, triển khai |
 

@@ -86,6 +86,9 @@ class FakeGit:
     def has_staged_changes(self) -> bool:
         return self.staged
 
+    def staged_files(self) -> list[str]:
+        return []
+
     def commit(self, message: str) -> str:
         self.commits.append(message)
         self.staged = False

@@ -81,6 +81,10 @@ class SubprocessGit:
             raise AgentflowError(f"cannot read staged changes: {result.stderr.strip()}", ExitCode.GIT_FAILED)
         return result.returncode == DIFF_HAS_CHANGES
 
+    def staged_files(self) -> list[str]:
+        output = _checked(self.root, "diff", "--cached", "--name-only")
+        return [line for line in output.splitlines() if line]
+
     def commit(self, message: str) -> str:
         _checked(self.root, *COMMIT_ARGS, message)
         return _checked(self.root, *HEAD_SHA_ARGS)

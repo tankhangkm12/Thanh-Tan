@@ -1,6 +1,5 @@
 """Running a scan tool in a Docker or Podman container: engine detection and the `run` command line."""
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from agentflow.constants import (
     NetworkMode,
 )
 from agentflow.errors import AgentflowError
+from agentflow.globs import glob_regex, select_files  # noqa: F401 - re-exported
 from agentflow.interfaces import CommandRunner
 from agentflow.models import CommandResult
 from agentflow.scan_types import MountSpec, ScanToolSpec
@@ -80,33 +80,3 @@ def tool_command(
 
 def run_tool(runner: CommandRunner, command: Sequence[str], repo: Path) -> CommandResult:
     return runner.run(command, repo, SCAN_TIMEOUT_SECONDS)
-
-
-def glob_regex(pattern: str) -> re.Pattern[str]:
-    """Regex for a path glob: ``*`` stays inside a folder, ``**`` crosses folders."""
-    out, i = [], 0
-    while i < len(pattern):
-        if pattern.startswith("**/", i):
-            out.append("(?:.*/)?")
-            i += 3
-        elif pattern.startswith("**", i):
-            out.append(".*")
-            i += 2
-        elif pattern[i] == "*":
-            out.append("[^/]*")
-            i += 1
-        elif pattern[i] == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(pattern[i]))
-            i += 1
-    return re.compile("".join(out) + r"\Z")
-
-
-def select_files(files: Sequence[str], globs: Sequence[str]) -> list[str]:
-    """``files`` that match any of ``globs`` (all of them when there are no globs)."""
-    if not globs:
-        return list(files)
-    patterns = [glob_regex(glob) for glob in globs]
-    return [f for f in files if any(p.match(f) for p in patterns)]

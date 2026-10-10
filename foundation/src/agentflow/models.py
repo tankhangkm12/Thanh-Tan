@@ -5,7 +5,7 @@ they only map plain JSON/YAML values onto the dataclasses.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -187,9 +187,21 @@ class WorkflowRef:
 
 
 @dataclass(frozen=True)
+class ExtensionRef:
+    """An extension registered in the workspace: where its copy came from and the sha256 it had."""
+
+    name: str
+    source_path: str
+    sha256: str
+
+
+@dataclass(frozen=True)
 class WorkspaceConfig:
     workflow: WorkflowRef
     schema_version: int = SCHEMA_VERSION
+    extensions: tuple[ExtensionRef, ...] = ()
+    # Project settings that extensions read (``agentflow config get/set``), keyed by each extension's settings key.
+    settings: Mapping[str, Any] = field(default_factory=dict)
 
 
 def config_from_dict(data: Mapping[str, Any]) -> WorkspaceConfig:
@@ -201,12 +213,17 @@ def config_from_dict(data: Mapping[str, Any]) -> WorkspaceConfig:
             source_path=ref[ConfigKey.SOURCE_PATH],
             sha256=ref[ConfigKey.SHA256],
         ),
+        extensions=tuple(
+            ExtensionRef(item[ConfigKey.NAME], item[ConfigKey.SOURCE_PATH], item[ConfigKey.SHA256])
+            for item in data.get(ConfigKey.EXTENSIONS, ())
+        ),
+        settings=data.get(ConfigKey.SETTINGS, {}),
     )
 
 
 def config_to_dict(config: WorkspaceConfig) -> dict[str, Any]:
     # Plain str keys/values so yaml.safe_dump can serialise them.
-    return {
+    data: dict[str, Any] = {
         str(ConfigKey.SCHEMA_VERSION): config.schema_version,
         str(ConfigKey.WORKFLOW): {
             str(ConfigKey.FAMILY): config.workflow.family,
@@ -214,6 +231,18 @@ def config_to_dict(config: WorkspaceConfig) -> dict[str, Any]:
             str(ConfigKey.SHA256): config.workflow.sha256,
         },
     }
+    if config.extensions:
+        data[str(ConfigKey.EXTENSIONS)] = [
+            {
+                str(ConfigKey.NAME): ref.name,
+                str(ConfigKey.SOURCE_PATH): ref.source_path,
+                str(ConfigKey.SHA256): ref.sha256,
+            }
+            for ref in config.extensions
+        ]
+    if config.settings:
+        data[str(ConfigKey.SETTINGS)] = config.settings
+    return data
 
 
 # ------------------------------------------------------------ engine/doctor

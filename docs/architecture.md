@@ -49,6 +49,26 @@ Các bước chạy theo thứ tự trong danh sách; không có bước "loop" 
 
 File được kiểm hai lớp: JSON Schema (`foundation/src/agentflow/schemas/workflow.schema.json`, editor có thể dùng qua dòng `# yaml-language-server: $schema=...`) và kiểm tham chiếu trong Python (id không trùng, `on_fail` trỏ tới bước đứng trước).
 
+## Hợp đồng extension (plugin con ↔ foundation)
+
+Plugin con khai báo một file `extension.yaml` (ví dụ `families/software-dev/backend/extension.yaml`). Foundation chỉ đọc file này, không import code của plugin và không biết plugin dùng để làm gì. Schema: [`foundation/src/agentflow/schemas/extension.schema.json`](../foundation/src/agentflow/schemas/extension.schema.json). `schema_version` là phiên bản của **hợp đồng** (hiện là `1`), khác với version của plugin.
+
+| Khóa | Ý nghĩa |
+|---|---|
+| `name`, `family` | Tên extension; family phải trùng family của workflow đang dùng |
+| `settings` | `key` (khóa gốc trong cấu hình dự án) và `schema` (JSON Schema) cho các cài đặt mà extension đọc; `config check` kiểm theo đây |
+| `roles` | Role mới, thêm vào bộ role hợp lệ của `plan check` |
+| `path_rules` | Đường dẫn chỉ một số role được đụng: áp lên `files` của mục kế hoạch và lên file staged khi `agentflow commit --item` |
+| `plan_rules` | Mục đụng các đường dẫn đó thì `done-when` phải chứa nguyên văn các chuỗi (thường là lệnh của dự án) |
+| `scan_tools` | Tool quét mới: image **ghim phiên bản**, `network` (`none` hoặc `host-gateway`), file đã đổi cần quét, `args`, `when` (điều kiện theo cài đặt) với `skip_note`, và cách đọc kết quả (`json_findings` với trường rule/mức độ và danh sách mức chặn, hoặc `exit_code`) |
+| `gates` | Gate thêm cho từng bước (`plan-valid`, `scans-clean`) |
+
+- Placeholder duy nhất: `${config:<khóa>}`, `${host_url:<khóa>}` (đổi `localhost` thành `host.docker.internal`) và `${files}` (cả một đối số). Chỉ được trỏ vào cài đặt dưới khóa của chính extension.
+- Extension không chạy được code trên máy chủ: mọi tool chạy trong container, repo mount chỉ đọc, mặc định không có mạng. `host-gateway` chỉ thêm `--add-host host.docker.internal:host-gateway` để container gọi vào dịch vụ đang chạy trên máy chủ; không dùng `--network host`.
+- `agentflow ext add <file>` (việc của người) kiểm schema, family, trùng role/tool, bước tham chiếu có trong workflow, rồi chép vào `.agentflow/extensions/<name>.yaml` và ghi tên, đường dẫn nguồn, sha256 vào `config.yaml`. Role/gate/tool lấy từ bản chép, không nhân đôi sang config. `ext list` báo lệch (`source_changed`/`source_missing`), `ext sync` đồng bộ lại.
+- Cài đặt dự án nằm ở mục `settings` của `.agentflow/config.yaml`; `agentflow config get|set|check`. `config set` là việc của người.
+- Một test (`tests/test_boundaries.py`) bảo đảm mã nguồn foundation không chứa từ vựng của plugin nào.
+
 ## Workspace của dự án
 
 `agentflow init --workflow <file>` tạo `.agentflow/` ở gốc repo git của dự án. Thư mục này chỉ ở local: init ghi `.agentflow/` vào `.git/info/exclude` của dự án, không sửa `.gitignore`.
@@ -86,6 +106,8 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow task seal <id>` | Việc của người: ghi `summary.md` và tag duyệt cho task đã xong mà chưa có (`--commit <sha>` khi nhánh đã xóa) | Task chưa xong, đã có tag, không thấy commit |
 | `agentflow scan [--all]` | Chạy trong container các scan của bước hiện tại (bước `security`: Semgrep, Trivy, Gitleaks; plugin có thể thêm tool cho bước khác). Ghi `tasks/<task>/scans/` | Có phát hiện chặn (`SCAN_BLOCKED`), cây làm việc chưa sạch, engine container không chạy |
 | `agentflow decide --suppress <id> --reason ...` | Việc của người: ghi `decisions/<task>-suppress-<mã>.md` để bỏ qua một báo nhầm của scan | Không có phát hiện đó trong kết quả scan, thiếu `--reason` |
+| `agentflow ext add <file>` / `ext list` / `ext sync [tên] [--force]` | Đăng ký, liệt kê, đồng bộ extension (`add`, `sync` là việc của người) | File không hợp lệ, sai family, trùng role/tool, nguồn mất |
+| `agentflow config get <khóa>` / `config set <khóa> <giá trị>` / `config check` | Đọc, đặt (việc của người), kiểm cài đặt dự án theo schema của các extension | Chưa đặt (`SETTINGS_INVALID`) |
 | `agentflow plan check [--file f]` | Kiểm kế hoạch: mã `C<n>`, role hợp lệ, `done-when`, `docs` | Có mục sai (mã `PLAN_INVALID`) |
 | `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
 | `agentflow commit "<nội dung>" [--item C1]` | Scan secret rồi commit với tiền tố `T-001: `; `--item` ghi trailer `Plan-Item: C1` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy, mục không có trong plan |

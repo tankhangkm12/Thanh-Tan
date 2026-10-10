@@ -85,6 +85,10 @@ class GitClient(Protocol):
 
     def has_staged_changes(self) -> bool: ...
 
+    def staged_files(self) -> Sequence[str]:
+        """Paths with staged changes (additions, modifications, renames and deletions)."""
+        ...
+
     def commit(self, message: str) -> str:
         """Commit what is staged; return the new commit's sha."""
         ...

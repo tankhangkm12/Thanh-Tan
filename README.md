@@ -1,6 +1,6 @@
 # Thanh-Tan-
 
-> **MVP.** Dùng được: plugin `dev-core` (quy trình task, hook an toàn, 4 skill, 6 role) cho Claude Code và Antigravity CLI, chạy trên động cơ `agentflow`. Các plugin `dev-design`, `dev-backend`, `dev-frontend`, `dev-infra` vẫn là khung.
+> **MVP.** Dùng được: plugin `dev-core` (quy trình task, hook an toàn, scan bảo mật, 4 skill, 6 role) và `dev-backend` (role `db-engineer`, 6 skill, Squawk, Schemathesis) cho Claude Code và Antigravity CLI, chạy trên động cơ `agentflow`. Các plugin `dev-design`, `dev-frontend`, `dev-infra` vẫn là khung.
 
 Trung tâm của nhiều **nhóm plugin** cho Claude Code và Antigravity CLI. Mỗi nhóm có core và chuẩn riêng; mọi nhóm dùng chung một động cơ là `foundation/` (package Python `agentflow`).
 
@@ -79,6 +79,15 @@ agy agents
 ```
 
 `agy plugin list` phải có `dev-core` với `skills`, `agents`, `hooks`; `agy agents` liệt kê 6 role. `agy plugin install` chép một bản vào máy, nên sau mỗi lần `git pull` hãy chạy lại lệnh cài. Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
+
+### Cài thêm dev-backend
+
+```
+claude plugin install dev-backend@thanh-tan-plugins
+agy plugin install "<repo>/families/software-dev/backend"
+```
+
+Rồi trong dự án, **bạn** đăng ký extension và đặt cài đặt (xem [dev-backend](families/software-dev/backend/README.md)): `agentflow ext add`, `agentflow config set backend.*`, `agentflow config check`.
 
 ### Bước 3: dùng trong một dự án
 

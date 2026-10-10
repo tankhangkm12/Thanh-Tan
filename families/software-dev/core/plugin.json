@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "dev-core",
+  "description": "Core of the software-dev family: shared workflow, standards and gates for all dev-* plugins"
+}

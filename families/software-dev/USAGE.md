@@ -122,3 +122,55 @@ Trong phạm vi: chỉ chuỗi thông báo đó.
 Ngoài phạm vi: mọi thông báo khác.
 Tài liệu: không có
 ```
+
+## Chọn chế độ
+
+**Cỡ task: `small` hay `normal`.** Chọn `small` cho thay đổi nhỏ, rõ ràng, vừa trong tối đa 3 mục kế hoạch. Task `small` bỏ duyệt ở bước `plan` (`agentflow plan check` vẫn chạy và chặn), nhưng vẫn cần bạn duyệt ở `confirm` và `review`; bước `security` chỉ chạy Gitleaks và Semgrep, không chạy Trivy. Không chắc thì chọn `normal`. Kế hoạch dài hơn 3 mục thì bắt đầu lại bằng `normal`. Chi tiết: [README gốc](../../README.md#chế-độ-nhẹ-task-nhỏ).
+
+**Tier của mục kế hoạch: `fast` hay `deep`.** Planner đề xuất tier cho từng mục; bạn sửa trực tiếp trong báo cáo plan khi duyệt, hoặc nhờ planner sửa. Mục thiếu `tier` được coi là `deep`.
+
+| | fast | deep |
+|---|---|---|
+| Claude Code | `model: sonnet`, `effort: low` | `model: opus`, `effort: medium` |
+| Antigravity | `model: flash` | `model: pro` |
+
+`deep` dùng Opus nên tốn giới hạn sử dụng hơn Sonnet (role `db-engineer` của dev-backend cũng dùng Opus). Muốn tiết kiệm, đổi `deep` của Claude Code sang Sonnet theo [README gốc](../../README.md#tier-và-thứ-tự-lớp): trong nguồn role `families/software-dev/core/src/roles/implementer.md`, khối `variants`, đổi dòng `claude` của `deep` thành `claude: {model: sonnet, effort: high}`, chạy `uv run tools/build.py`, rồi cài lại plugin. Antigravity không có trường effort.
+
+**Model và effort của phiên Claude Code.** Đây là phiên của bạn (cho skill, orchestrator và các bước đọc), tách khỏi model cố định trong từng agent. Gợi ý: đặt Sonnet (`/model`) với effort `high` (`/effort high`) khi lập kế hoạch, rồi hạ xuống `/effort medium` khi chạy các bước còn lại. Trang [chi phí](https://code.claude.com/docs/en/costs) của Claude Code khuyên giữ Opus cho việc phức tạp và hạ effort cho việc đơn giản. Đổi effort giữa phiên có thể hiện cảnh báo về prompt cache.
+
+**Claude Code hay Antigravity CLI.**
+
+| | Claude Code | Antigravity CLI |
+|---|---|---|
+| Bắt đầu task | `/dev-core:start` | nhờ agent dùng skill `start` |
+| Quy tắc permissions | khối `allow`/`ask` ở README gốc | dùng chế độ phê duyệt lệnh của chính CLI |
+| Lệnh của người | tiền tố `!` | terminal riêng |
+| Effort | có (`/effort`) | không có |
+| Xem hạn mức | `/usage` | `/usage` |
+
+Hai CLI cùng chạy một quy trình; hook, skill và agent của `dev-core` có ở cả hai.
+
+## Checklist khi duyệt
+
+Ba chỗ cần bạn duyệt: `confirm`, `plan`, `review`. Duyệt bằng `/dev-core:approve` hoặc `agentflow task approve`. Đọc báo cáo của bước ở `.agentflow/tasks/<task>/reports/<bước>.md` trước khi duyệt.
+
+**Confirm — đúng ý, đúng phạm vi**
+- [ ] Phần "Mục tiêu" được nhắc lại đúng ý bạn.
+- [ ] Phạm vi và ngoài phạm vi khớp những gì bạn viết, không thêm, không bớt.
+- [ ] Tiêu chí "Xong khi" kiểm được bằng lệnh hoặc quan sát cụ thể.
+- [ ] Mọi câu hỏi mở đã được bạn trả lời, không để agent đoán.
+
+**Plan — done-when đủ chặt, tier hợp lý, docs có link**
+- [ ] Mỗi mục có `done-when` là lệnh hoặc sự kiện kiểm được, không phải lời mô tả mơ hồ.
+- [ ] Các mục đủ nhỏ để kiểm từng mục; không mục nào "làm hết".
+- [ ] `tier` hợp lý: phần khó và nhạy cảm là `deep`, phần quen thuộc là `fast`.
+- [ ] Mục `docs` có link tài liệu chính thức, hoặc `không có — <lý do>` mà bạn chấp nhận.
+- [ ] Mục `files` không vượt phạm vi đã duyệt ở `confirm`.
+- [ ] Mục `## Chưa có quy ước` (nếu có) đã được bạn trả lời bằng `agentflow decide --answer Q1 ...`.
+
+**Review — mỗi quy ước có dòng đánh giá**
+- [ ] Mỗi quy ước `check: review` có đúng một dòng `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng`.
+- [ ] Mục "must fix" đã xử lý hoặc có lý do rõ ràng.
+- [ ] Thay đổi đúng kế hoạch đã duyệt, không có việc ngoài phạm vi.
+- [ ] `summary.md` và kết quả scan (`.agentflow/tasks/<task>/scans/`) không còn phát hiện chặn nào chưa giải thích.
+- [ ] "Bài học đề xuất" đáng giữ thì đưa về kho: `agentflow knowledge push .agentflow/tasks/<task>/lessons/L1.md`.

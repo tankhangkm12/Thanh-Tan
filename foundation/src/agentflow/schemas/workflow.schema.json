@@ -29,7 +29,12 @@
         "name": { "type": "string", "minLength": 1 },
         "role": { "$ref": "#/$defs/identifier" },
         "requires_approval": { "type": "boolean", "default": false },
-        "on_fail": { "$ref": "#/$defs/identifier" }
+        "on_fail": { "$ref": "#/$defs/identifier" },
+        "gates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["plan-valid", "scans-clean"] }
+        }
       }
     }
   }

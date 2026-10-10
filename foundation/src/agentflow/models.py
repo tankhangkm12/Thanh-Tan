@@ -14,6 +14,7 @@ from agentflow.constants import (
     SCHEMA_VERSION,
     ActionKind,
     ConfigKey,
+    GateKind,
     GuardDecision,
     GuardRule,
     HistoryEvent,
@@ -37,6 +38,7 @@ class Step:
     requires_approval: bool = False
     # An earlier step to go back to when this step fails.
     on_fail: str | None = None
+    gates: tuple[GateKind, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,7 @@ def _step_from_dict(data: Mapping[str, Any]) -> Step:
         role=data[WorkflowKey.ROLE],
         requires_approval=data.get(WorkflowKey.REQUIRES_APPROVAL, False),
         on_fail=data.get(WorkflowKey.ON_FAIL),
+        gates=tuple(GateKind(item) for item in data.get(WorkflowKey.GATES, ())),
     )
 
 
@@ -265,6 +268,15 @@ class ScanResult:
 
     clean: bool
     output: str
+
+
+@dataclass(frozen=True)
+class CommitInfo:
+    """One commit of a task: its sha, subject line and the plan item it names (if any)."""
+
+    sha: str
+    subject: str
+    item: str | None = None
 
 
 @dataclass(frozen=True)

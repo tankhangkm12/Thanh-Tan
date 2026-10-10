@@ -100,7 +100,59 @@ agentflow commit "nội dung"                    # quét secret rồi commit v�
 agentflow workflow sync                        # khi workflow gốc của nhóm thay đổi
 ```
 
-Hook chỉ hoạt động trong dự án đã có `.agentflow/`; ở dự án khác chúng không làm gì. Khi hook chạy, `git push`, `reset --hard`, `clean -fd`, `branch -D`, xóa tag, và commit/merge/rebase trên `main`/`develop` bị chặn với agent. Chi tiết: [docs/architecture.md](docs/architecture.md).
+Hook chỉ hoạt động trong dự án đã có `.agentflow/`; ở dự án khác chúng không làm gì. Khi hook chạy, `git push`, `git commit` trực tiếp (chỉ cho commit qua `agentflow commit`), `reset --hard`, `clean -fd`, `branch -D`, xóa tag, và merge/rebase trên `main`/`develop` bị chặn với agent. Chi tiết: [docs/architecture.md](docs/architecture.md).
+
+### Bước 4 (BẮT BUỘC): quy tắc permissions của Claude Code
+
+Agent chạy hàng loạt lệnh `agentflow`. Để không bị hỏi từng lệnh, thêm quy tắc **allow** cho các lệnh thường ngày. Đồng thời **bắt buộc** thêm quy tắc **ask** cho ba lệnh mang quyền của người: `agentflow task approve`, `agentflow task cancel`, `agentflow decide`. Quy tắc `ask` thắng `allow` (thứ tự đánh giá là deny, rồi ask, rồi allow), nên chúng luôn hỏi bạn dù allow có khớp. Nếu bỏ `ask`, agent có thể tự duyệt bước của chính nó, và workflow mất ý nghĩa.
+
+Dán vào `.claude/settings.json` của dự án (hoặc `~/.claude/settings.json` cho mọi dự án). Cú pháp theo [tài liệu permissions](https://code.claude.com/docs/en/permissions): `Bash(lệnh *)` khớp lệnh có hoặc không có đối số; `Bash(lệnh:*)` là cách viết tương đương.
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(agentflow status *)",
+      "Bash(agentflow next *)",
+      "Bash(agentflow doctor *)",
+      "Bash(agentflow init *)",
+      "Bash(agentflow task new *)",
+      "Bash(agentflow task advance *)",
+      "Bash(agentflow plan check *)",
+      "Bash(agentflow report *)",
+      "Bash(agentflow commit *)",
+      "Bash(agentflow scan *)",
+      "Bash(agentflow config get *)",
+      "Bash(agentflow config check *)",
+      "Bash(agentflow ext list *)",
+      "Bash(agentflow workflow sync *)",
+      "PowerShell(agentflow status *)",
+      "PowerShell(agentflow next *)",
+      "PowerShell(agentflow task new *)",
+      "PowerShell(agentflow task advance *)",
+      "PowerShell(agentflow plan check *)",
+      "PowerShell(agentflow report *)",
+      "PowerShell(agentflow commit *)",
+      "PowerShell(agentflow scan *)"
+    ],
+    "ask": [
+      "Bash(agentflow task approve *)",
+      "Bash(agentflow task cancel *)",
+      "Bash(agentflow decide *)",
+      "PowerShell(agentflow task approve *)",
+      "PowerShell(agentflow task cancel *)",
+      "PowerShell(agentflow decide *)"
+    ]
+  }
+}
+```
+
+Ghi chú:
+
+- Claude Code tách lệnh ghép (`&&`, `;`, `|`, xuống dòng) và đòi mỗi lệnh con khớp một quy tắc; vì vậy prompt của dev-core bắt mọi lệnh `agentflow` chạy riêng.
+- Lệnh `agentflow report` nhận nội dung qua heredoc (`<<'EOF'`). Đã thử thật bằng `claude -p`: quy tắc `Bash(python *)` cho phép lệnh `python - <<'EOF' ... EOF`, còn không có quy tắc thì lệnh bị từ chối; heredoc không làm quy tắc mất tác dụng.
+- Các lệnh `agentflow decide`, `ext add`, `ext sync`, `config set`, `task seal` là việc của **người**: hook từ chối khi agent tự chạy. Bạn chạy trực tiếp: trong Claude Code gõ `! agentflow decide ...`, hoặc dùng terminal riêng (Antigravity).
+- Cách viết cho Antigravity: dùng chế độ phê duyệt lệnh của chính CLI đó; tài liệu của nó không có cú pháp quy tắc tương đương.
 
 ### Kiểm tra nhanh toàn bộ
 
@@ -109,6 +161,20 @@ uv run tools/smoke.py
 ```
 
 Chạy `init → task → advance/approve → commit (Gitleaks thật) → guard → hook` trên một repo tạm, không đụng repo nào khác. Cần Docker đang chạy.
+
+### Kế hoạch (plan) và xác nhận cuối task
+
+Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`. Mỗi mục có dạng:
+
+```
+### C1 - Tiêu đề ngắn
+- role: implementer
+- files: src/a.py, tests/test_a.py
+- done-when: `uv run pytest tests/test_a.py`
+- docs: https://... (hoặc: không có — <lý do>)
+```
+
+Khi bạn duyệt bước cuối, `agentflow` ghi `.agentflow/tasks/<task>/summary.md` (mục, commit, link docs, kết quả scan) và tạo **annotated tag** `agentflow/<task>/approved` (message có mã task, tiêu đề, người duyệt) trên commit cuối của nhánh task. `agentflow task new` từ chối nếu task xong gần nhất chưa có tag này; bạn tạo bù cho task cũ bằng `agentflow task seal <id>` (thêm `--commit <sha>` nếu nhánh đã bị xóa). Agent không bao giờ push, merge hay tạo PR: bạn tự làm.
 
 ## Phát triển
 

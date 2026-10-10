@@ -20,6 +20,8 @@ from agentflow.constants import (
     CliKind,
     Command,
     DriftStatus,
+    GateKind,
+    PlanCommand,
     ExitCode,
     HookEvent,
     SyncOutcome,
@@ -33,11 +35,15 @@ from agentflow.commit import commit_staged
 from agentflow.doctor import SystemToolProbe, run_doctor
 from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
+from agentflow.gates import GateContext, WorkspaceGates, plan_problems, plan_report_path
 from agentflow.git import GitBranchLookup, SubprocessGit
 from agentflow.guard import evaluate, parse_request, verdict_to_dict
 from agentflow.hook import handle_hook
 from agentflow.models import State, ToolCheck, Workflow
+from agentflow.plan import parse_plan
+from agentflow.projectcontext import load_project_context
 from agentflow.render import NONE_TEXT, describe_action, describe_step
+from agentflow.seal import TaskSealer
 from agentflow.runner import SubprocessRunner
 from agentflow.scanner import ContainerGitleaksScanner
 from agentflow.state import JsonStateStore, utc_now
@@ -46,6 +52,7 @@ from agentflow.tasks import (
     advance_task,
     approve_task,
     cancel_task,
+    seal_finished_task,
     new_task,
     require_active_task,
     write_report,
@@ -56,6 +63,7 @@ from agentflow.workspace import (
     init_workspace,
     load_config,
     load_workspace_workflow,
+    GitWorkspaceLookup,
 )
 
 CLI_OPTION = "--cli"
@@ -65,6 +73,9 @@ REASON_OPTION = "--reason"
 STEP_OPTION = "--step"
 SHORT_SHA_LENGTH = 9
 WORKFLOW_OPTION = "--workflow"
+FILE_OPTION = "--file"
+COMMIT_OPTION = "--commit"
+ITEM_OPTION = "--item"
 FORCE_OPTION = "--force"
 ERROR_PREFIX = "error: "
 WARNING_PREFIX = "warning: "
@@ -101,12 +112,21 @@ def build_parser() -> argparse.ArgumentParser:
     approve = task_commands.add_parser(TaskCommand.APPROVE, help="approve the step, or resume a blocked task")
     approve.add_argument(REASON_OPTION, help="why a blocked task is resumed (kept in decisions/)")
     task_commands.add_parser(TaskCommand.CANCEL, help="cancel the active task")
+    seal = task_commands.add_parser(TaskCommand.SEAL, help="for a person: write summary.md and the approval tag of a finished task")
+    seal.add_argument("task_id", help="id of a finished task, e.g. T-001")
+    seal.add_argument(COMMIT_OPTION, help="tag this commit instead of the task branch's tip (e.g. after the branch was deleted)")
+
+    plan = commands.add_parser(Command.PLAN, help="check the plan of the active task")
+    plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
+    check = plan_commands.add_parser(PlanCommand.CHECK, help="every item needs a code, a valid role, done-when and docs")
+    check.add_argument(FILE_OPTION, type=Path, help="check this Markdown file instead of the task's plan report")
 
     report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
     report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
 
     commit = commands.add_parser(Command.COMMIT, help="scan staged changes for secrets, then commit with the task prefix")
     commit.add_argument("message", help="commit message, without the task prefix")
+    commit.add_argument(ITEM_OPTION, help="plan item (C1, ...) this commit belongs to")
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
 
@@ -237,10 +257,10 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
             task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now)
             print(f"{task.id} created on branch {task.branch}")
         case TaskCommand.ADVANCE:
-            task = advance_task(store, opened.workflow, args.result, utc_now)
+            task = advance_task(store, opened.workflow, args.result, utc_now, _gates(opened), _sealer(opened))
             print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
         case TaskCommand.APPROVE:
-            result = approve_task(store, opened.workflow, opened.paths.dir, utc_now, args.reason)
+            result = approve_task(store, opened.workflow, opened.paths.dir, utc_now, args.reason, _sealer(opened))
             task = result.task
             print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
             if result.decision_file is not None:
@@ -248,8 +268,56 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
         case TaskCommand.CANCEL:
             task = cancel_task(store, opened.workflow, utc_now)
             print(f"{task.id} cancelled")
+        case TaskCommand.SEAL:
+            path = seal_finished_task(store, _sealer(opened), args.task_id, args.commit)
+            print(f"{args.task_id} sealed; summary: {path}")
     state = store.load()
     print(f"next: {describe_action(next_action(opened.workflow, state.active_task()))}")
+    return ExitCode.OK
+
+
+def _sealer(opened: _Opened) -> TaskSealer:
+    return TaskSealer(SubprocessGit(opened.paths.root), opened.paths.dir, opened.workflow, utc_now)
+
+
+def _plan_item_codes(opened: _Opened) -> set[str] | None:
+    """Item codes of the active task's plan, or ``None`` while there is no plan report."""
+    task = opened.state.active_task()
+    step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
+    if task is None or step is None:
+        return None
+    path = plan_report_path(opened.paths.dir, task.id, step.id)
+    if not path.is_file():
+        return None
+    return {item.code for item in parse_plan(path.read_text(encoding=ENCODING)).items}
+
+
+def _gates(opened: _Opened) -> WorkspaceGates:
+    project = load_project_context(opened.paths.dir, opened.workflow)
+    return WorkspaceGates(GateContext(opened.paths.dir, opened.workflow, project))
+
+
+def cmd_plan(args: argparse.Namespace) -> ExitCode:
+    # argparse requires a plan subcommand, and check is the only one so far.
+    opened = _open_workspace()
+    project = load_project_context(opened.paths.dir, opened.workflow)
+    if args.file is not None:
+        text = args.file.read_text(encoding=ENCODING)
+    else:
+        task = require_active_task(opened.state)
+        step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
+        if step is None:
+            raise AgentflowError("the workflow has no step that checks a plan", ExitCode.INVALID_INPUT)
+        path = plan_report_path(opened.paths.dir, task.id, step.id)
+        if not path.is_file():
+            raise AgentflowError(f"no plan report yet: {path}", ExitCode.PLAN_INVALID)
+        text = path.read_text(encoding=ENCODING)
+    problems = plan_problems(text, project)
+    if problems:
+        for problem in problems:
+            print(f"- {problem}")
+        raise AgentflowError(f"the plan has {len(problems)} problem(s)", ExitCode.PLAN_INVALID)
+    print("plan ok")
     return ExitCode.OK
 
 
@@ -264,14 +332,16 @@ def cmd_report(args: argparse.Namespace) -> ExitCode:
 def cmd_commit(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     scanner = ContainerGitleaksScanner(SubprocessRunner())
-    result = commit_staged(_store(opened), SubprocessGit(opened.paths.root), scanner, args.message)
+    result = commit_staged(
+        _store(opened), SubprocessGit(opened.paths.root), scanner, args.message, args.item, _plan_item_codes(opened)
+    )
     print(f"committed {result.sha[:SHORT_SHA_LENGTH]}: {result.message}")
     return ExitCode.OK
 
 
 def cmd_guard(args: argparse.Namespace) -> ExitCode:
     request = parse_request(sys.stdin.read())
-    verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup())
+    verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup(), GitWorkspaceLookup())
     print(json.dumps(verdict_to_dict(verdict), ensure_ascii=False))
     return ExitCode.OK
 
@@ -296,6 +366,7 @@ HANDLERS: dict[str, Handler] = {
     Command.NEXT: cmd_next,
     Command.WORKFLOW: cmd_workflow,
     Command.TASK: cmd_task,
+    Command.PLAN: cmd_plan,
     Command.REPORT: cmd_report,
     Command.COMMIT: cmd_commit,
     Command.GUARD: cmd_guard,

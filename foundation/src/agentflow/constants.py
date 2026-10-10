@@ -53,6 +53,9 @@ TASK_ID_DIGITS = 3
 SLUG_MAX_LENGTH = 40
 SLUG_FALLBACK = "task"
 COMMIT_PREFIX_SEPARATOR = ": "
+# Git trailer that ties a commit to a plan item.
+PLAN_ITEM_TRAILER = "Plan-Item"
+SUMMARY_FILE = "summary.md"
 
 # Secret scanning with Gitleaks in a container. The image is pinned on purpose.
 GITLEAKS_IMAGE = "zricethezav/gitleaks:v8.24.0"
@@ -87,6 +90,12 @@ class ExitCode(IntEnum):
     GIT_FAILED = 21
     INVALID_INPUT = 22
     UNKNOWN_STEP = 23
+    PLAN_INVALID = 24
+    GATE_FAILED = 25
+    TASK_NOT_SEALED = 26
+    SCAN_BLOCKED = 27
+    EXTENSION_INVALID = 28
+    SETTINGS_INVALID = 29
 
 
 class TaskType(StrEnum):
@@ -197,6 +206,7 @@ class Command(StrEnum):
     COMMIT = "commit"
     GUARD = "guard"
     HOOK = "hook"
+    PLAN = "plan"
 
 
 class WorkflowCommand(StrEnum):
@@ -208,6 +218,7 @@ class TaskCommand(StrEnum):
     ADVANCE = "advance"
     APPROVE = "approve"
     CANCEL = "cancel"
+    SEAL = "seal"
 
 
 class HookEvent(StrEnum):
@@ -292,6 +303,9 @@ class GuardRule(StrEnum):
     CLEAN_FORCE_DIRS = "clean-force-dirs"
     BRANCH_FORCE_DELETE = "branch-force-delete"
     TAG_DELETE = "tag-delete"
+    DIRECT_COMMIT = "direct-commit"
+    APPROVAL_TAG = "approval-tag"
+    PERSON_ONLY = "person-only"
 
 
 class GuardKey(StrEnum):
@@ -304,6 +318,13 @@ class GuardKey(StrEnum):
     RULE = "rule"
 
 
+# Tags `agentflow task approve` creates; nobody else may create refs under this prefix.
+APPROVAL_TAG_PREFIX = "agentflow/"
+APPROVAL_TAG_SUFFIX = "approved"
+TAG_REF_PREFIX = "refs/tags/"
+AGENTFLOW_PROGRAM = "agentflow"
+
+
 class WorkflowKey(StrEnum):
     SCHEMA_VERSION = "schema_version"
     FAMILY = "family"
@@ -314,6 +335,18 @@ class WorkflowKey(StrEnum):
     ROLE = "role"
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
+    GATES = "gates"
+
+
+class GateKind(StrEnum):
+    """Checks a step must pass before ``task advance --result pass`` is accepted."""
+
+    PLAN_VALID = "plan-valid"
+    SCANS_CLEAN = "scans-clean"
+
+
+class PlanCommand(StrEnum):
+    CHECK = "check"
 
 
 class StateKey(StrEnum):
@@ -340,3 +373,19 @@ class ConfigKey(StrEnum):
     FAMILY = "family"
     SOURCE_PATH = "source_path"
     SHA256 = "sha256"
+
+
+# ----------------------------------------------------------------- plan
+
+class PlanField(StrEnum):
+    """Field names of a plan item (a bullet under its ``### C<n>`` heading)."""
+
+    ROLE = "role"
+    FILES = "files"
+    DONE_WHEN = "done-when"
+    DOCS = "docs"
+
+
+PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
+PLAN_NO_DOCS_PREFIX = "không có"
+PLAN_NO_FILES_PREFIX = "không có"

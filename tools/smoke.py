@@ -23,6 +23,10 @@ WORKFLOW = Path(__file__).resolve().parents[1] / "families" / "software-dev" / "
 MAIN, DEVELOP = "main", "develop"
 TASK_ID = "T-001"
 STEP_TIMEOUT = 900
+PLAN = (
+    "### C1 - Add a greeting\n- role: implementer\n- files: greeting.txt\n"
+    "- done-when: `test -f greeting.txt`\n- docs: không có — a one-line text file\n"
+)
 # A made-up GitHub-style token; the random part is generated at run time.
 FAKE_TOKEN_PREFIX = "ghp" + "_"
 FAKE_TOKEN_LENGTH = 36
@@ -99,12 +103,19 @@ def main() -> int:
         s.af("task", "advance", "--result", "pass", ok=False)  # confirm now waits for approval
         s.af("report", "--step", "confirm", stdin="# Confirmed\n")
         s.af("task", "approve")  # confirm -> plan
+        bad = s.af("plan", "check", "--file", str(repo / "README.md"), ok=False)
+        expect("no checklist items" in bad.stdout, "plan check rejects a README as a plan", bad.stdout)
+        s.af("task", "advance", "--result", "pass", ok=False)  # no plan report yet: the plan-valid gate refuses
+        s.af("report", "--step", "plan", stdin=PLAN)
+        s.af("plan", "check")
         s.af("task", "advance", "--result", "pass")
         s.af("task", "approve")  # plan -> implement
 
         (repo / "greeting.txt").write_text("hello\n", encoding=ENCODING)
         s.git("add", "greeting.txt")
-        done = s.af("commit", "add greeting")
+        direct = json.loads(s.af("guard", stdin=json.dumps({"command": "git commit -m x", "cwd": str(repo)})).stdout)
+        expect(direct["rule"] == "direct-commit", "guard blocks a direct git commit in the project", str(direct))
+        done = s.af("commit", "add greeting", "--item", "C1")
         expect(s.git("log", "-1", "--format=%s") == f"{TASK_ID}: add greeting", "commit has the task prefix")
         expect("committed" in done.stdout, "commit reports success")
 
@@ -118,6 +129,10 @@ def main() -> int:
         s.af("task", "approve")
         state = json.loads((repo / ".agentflow" / "state.json").read_text(encoding=ENCODING))
         expect(state["tasks"][0]["status"] == "done" and state["active_task_id"] is None, "task is done after review approval")
+        tag = f"agentflow/{TASK_ID}/approved"
+        expect(s.git("tag", "-l", tag) == tag and s.git("cat-file", "-t", tag) == "tag", "approval tag is annotated")
+        summary = (repo / ".agentflow" / "tasks" / TASK_ID / "summary.md").read_text(encoding=ENCODING)
+        expect("### C1 - Add a greeting" in summary, "summary.md lists the plan item")
 
         s.af("task", "new", "Second task")
         s.af("task", "cancel")
@@ -138,8 +153,8 @@ def main() -> int:
         expect(guard["decision"] == "deny" and guard["rule"] == "push", "guard blocks git push", str(guard))
         allowed = json.loads(s.af("guard", stdin=json.dumps({"command": "git status", "cwd": str(repo)})).stdout)
         expect(allowed["decision"] == "allow", "guard allows git status")
-        on_develop = json.loads(s.af("guard", stdin=json.dumps({"command": "git commit -m x", "cwd": str(repo)})).stdout)
-        expect(on_develop["rule"] == "protected-branch", "guard blocks committing on develop")
+        merge = json.loads(s.af("guard", stdin=json.dumps({"command": "git merge feature/x", "cwd": str(repo)})).stdout)
+        expect(merge["rule"] == "protected-branch", "guard blocks merging on develop")
 
         claude = s.af("hook", "pre-tool", "--cli", "claude", stdin=json.dumps({"cwd": str(repo), "tool_input": {"command": "git push"}}))
         expect(json.loads(claude.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny", "claude pre-tool hook denies push")

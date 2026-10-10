@@ -3,8 +3,9 @@
 import subprocess
 from pathlib import Path
 
-from agentflow.constants import ENCODING, GIT_EXECUTABLE, ExitCode
+from agentflow.constants import ENCODING, GIT_EXECUTABLE, PLAN_ITEM_TRAILER, ExitCode
 from agentflow.errors import AgentflowError
+from agentflow.models import CommitInfo
 
 CURRENT_BRANCH_ARGS = ("symbolic-ref", "--quiet", "--short", "HEAD")
 STATUS_ARGS = ("status", "--porcelain")
@@ -14,6 +15,14 @@ SWITCH_CREATE_ARGS = ("switch", "--quiet", "--create")
 STAGED_QUIET_ARGS = ("diff", "--cached", "--quiet")
 COMMIT_ARGS = ("commit", "--quiet", "--message")
 HEADS_REF_PREFIX = "refs/heads/"
+TAGS_REF_PREFIX = "refs/tags/"
+CONFIG_GET_ARGS = ("config", "--get")
+FIELD_SEPARATOR = "\x1f"
+RECORD_SEPARATOR = "\x1e"
+LOG_FORMAT = (
+    f"--format=%H{FIELD_SEPARATOR}%s{FIELD_SEPARATOR}"
+    f"%(trailers:key={PLAN_ITEM_TRAILER},valueonly,unfold){RECORD_SEPARATOR}"
+)
 # Return code reported for a directory that does not exist (git itself uses 128 for fatal errors).
 NO_DIRECTORY = 128
 # `git diff --quiet` exits 1 when there are differences.
@@ -75,6 +84,34 @@ class SubprocessGit:
     def commit(self, message: str) -> str:
         _checked(self.root, *COMMIT_ARGS, message)
         return _checked(self.root, *HEAD_SHA_ARGS)
+
+    def rev_parse(self, ref: str) -> str:
+        return _checked(self.root, "rev-parse", "--verify", f"{ref}^{{commit}}")
+
+    def tag_exists(self, name: str) -> bool:
+        return run_git(self.root, *VERIFY_ARGS, TAGS_REF_PREFIX + name).returncode == 0
+
+    def create_tag(self, name: str, target: str, message: str) -> None:
+        _checked(self.root, "tag", "--annotate", "--message", message, name, target)
+
+    def commits_between(self, base: str, head: str) -> list[CommitInfo]:
+        output = _checked(self.root, "log", "--reverse", LOG_FORMAT, f"{base}..{head}")
+        commits = []
+        for record in output.split(RECORD_SEPARATOR):
+            if not record.strip():
+                continue
+            sha, subject, item = record.strip().split(FIELD_SEPARATOR)
+            commits.append(CommitInfo(sha, subject, item.strip() or None))
+        return commits
+
+    def changed_files(self, base: str, head: str) -> list[str]:
+        output = _checked(self.root, "diff", "--name-only", "--diff-filter=ACMR", f"{base}...{head}")
+        return [line for line in output.splitlines() if line]
+
+    def identity(self) -> str:
+        name = run_git(self.root, *CONFIG_GET_ARGS, "user.name").stdout.strip()
+        email = run_git(self.root, *CONFIG_GET_ARGS, "user.email").stdout.strip()
+        return f"{name or 'unknown'} <{email or 'unknown'}>"
 
 
 class GitBranchLookup:

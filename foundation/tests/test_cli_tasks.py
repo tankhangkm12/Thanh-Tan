@@ -149,10 +149,10 @@ def test_guard_denies_push_and_allows_status(ws, capsys, monkeypatch):
     assert json.loads(run(capsys, "guard")[1])["decision"] == "allow"
 
 
-def test_guard_blocks_commit_on_develop_in_real_repo(ws, capsys, monkeypatch):
+def test_guard_blocks_direct_commit_in_a_workspace(ws, capsys, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"command": "git commit -m x", "cwd": str(ws)})))
     out = json.loads(run(capsys, "guard")[1])
-    assert out["decision"] == "deny" and out["rule"] == "protected-branch"
+    assert out["decision"] == "deny" and out["rule"] == "direct-commit"
 
 
 def test_guard_rejects_bad_input(ws, capsys, monkeypatch):

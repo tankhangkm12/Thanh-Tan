@@ -9,7 +9,7 @@ Plugin lõi của nhóm **software-dev**. Giữ những gì mọi plugin `dev-*`
 | Workflow 6 bước | `workflow.yaml` | Đọc bởi `agentflow init --workflow` |
 | 4 skill | `skills/{start,continue,status,approve}/SKILL.md` | Bắt đầu task, làm tiếp, xem trạng thái, duyệt |
 | 6 role (agent) | nguồn `src/roles/*.md` | `orchestrator`, `planner`, `implementer`, `tester`, `security`, `reviewer` |
-| Hook | `hooks/hooks.json` (Claude Code), `hooks.json` (Antigravity) | Chặn lệnh git nguy hiểm, nạp tóm tắt task đầu phiên, nhắc cập nhật trạng thái khi dừng |
+| Hook | `hooks/hooks.json` (Claude Code), `hooks.json` (Antigravity) | Chặn lệnh git nguy hiểm và `git commit` trực tiếp, nạp tóm tắt task đầu phiên, nhắc cập nhật trạng thái khi dừng (chỉ khi bước đang chạy và đã có báo cáo mới) |
 
 Skill gọi lệnh `agentflow` và không bao giờ sửa tay file trong `.agentflow/`. Hook chỉ hoạt động trong dự án đã có `.agentflow/`.
 

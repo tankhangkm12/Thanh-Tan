@@ -163,3 +163,81 @@ def test_tool_lists_in_real_agents_are_documented_names():
         assert tools <= build.CLAUDE_ALLOWED
     for path in (REAL_PLUGIN / build.ANTIGRAVITY_AGENTS_DIR).glob("*.md"):
         assert set(frontmatter(path)["tools"]) <= build.ANTIGRAVITY_ALLOWED
+
+
+# Prompt rules for every skill and role ----------------------------------------
+
+PUSH_SENTENCE = "never push, merge or open a pull request"
+CHAINING = ("&&", ";", "|")
+SKILL_AND_ROLE_FILES = sorted(
+    [*(REAL_PLUGIN / "skills").glob("*/SKILL.md"), *(REAL_PLUGIN / build.ROLES_DIR).glob("*.md")]
+)
+
+
+def agentflow_command_lines(text: str) -> list[str]:
+    """Every fenced line and inline code span that is an agentflow command line."""
+    import re
+
+    found = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence and line.strip().startswith("agentflow"):
+            found.append(line.strip())
+        elif not in_fence:
+            found += [span for span in re.findall(r"`([^`]+)`", line) if span.startswith("agentflow")]
+    return found
+
+
+@pytest.mark.parametrize("path", SKILL_AND_ROLE_FILES, ids=lambda p: f"{p.parent.name}/{p.name}")
+def test_agentflow_commands_are_never_chained(path):
+    for command in agentflow_command_lines(path.read_text(encoding="utf-8")):
+        assert not any(token in command for token in CHAINING), command
+
+
+@pytest.mark.parametrize("path", SKILL_AND_ROLE_FILES, ids=lambda p: f"{p.parent.name}/{p.name}")
+def test_every_prompt_says_agents_never_push_merge_or_open_prs(path):
+    text = " ".join(path.read_text(encoding="utf-8").lower().split())
+    assert PUSH_SENTENCE in text
+
+
+@pytest.mark.parametrize("path", SKILL_AND_ROLE_FILES, ids=lambda p: f"{p.parent.name}/{p.name}")
+def test_every_prompt_says_to_run_commands_separately(path):
+    text = " ".join(path.read_text(encoding="utf-8").split())
+    assert "on its own" in text or "own, as a single" in text or "separately" in text
+
+
+def test_the_planner_documents_the_plan_shape_and_runs_the_checker():
+    text = (REAL_PLUGIN / build.ROLES_DIR / "planner.md").read_text(encoding="utf-8")
+    assert "agentflow plan check" in text and "### C1" in text and "done-when" in text and "docs:" in text
+
+
+# README permission rules ----------------------------------------------------------
+
+README = REPO / "README.md"
+RULE = __import__("re").compile(r"^(Bash|PowerShell)\(agentflow( [a-z-]+)+ \*\)$")
+MANDATORY_ASK = {"task approve", "task cancel", "decide"}
+
+
+def readme_permissions() -> dict:
+    import re
+
+    blocks = re.findall(r"```json\n(.*?)```", README.read_text(encoding="utf-8"), flags=re.S)
+    return next(json.loads(b)["permissions"] for b in blocks if '"permissions"' in b)
+
+
+def test_readme_permission_rules_follow_the_documented_syntax():
+    permissions = readme_permissions()
+    for rule in [*permissions["allow"], *permissions["ask"]]:
+        assert RULE.match(rule), rule
+
+
+def test_readme_asks_for_the_commands_that_carry_a_persons_authority():
+    permissions = readme_permissions()
+    for tool in ("Bash", "PowerShell"):
+        for command in MANDATORY_ASK:
+            assert f"{tool}(agentflow {command} *)" in permissions["ask"]
+    allowed = " ".join(permissions["allow"])
+    assert not any(f"agentflow {command}" in allowed for command in MANDATORY_ASK)

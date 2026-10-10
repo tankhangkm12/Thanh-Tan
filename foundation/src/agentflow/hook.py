@@ -6,26 +6,29 @@ state all end in "no output", which every CLI treats as "carry on".
 
 import json
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from agentflow.constants import (
     ANTIGRAVITY_FIRST_INVOCATION,
     CliKind,
+    HistoryEvent,
     HookEvent,
     ReplyKind,
     StepStatus,
     TaskStatus,
 )
 from agentflow.engine import next_action
+from agentflow.gates import plan_report_path
 from agentflow.errors import AgentflowError
 from agentflow.guard import evaluate
 from agentflow.hook_adapters import ADAPTERS
-from agentflow.interfaces import BranchLookup
-from agentflow.models import HookInput, HookReply, State, Workflow
+from agentflow.interfaces import BranchLookup, WorkspaceLookup
+from agentflow.models import HookInput, HookReply, State, Task, Workflow
 from agentflow.render import NONE_TEXT, describe_action, describe_step
 from agentflow.state import JsonStateStore
-from agentflow.workspace import WorkspacePaths, find_workspace, load_workspace_workflow
+from agentflow.workspace import GitWorkspaceLookup, WorkspacePaths, find_workspace, load_workspace_workflow
 
 RULES_TEXT = (
     "Rules: change task state only through `agentflow task ...`; save step reports with "
@@ -40,7 +43,9 @@ STOP_REMINDER = (
 )
 
 
-def handle_hook(event: HookEvent, cli: CliKind, stdin_text: str, branches: BranchLookup) -> str:
+def handle_hook(
+    event: HookEvent, cli: CliKind, stdin_text: str, branches: BranchLookup, workspaces: WorkspaceLookup | None = None
+) -> str:
     """Return the text to print on stdout (possibly empty)."""
     adapter = ADAPTERS[cli]
     payload = _parse(stdin_text)
@@ -50,7 +55,7 @@ def handle_hook(event: HookEvent, cli: CliKind, stdin_text: str, branches: Branc
     paths = _workspace(hook_input.cwd)
     if paths is None:
         return ""
-    reply = _reply(event, cli, hook_input, paths, branches)
+    reply = _reply(event, cli, hook_input, paths, branches, workspaces or GitWorkspaceLookup())
     return adapter.render(event, reply)
 
 
@@ -71,10 +76,17 @@ def _workspace(cwd: Path | None) -> WorkspacePaths | None:
         return None
 
 
-def _reply(event: HookEvent, cli: CliKind, hook_input: HookInput, paths: WorkspacePaths, branches: BranchLookup) -> HookReply:
+def _reply(
+    event: HookEvent,
+    cli: CliKind,
+    hook_input: HookInput,
+    paths: WorkspacePaths,
+    branches: BranchLookup,
+    workspaces: WorkspaceLookup,
+) -> HookReply:
     match event:
         case HookEvent.PRE_TOOL:
-            return _guard_reply(hook_input, branches)
+            return _guard_reply(hook_input, branches, workspaces)
         case HookEvent.SESSION_START:
             if cli is CliKind.ANTIGRAVITY and hook_input.invocation_num != ANTIGRAVITY_FIRST_INVOCATION:
                 return HookReply()
@@ -82,14 +94,14 @@ def _reply(event: HookEvent, cli: CliKind, hook_input: HookInput, paths: Workspa
         case HookEvent.STOP:
             if hook_input.stop_hook_active:
                 return HookReply()
-            return _loaded(paths, _reminder, kind=ReplyKind.REMINDER)
+            return _loaded(paths, lambda workflow, state: _reminder(paths, state), kind=ReplyKind.REMINDER)
     return HookReply()
 
 
-def _guard_reply(hook_input: HookInput, branches: BranchLookup) -> HookReply:
+def _guard_reply(hook_input: HookInput, branches: BranchLookup, workspaces: WorkspaceLookup) -> HookReply:
     if not hook_input.command or hook_input.cwd is None:
         return HookReply()
-    verdict = evaluate(hook_input.command, hook_input.cwd, branches)
+    verdict = evaluate(hook_input.command, hook_input.cwd, branches, workspaces)
     return HookReply(ReplyKind.DENY, verdict.reason or "") if verdict.denied else HookReply()
 
 
@@ -120,8 +132,20 @@ def _summary(workflow: Workflow, state: State) -> str:
     return "\n".join(lines)
 
 
-def _reminder(workflow: Workflow, state: State) -> str:
+def _reminder(paths: WorkspacePaths, state: State) -> str:
+    """Only while a step is in progress and its report was saved after the step began (it looks finished)."""
     task = state.active_task()
     if task is None or task.status is not TaskStatus.OPEN or task.step_status is not StepStatus.IN_PROGRESS:
         return ""
+    if not _report_saved_since_step_began(paths, task):
+        return ""
     return STOP_REMINDER.format(task=task.id, step=task.current_step)
+
+
+def _report_saved_since_step_began(paths: WorkspacePaths, task: Task) -> bool:
+    report = plan_report_path(paths.dir, task.id, task.current_step)
+    started = [e for e in task.history if e.step == task.current_step and e.event is HistoryEvent.STARTED]
+    if not report.is_file() or not started:
+        return False
+    began = datetime.fromisoformat(started[-1].at.replace("Z", "+00:00"))
+    return report.stat().st_mtime >= began.timestamp()

@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from agentflow.constants import (
+    AGENTFLOW_PROGRAM,
+    APPROVAL_TAG_PREFIX,
     GIT_EXECUTABLE,
+    TAG_REF_PREFIX,
     PROTECTED_BRANCHES,
     ExitCode,
     GuardDecision,
@@ -24,7 +27,7 @@ from agentflow.constants import (
     GuardRule,
 )
 from agentflow.errors import AgentflowError
-from agentflow.interfaces import BranchLookup
+from agentflow.interfaces import BranchLookup, WorkspaceLookup
 from agentflow.models import GuardVerdict
 
 # ------------------------------------------------------------ tokenizing
@@ -61,6 +64,10 @@ _RESET = "reset"
 _CLEAN = "clean"
 _BRANCH = "branch"
 _TAG = "tag"
+_COMMIT = "commit"
+_UPDATE_REF = "update-ref"
+# Commands only a person runs (an agent would be granting itself decisions), as their leading words.
+_PERSON_ONLY = frozenset({("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal")})
 _SWITCH = "switch"
 _CHECKOUT = "checkout"
 # Subcommands that write commits onto the checked-out branch.
@@ -88,6 +95,9 @@ REASONS = {
     GuardRule.CLEAN_FORCE_DIRS: "git clean with -f and -d is blocked: it deletes untracked files and directories",
     GuardRule.BRANCH_FORCE_DELETE: "force-deleting a branch is blocked",
     GuardRule.TAG_DELETE: "deleting a tag is blocked",
+    GuardRule.DIRECT_COMMIT: "git commit is blocked in an agentflow project: stage files and use `agentflow commit`",
+    GuardRule.APPROVAL_TAG: "tags under 'agentflow/' are written by `agentflow task approve` only",
+    GuardRule.PERSON_ONLY: "`agentflow {command}` is for a person: ask them to run it themselves (in Claude Code: `! agentflow {command} ...`)",
 }
 
 ALLOW = GuardVerdict(GuardDecision.ALLOW)
@@ -99,8 +109,12 @@ class _Context:
 
     cwd: Path
     branches: BranchLookup
+    workspaces: WorkspaceLookup | None = None
     # Branches the command line itself switched to, per repository directory (None = detached).
     switched: dict[Path, str | None] = field(default_factory=dict)
+
+    def in_workspace(self, directory: Path) -> bool:
+        return self.workspaces is not None and self.workspaces.has_workspace(directory)
 
     def branch_of(self, directory: Path) -> str | None:
         if directory in self.switched:
@@ -108,8 +122,8 @@ class _Context:
         return self.branches.current_branch(directory)
 
 
-def evaluate(command: str, cwd: Path, branches: BranchLookup) -> GuardVerdict:
-    return _evaluate(command, _Context(Path(os.path.normpath(cwd)), branches), depth=0)
+def evaluate(command: str, cwd: Path, branches: BranchLookup, workspaces: WorkspaceLookup | None = None) -> GuardVerdict:
+    return _evaluate(command, _Context(Path(os.path.normpath(cwd)), branches, workspaces), depth=0)
 
 
 def _evaluate(command: str, context: _Context, depth: int) -> GuardVerdict:
@@ -179,6 +193,18 @@ def _evaluate_segment(tokens: list[str], context: _Context, depth: int) -> Guard
             verdict = _evaluate_git([_bare(token) for token in tokens[index + 1 :]], context)
             if verdict.denied:
                 return verdict
+        elif program == AGENTFLOW_PROGRAM and index == 0:
+            verdict = _evaluate_agentflow([_bare(token) for token in tokens[1:]], context)
+            if verdict.denied:
+                return verdict
+    return ALLOW
+
+
+def _evaluate_agentflow(args: list[str], context: _Context) -> GuardVerdict:
+    words = tuple(arg for arg in args if not arg.startswith(_SHORT_PREFIX))[:2]
+    for restricted in _PERSON_ONLY:
+        if words[: len(restricted)] == restricted and context.in_workspace(context.cwd):
+            return _deny(GuardRule.PERSON_ONLY, command=" ".join(restricted))
     return ALLOW
 
 
@@ -227,6 +253,10 @@ def _evaluate_git(args: list[str], context: _Context) -> GuardVerdict:
         return _deny(GuardRule.BRANCH_FORCE_DELETE)
     if subcommand == _TAG and (_DELETE_LONG in rest or _DELETE_SHORT in shorts):
         return _deny(GuardRule.TAG_DELETE)
+    if _writes_approval_ref(subcommand, rest):
+        return _deny(GuardRule.APPROVAL_TAG)
+    if subcommand == _COMMIT and context.in_workspace(directory):
+        return _deny(GuardRule.DIRECT_COMMIT)
     if subcommand in _COMMITTING and not _STOP_FLAGS.intersection(rest):
         branch = context.branch_of(directory)
         if branch in PROTECTED_BRANCHES:
@@ -236,6 +266,14 @@ def _evaluate_git(args: list[str], context: _Context) -> GuardVerdict:
     elif subcommand == _CHECKOUT:
         _track_checkout(rest, directory, context)
     return ALLOW
+
+
+def _writes_approval_ref(subcommand: str, args: list[str]) -> bool:
+    if subcommand == _TAG:
+        return any(arg.startswith(APPROVAL_TAG_PREFIX) for arg in args)
+    if subcommand == _UPDATE_REF:
+        return any(arg.startswith(TAG_REF_PREFIX + APPROVAL_TAG_PREFIX) for arg in args)
+    return False
 
 
 def _short_flags(args: list[str]) -> set[str]:

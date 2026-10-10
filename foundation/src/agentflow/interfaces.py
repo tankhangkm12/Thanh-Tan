@@ -4,13 +4,14 @@ A plugin family talks to agentflow only through a workflow file that a
 ``WorkflowSource`` loads; agentflow never imports family code.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from agentflow.constants import HookEvent
 from agentflow.models import (
     CommandResult,
+    CommitInfo,
     HookInput,
     HookReply,
     ProbeResult,
@@ -88,6 +89,28 @@ class GitClient(Protocol):
         """Commit what is staged; return the new commit's sha."""
         ...
 
+    def rev_parse(self, ref: str) -> str:
+        """Full sha ``ref`` points to; raises when it does not exist."""
+        ...
+
+    def tag_exists(self, name: str) -> bool: ...
+
+    def create_tag(self, name: str, target: str, message: str) -> None:
+        """Create an annotated tag on ``target``."""
+        ...
+
+    def commits_between(self, base: str, head: str) -> Sequence[CommitInfo]:
+        """Commits reachable from ``head`` and not from ``base``, oldest first."""
+        ...
+
+    def changed_files(self, base: str, head: str) -> Sequence[str]:
+        """Paths added, copied, modified or renamed from the merge base of ``base`` and ``head`` to ``head``."""
+        ...
+
+    def identity(self) -> str:
+        """The configured committer as ``Name <email>``."""
+        ...
+
 
 @runtime_checkable
 class SecretScanner(Protocol):
@@ -116,3 +139,31 @@ class BranchLookup(Protocol):
         ...
 
     def branch_exists(self, directory: Path, name: str) -> bool: ...
+
+
+@runtime_checkable
+class RoleRegistry(Protocol):
+    """The roles a plan item may be given: the workflow's own plus those extensions register."""
+
+    def roles(self) -> Collection[str]: ...
+
+
+@runtime_checkable
+class PlanRule(Protocol):
+    """An extra check on one plan item (supplied by an extension); returns problem messages."""
+
+    def problems(self, item: Any) -> Sequence[str]: ...
+
+
+@runtime_checkable
+class GateRunner(Protocol):
+    """Checks a step's gates; each returned string is a reason the step may not pass yet."""
+
+    def problems(self, task: Any, step: Any) -> Sequence[str]: ...
+
+
+@runtime_checkable
+class WorkspaceLookup(Protocol):
+    """Whether the repository around a directory has an agentflow workspace."""
+
+    def has_workspace(self, directory: Path) -> bool: ...

@@ -508,6 +508,7 @@ class GateKind(StrEnum):
 
     PLAN_VALID = "plan-valid"
     SCANS_CLEAN = "scans-clean"
+    CONVENTIONS_REVIEWED = "conventions-reviewed"
 
 
 class PlanCommand(StrEnum):
@@ -590,6 +591,10 @@ PLAN_NO_FILES_PREFIX = "không có"
 SCANS_DIR = "scans"
 SCAN_SUMMARY_FILE = "summary.json"
 SEMGREP_IMAGE = "semgrep/semgrep:1.180.0"
+# Rules a person wrote for their conventions: kept in the knowledge store (``semgrep/``) and copied next to the workspace.
+SEMGREP_CONVENTION_RULES_DIR = "semgrep"
+CUSTOM_RULES_MOUNT = "/custom-rules"
+CUSTOM_RULES_CACHE_DIR = "convention-rules"
 TRIVY_IMAGE = "aquasec/trivy:0.75.0"
 TRIVY_CACHE_VOLUME = "agentflow-trivy-cache"
 SEMGREP_RULES_DIR = "semgrep-rules"

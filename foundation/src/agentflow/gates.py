@@ -1,11 +1,12 @@
 """Gates: checks a step has to satisfy before it can pass. Foundation knows the kinds, workflows choose where they apply."""
 
+import re
 from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agentflow.constants import ENCODING, MARKDOWN_SUFFIX, REPORTS_DIR, TASKS_DIR, GateKind
-from agentflow.convention_sources import answered_questions
+from agentflow.constants import ENCODING, MARKDOWN_SUFFIX, REPORTS_DIR, TASKS_DIR, CheckKind, GateKind
+from agentflow.convention_sources import answered_questions, load_effective_conventions
 from agentflow.scan import scan_problems, tools_for_step
 from agentflow.scan_store import ScanStore
 from agentflow.models import Step, Task, Workflow
@@ -51,7 +52,41 @@ def _scans_clean(context: GateContext, task: Task, step: Step) -> list[str]:
     )
 
 
-CHECKS: dict[GateKind, GateCheck] = {GateKind.PLAN_VALID: _plan_valid, GateKind.SCANS_CLEAN: _scans_clean}
+def _conventions_reviewed(context: GateContext, task: Task, step: Step) -> list[str]:
+    """The review report must say, for each enforced ``check: review`` convention, that it is met or where it is not."""
+    wanted = [item.convention for item in load_effective_conventions(context.workspace_dir).checked_by(CheckKind.REVIEW)]
+    if not wanted:
+        return []
+    path = plan_report_path(context.workspace_dir, task.id, step.id)
+    if not path.is_file():
+        return [f"no report for step '{step.id}' yet: it must cover {', '.join(c.code for c in wanted)}"]
+    text = path.read_text(encoding=ENCODING)
+    problems: list[str] = []
+    for convention in wanted:
+        code = re.escape(convention.code)
+        violation = re.search(rf"vi phạm\s+`?{code}`?(?![\w-])\s+ở\s+(\S+:\d+)", text, re.IGNORECASE)
+        loose = re.search(rf"vi phạm\s+`?{code}`?(?![\w-])", text, re.IGNORECASE)
+        met = re.search(rf"(?im)^[\s>*-]*`?{code}`?(?![\w-])\s*[:\-–—]\s*đạt\b", text)
+        if violation:
+            problems.append(
+                f"{convention.code} is violated at {violation.group(1)}: a review that finds a violation fails "
+                "(`agentflow task advance --result fail`) so the implementer can fix it"
+            )
+        elif loose:
+            problems.append(f"{convention.code}: a violation must say where (`vi phạm {convention.code} ở file:line`)")
+        elif not met:
+            problems.append(
+                f"{convention.code} ({convention.title}) is not covered: write `{convention.code}: đạt` or "
+                f"`vi phạm {convention.code} ở file:line`"
+            )
+    return problems
+
+
+CHECKS: dict[GateKind, GateCheck] = {
+    GateKind.PLAN_VALID: _plan_valid,
+    GateKind.SCANS_CLEAN: _scans_clean,
+    GateKind.CONVENTIONS_REVIEWED: _conventions_reviewed,
+}
 
 
 class WorkspaceGates:

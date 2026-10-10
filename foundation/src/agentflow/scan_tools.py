@@ -1,6 +1,15 @@
 """The scanners dev-core runs itself: Semgrep, Trivy and Gitleaks. Plugins add more through extensions."""
 
+import shutil
+from collections.abc import Sequence
+from dataclasses import replace
+from pathlib import Path
+
+from agentflow.errors import AgentflowError
 from agentflow.constants import (
+    CUSTOM_RULES_CACHE_DIR,
+    CUSTOM_RULES_MOUNT,
+    ExitCode,
     GITLEAKS_IMAGE,
     GITLEAKS_LEAKS_EXIT_CODE,
     SEMGREP_IMAGE,
@@ -49,6 +58,39 @@ SEMGREP_SPEC = ScanToolSpec(
         blocking_severities=SEMGREP_BLOCKING,
     ),
 )
+
+CUSTOM_RULES_VAR = "custom_rules_dir"
+# A person's own rule can use any of Semgrep's severities; the strong ones block.
+CUSTOM_BLOCKING = ("ERROR", "HIGH", "CRITICAL")
+CONVENTIONS_SUFFIX = "conventions"
+
+
+def custom_semgrep_spec(rules: Sequence[tuple[str, Path]], problems: Sequence[str]) -> ScanToolSpec:
+    """Semgrep with the rules of the project's enforced conventions, in a folder of their own (read-only, no network).
+
+    ``problems`` (a rule file that is missing or broken) make the scan fail instead of quietly checking less.
+    """
+
+    def prepare(context: ScanContext) -> None:
+        if problems:
+            raise AgentflowError("convention rules cannot be used:\n- " + "\n- ".join(problems), ExitCode.CONVENTIONS_INVALID)
+        staged = context.cache_dir / CUSTOM_RULES_CACHE_DIR / context.repo.name
+        shutil.rmtree(staged, ignore_errors=True)
+        staged.mkdir(parents=True)
+        for code, path in rules:
+            shutil.copyfile(path, staged / f"{code}-{path.name}")
+        context.extra[CUSTOM_RULES_VAR] = str(staged)
+
+    return replace(
+        SEMGREP_SPEC,
+        id=f"{SEMGREP}-{CONVENTIONS_SUFFIX}",
+        prepare=prepare,
+        args=("semgrep", "scan", "--config", CUSTOM_RULES_MOUNT, "--json", "--metrics=off", "--disable-version-check", "--quiet", "${files}"),
+        mounts=(MountSpec(f"${{var:{CUSTOM_RULES_VAR}}}", CUSTOM_RULES_MOUNT),),
+        skip_note="no changed files for the convention rules to scan",
+        result=replace(SEMGREP_SPEC.result, blocking_severities=CUSTOM_BLOCKING),
+    )
+
 
 TRIVY_SPEC = ScanToolSpec(
     id=TRIVY,

@@ -20,6 +20,7 @@ from agentflow.constants import (
     DECISIONS_DIR,
     ENCODING,
     KNOWLEDGE_DIR,
+    SEMGREP_CONVENTION_RULES_DIR,
     MARKDOWN_SUFFIX,
     PROJECT_DIR,
     CheckKind,
@@ -107,6 +108,36 @@ def _read_answer(path: Path) -> Convention | str:
 
 def load_decision_conventions(workspace_dir: Path) -> list[Convention]:
     return [item for item in map(_read_answer, _answer_files(workspace_dir)) if isinstance(item, Convention)]
+
+
+def semgrep_rule_files(workspace_dir: Path, effective: EffectiveConventions) -> tuple[list[tuple[str, Path]], list[str]]:
+    """The rule files of the enforced ``check: semgrep`` conventions, and why any of them cannot be used.
+
+    A rule file is written by a person and kept in ``knowledge/semgrep/``. A missing or unreadable one is reported,
+    never skipped: a convention that is not checked must not look like one that passed.
+    """
+    rules: list[tuple[str, Path]] = []
+    problems: list[str] = []
+    folder = workspace_dir / KNOWLEDGE_DIR / SEMGREP_CONVENTION_RULES_DIR
+    for item in effective.checked_by(CheckKind.SEMGREP):
+        code, name = item.convention.code, item.convention.rule or ""
+        path = folder / name
+        if not path.is_file():
+            problems.append(
+                f"{code}: rule file {SEMGREP_CONVENTION_RULES_DIR}/{name} is not in {KNOWLEDGE_DIR}/ "
+                f"(a person copies it there: `agentflow knowledge pull {SEMGREP_CONVENTION_RULES_DIR}/{name}`)"
+            )
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding=ENCODING))
+        except (yaml.YAMLError, UnicodeDecodeError) as exc:
+            problems.append(f"{code}: {SEMGREP_CONVENTION_RULES_DIR}/{name} is not valid YAML: {exc}")
+            continue
+        if not isinstance(data, dict) or not isinstance(data.get("rules"), list) or not data["rules"]:
+            problems.append(f"{code}: {SEMGREP_CONVENTION_RULES_DIR}/{name} has no `rules:` list")
+            continue
+        rules.append((code, path))
+    return rules, problems
 
 
 def answered_questions(workspace_dir: Path, scope: str) -> set[str]:

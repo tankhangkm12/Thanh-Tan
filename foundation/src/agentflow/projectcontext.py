@@ -6,10 +6,11 @@ The workflow supplies the base; registered extensions add to it.
 from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from pathlib import Path
 from typing import Any
 
 from agentflow.constants import CheckKind, GateKind, PlanRuleKind
-from agentflow.convention_sources import load_effective_conventions
+from agentflow.convention_sources import load_effective_conventions, semgrep_rule_files
 from agentflow.plan_rules import ItemOrderRule
 from agentflow.ext_rules import ExtensionRules
 from agentflow.extensions import load_registered
@@ -39,6 +40,9 @@ class ProjectContext:
     extra_gates: tuple[tuple[str, GateKind], ...] = ()
     # Checks on a whole plan that enforced conventions switch on (such as the order of interface and implement items).
     plan_wide_rules: tuple[PlanWideRule, ...] = ()
+    # Rule files of enforced `check: semgrep` conventions (code, path), and why some cannot be used.
+    custom_semgrep: tuple[tuple[str, Path], ...] = ()
+    custom_semgrep_problems: tuple[str, ...] = ()
     lookup: Callable[[str], Any] = field(default=lambda key: None)
     rules: ExtensionRules | None = None
 
@@ -47,13 +51,20 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
     paths = WorkspacePaths(workspace_dir.parent)
     roles = {step.role for step in workflow.steps}
     registered = load_registered(paths)
+    effective = load_effective_conventions(workspace_dir)
     wide = tuple(
         ItemOrderRule(item.convention.code)
-        for item in load_effective_conventions(workspace_dir).checked_by(CheckKind.PLAN)
+        for item in effective.checked_by(CheckKind.PLAN)
         if item.convention.rule == PlanRuleKind.ITEM_ORDER
     )
+    custom, custom_problems = semgrep_rule_files(workspace_dir, effective)
+    from_conventions = {
+        "plan_wide_rules": wide,
+        "custom_semgrep": tuple(custom),
+        "custom_semgrep_problems": tuple(custom_problems),
+    }
     if not registered:
-        return ProjectContext(RoleSet(frozenset(roles)), plan_wide_rules=wide)
+        return ProjectContext(RoleSet(frozenset(roles)), **from_conventions)
     settings = load_config(paths).settings
     extensions = [item.extension for item in registered]
     roles |= {role for extension in extensions for role in extension.role_ids}
@@ -66,7 +77,7 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
         roles=RoleSet(frozenset(roles)),
         plan_rules=(rules,),
         require_files=rules.requires_files,
-        plan_wide_rules=wide,
+        **from_conventions,
         scan_tools=tuple(tool for extension in extensions for tool in extension.scan_tools),
         extra_gates=tuple(gate for extension in extensions for gate in extension.gates),
         lookup=lookup,

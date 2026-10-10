@@ -191,6 +191,47 @@ def test_status_reports_corrupt_state(workspace, capsys):
     assert capsys.readouterr().err.startswith("error:")
 
 
+def change_source(workflow_file):
+    text = workflow_file.read_text(encoding="utf-8").replace("name: Build", "name: Build v2")
+    workflow_file.write_text(text, encoding="utf-8")
+
+
+def test_workflow_needs_a_subcommand(workspace, capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["workflow"])
+    assert exc.value.code == ExitCode.USAGE
+
+
+def test_sync_when_unchanged(workspace, capsys):
+    assert main(["workflow", "sync"]) == ExitCode.OK
+    assert "already in sync" in capsys.readouterr().out
+
+
+def test_sync_replaces_copy_and_silences_warning(workspace, workflow_file, capsys):
+    change_source(workflow_file)
+    assert main(["workflow", "sync"]) == ExitCode.OK
+    assert "copy replaced" in capsys.readouterr().out
+    assert main(["status"]) == ExitCode.OK
+    assert capsys.readouterr().err == ""
+
+
+def test_sync_blocked_by_open_task_then_forced(workspace, workflow_file, capsys):
+    save_tasks(workspace, make_task(step="build", step_status="in_progress"), active="T-001")
+    change_source(workflow_file)
+    assert main(["workflow", "sync"]) == ExitCode.SYNC_BLOCKED
+    assert "--force" in capsys.readouterr().err
+    assert main(["workflow", "sync", "--force"]) == ExitCode.OK
+    captured = capsys.readouterr()
+    assert "copy replaced" in captured.out
+    assert "T-001" in captured.err
+
+
+def test_sync_rejects_invalid_source(workspace, workflow_file, capsys):
+    workflow_file.write_text("schema_version: 1\nfamily: sample\nsteps: []\n", encoding="utf-8")
+    assert main(["workflow", "sync"]) == ExitCode.INVALID_WORKFLOW
+    assert "invalid workflow" in capsys.readouterr().err
+
+
 def test_init_warns_when_source_changed_since_copy(git_repo, workflow_file, monkeypatch, capsys):
     monkeypatch.chdir(git_repo)
     main(["init", "--workflow", str(workflow_file)])

@@ -18,7 +18,9 @@ from agentflow.constants import (
     Command,
     DriftStatus,
     ExitCode,
+    SyncOutcome,
     ToolStatus,
+    WorkflowCommand,
 )
 from agentflow.doctor import SystemToolProbe, run_doctor
 from agentflow.engine import next_action
@@ -26,7 +28,7 @@ from agentflow.errors import AgentflowError
 from agentflow.models import State, ToolCheck, Workflow
 from agentflow.render import NONE_TEXT, describe_action, describe_step
 from agentflow.state import JsonStateStore
-from agentflow.sync import workflow_drift
+from agentflow.sync import sync_workflow, workflow_drift
 from agentflow.workspace import (
     WorkspacePaths,
     find_workspace,
@@ -36,6 +38,7 @@ from agentflow.workspace import (
 )
 
 WORKFLOW_OPTION = "--workflow"
+FORCE_OPTION = "--force"
 ERROR_PREFIX = "error: "
 WARNING_PREFIX = "warning: "
 SYNC_HINT = "run `agentflow workflow sync` to use the new version"
@@ -55,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser(Command.STATUS, help="show the open task, its current step and what comes next")
     commands.add_parser(Command.NEXT, help="show the next step for the workflow and current state")
+
+    workflow = commands.add_parser(Command.WORKFLOW, help="manage the workspace's workflow copy")
+    workflow_commands = workflow.add_subparsers(dest="workflow_command", metavar="<workflow command>", required=True)
+    sync = workflow_commands.add_parser(WorkflowCommand.SYNC, help="replace the copy with the checked source")
+    sync.add_argument(FORCE_OPTION, action="store_true", help="sync even while tasks are mid-workflow")
     return parser
 
 
@@ -154,11 +162,24 @@ def cmd_next(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_workflow(args: argparse.Namespace) -> ExitCode:
+    # argparse requires a workflow subcommand, and sync is the only one so far.
+    result = sync_workflow(Path.cwd(), force=args.force)
+    if result.outcome is SyncOutcome.UNCHANGED:
+        print("workflow: already in sync with its source")
+        return ExitCode.OK
+    print("workflow: copy replaced with the source version")
+    if result.forced_task_ids:
+        _err(f"{WARNING_PREFIX}synced with --force while tasks were open: {', '.join(result.forced_task_ids)}")
+    return ExitCode.OK
+
+
 HANDLERS: dict[str, Handler] = {
     Command.DOCTOR: cmd_doctor,
     Command.INIT: cmd_init,
     Command.STATUS: cmd_status,
     Command.NEXT: cmd_next,
+    Command.WORKFLOW: cmd_workflow,
 }
 
 

@@ -1,0 +1,34 @@
+{
+  "name": "thanh-tan-plugins",
+  "owner": {
+    "name": "tankhangkm12"
+  },
+  "description": "Personal plugin families for Claude Code and Antigravity CLI, starting with the software-dev family",
+  "plugins": [
+    {
+      "name": "dev-core",
+      "source": "./families/software-dev/core",
+      "category": "software-dev"
+    },
+    {
+      "name": "dev-design",
+      "source": "./families/software-dev/design",
+      "category": "software-dev"
+    },
+    {
+      "name": "dev-backend",
+      "source": "./families/software-dev/backend",
+      "category": "software-dev"
+    },
+    {
+      "name": "dev-frontend",
+      "source": "./families/software-dev/frontend",
+      "category": "software-dev"
+    },
+    {
+      "name": "dev-infra",
+      "source": "./families/software-dev/infra",
+      "category": "software-dev"
+    }
+  ]
+}

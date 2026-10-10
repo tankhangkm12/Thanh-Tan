@@ -189,20 +189,55 @@ def test_cancel_clears_active_task(ws):
 def test_write_report(ws):
     paths, workflow, store, client = ws
     task = new_task(store, workflow, client, "t", TaskType.FEATURE, clock)
-    path = write_report(paths.dir, workflow, task, "check", "# Check\r\n\r\nAll good")
-    assert path == paths.dir / "tasks" / "T-001" / "reports" / "check.md"
-    assert path.read_bytes() == b"# Check\n\nAll good\n"
-    write_report(paths.dir, workflow, task, "check", "second\n")
+    path = write_report(paths.dir, workflow, task, "confirm", "# Confirm\r\n\r\nAll good")
+    assert path == paths.dir / "tasks" / "T-001" / "reports" / "confirm.md"
+    assert path.read_bytes() == b"# Confirm\n\nAll good\n"
+    write_report(paths.dir, workflow, task, "confirm", "second\n")
     assert path.read_text(encoding="utf-8") == "second\n"
 
 
-@pytest.mark.parametrize(("step", "content", "code"), [("ghost", "x", ExitCode.UNKNOWN_STEP), ("check", " \n", ExitCode.INVALID_INPUT)])
+@pytest.mark.parametrize(("step", "content", "code"), [("ghost", "x", ExitCode.UNKNOWN_STEP), ("confirm", " \n", ExitCode.INVALID_INPUT)])
 def test_write_report_rejects(ws, step, content, code):
     paths, workflow, store, client = ws
     task = new_task(store, workflow, client, "t", TaskType.FEATURE, clock)
     with pytest.raises(AgentflowError) as exc:
         write_report(paths.dir, workflow, task, step, content)
     assert exc.value.code is code
+
+
+def test_a_report_can_only_be_written_for_the_current_step(ws):
+    paths, workflow, store, client = ws
+    task = new_task(store, workflow, client, "t", TaskType.FEATURE, clock)
+    for other in ("build", "check"):
+        with pytest.raises(AgentflowError) as exc:
+            write_report(paths.dir, workflow, task, other, "x")
+        assert exc.value.code is ExitCode.REPORT_REFUSED and "confirm" in str(exc.value)
+    assert not (paths.dir / "tasks" / "T-001" / "reports").exists()
+
+
+def test_a_report_of_a_step_that_passed_is_final(ws):
+    paths, workflow, store, client = ws
+    task = new_task(store, workflow, client, "t", TaskType.FEATURE, clock)
+    write_report(paths.dir, workflow, task, "confirm", "the confirmation")
+    task = advance_task(store, workflow, TaskEvent.PASS, clock)  # confirm needs approval: awaiting_approval
+    with pytest.raises(AgentflowError) as exc:
+        write_report(paths.dir, workflow, task, "confirm", "rewritten after the pass")
+    assert exc.value.code is ExitCode.REPORT_REFUSED
+    assert (paths.dir / "tasks" / "T-001" / "reports" / "confirm.md").read_text(encoding="utf-8") == "the confirmation\n"
+    task = approve_task(store, workflow, paths.dir, clock).task  # now at build
+    with pytest.raises(AgentflowError) as exc:
+        write_report(paths.dir, workflow, task, "confirm", "still final")
+    assert exc.value.code is ExitCode.REPORT_REFUSED
+    assert write_report(paths.dir, workflow, task, "build", "fine").name == "build.md"
+
+
+def test_no_report_for_a_task_that_is_not_open(ws):
+    paths, workflow, store, client = ws
+    new_task(store, workflow, client, "t", TaskType.FEATURE, clock)
+    task = cancel_task(store, workflow, clock)
+    with pytest.raises(AgentflowError) as exc:
+        write_report(paths.dir, workflow, task, "confirm", "x")
+    assert exc.value.code is ExitCode.REPORT_REFUSED
 
 
 def test_require_active_task():

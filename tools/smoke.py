@@ -99,9 +99,11 @@ def main() -> int:
         branch = s.git("branch", "--show-current")
         expect(branch == f"feature/{TASK_ID}-add-a-greeting", "task branch name", branch)
 
+        s.af("report", "--step", "confirm", stdin="# Confirmed\n")
         s.af("task", "advance", "--result", "pass")
         s.af("task", "advance", "--result", "pass", ok=False)  # confirm now waits for approval
-        s.af("report", "--step", "confirm", stdin="# Confirmed\n")
+        s.af("report", "--step", "confirm", stdin="# Changed my mind\n", ok=False)  # the approved report is final
+        s.af("report", "--step", "plan", stdin="# Too early\n", ok=False)  # only the current step can be reported
         s.af("task", "approve")  # confirm -> plan
         bad = s.af("plan", "check", "--file", str(repo / "README.md"), ok=False)
         expect("no checklist items" in bad.stdout, "plan check rejects a README as a plan", bad.stdout)

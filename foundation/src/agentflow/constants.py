@@ -17,7 +17,9 @@ CONFIG_FILE = "config.yaml"
 WORKFLOW_COPY_FILE = "workflow.yaml"
 DECISIONS_DIR = "decisions"
 TASKS_DIR = "tasks"
-WORKSPACE_SUBDIRS = (DECISIONS_DIR, TASKS_DIR, "project", "knowledge")
+PROJECT_DIR = "project"
+KNOWLEDGE_DIR = "knowledge"
+WORKSPACE_SUBDIRS = (DECISIONS_DIR, TASKS_DIR, PROJECT_DIR, KNOWLEDGE_DIR)
 # Per-task files: <workspace>/tasks/<task id>/reports/<step id>.md
 REPORTS_DIR = "reports"
 MARKDOWN_SUFFIX = ".md"
@@ -40,6 +42,12 @@ GIT_TOPLEVEL_ARGS = ("rev-parse", "--show-toplevel")
 GIT_PATH_ARGS = ("rev-parse", "--git-path")
 GIT_EXCLUDE_PATH = "info/exclude"
 
+# Where a server that does not run in the project finds it, and where agentflow keeps per-user files.
+PROJECT_DIR_ENV = "AGENTFLOW_PROJECT_DIR"
+SHELL_PWD_ENV = "PWD"
+USER_DIR_ENV = "AGENTFLOW_HOME"
+USER_DIR_NAME = ".agentflow"
+ACTIVE_PROJECT_FILE = "active-project.txt"
 # When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
 HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15
@@ -101,6 +109,47 @@ class ExitCode(IntEnum):
     SCAN_BLOCKED = 27
     EXTENSION_INVALID = 28
     SETTINGS_INVALID = 29
+    REPORT_REFUSED = 30
+    PROJECT_WRITE_REFUSED = 31
+    KNOWLEDGE_NOT_FOUND = 32
+
+
+class ToolName(StrEnum):
+    """The MCP tools agentflow offers an agent. Nothing that is a person's call (approve, cancel, seal, decide,
+    extensions, settings, pushing knowledge, confirming conventions) is on this list."""
+
+    STATUS = "status"
+    NEXT_STEP = "next_step"
+    PLAN_CHECK = "plan_check"
+    REPORT_WRITE = "report_write"
+    PROJECT_WRITE = "project_write"
+    SCAN_SUMMARY = "scan_summary"
+    KNOWLEDGE_SEARCH = "knowledge_search"
+    KNOWLEDGE_READ = "knowledge_read"
+
+
+MCP_SERVER_NAME = "agentflow"
+# The tools that only read the workspace (the rest write a report or a project document).
+READ_ONLY_TOOLS = frozenset(
+    {ToolName.STATUS, ToolName.NEXT_STEP, ToolName.PLAN_CHECK, ToolName.SCAN_SUMMARY, ToolName.KNOWLEDGE_SEARCH, ToolName.KNOWLEDGE_READ}
+)
+
+
+class ProjectSection(StrEnum):
+    """The project documents a scout writes (``.agentflow/project/<section>.md``)."""
+
+    PROFILE = "profile"
+    ARCHITECTURE = "architecture"
+    SOURCES = "sources"
+    CONVENTIONS = "conventions"
+
+
+# Limits for what the knowledge tools hand to a model.
+KNOWLEDGE_TEXT_SUFFIXES = frozenset({".md", ".yaml", ".yml", ".txt", ".json"})
+KNOWLEDGE_MAX_FILE_BYTES = 200_000
+KNOWLEDGE_SEARCH_DEFAULT_LIMIT = 10
+KNOWLEDGE_SEARCH_MAX_LIMIT = 50
+KNOWLEDGE_HIT_MAX_CHARS = 240
 
 
 class TaskType(StrEnum):
@@ -211,11 +260,16 @@ class Command(StrEnum):
     COMMIT = "commit"
     GUARD = "guard"
     HOOK = "hook"
+    MCP = "mcp"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
     EXT = "ext"
     CONFIG = "config"
+
+
+class McpCommand(StrEnum):
+    SERVE = "serve"
 
 
 class WorkflowCommand(StrEnum):

@@ -135,6 +135,14 @@ Dán vào `.claude/settings.json` của dự án (hoặc `~/.claude/settings.jso
       "Bash(agentflow config check *)",
       "Bash(agentflow ext list *)",
       "Bash(agentflow workflow sync *)",
+      "mcp__plugin_dev-core_agentflow__status",
+      "mcp__plugin_dev-core_agentflow__next_step",
+      "mcp__plugin_dev-core_agentflow__plan_check",
+      "mcp__plugin_dev-core_agentflow__report_write",
+      "mcp__plugin_dev-core_agentflow__project_write",
+      "mcp__plugin_dev-core_agentflow__scan_summary",
+      "mcp__plugin_dev-core_agentflow__knowledge_search",
+      "mcp__plugin_dev-core_agentflow__knowledge_read",
       "PowerShell(agentflow status *)",
       "PowerShell(agentflow next *)",
       "PowerShell(agentflow task new *)",
@@ -159,7 +167,8 @@ Dán vào `.claude/settings.json` của dự án (hoặc `~/.claude/settings.jso
 Ghi chú:
 
 - Claude Code tách lệnh ghép (`&&`, `;`, `|`, xuống dòng) và đòi mỗi lệnh con khớp một quy tắc; vì vậy prompt của dev-core bắt mọi lệnh `agentflow` chạy riêng.
-- Lệnh `agentflow report` nhận nội dung qua heredoc (`<<'EOF'`). Đã thử thật bằng `claude -p`: quy tắc `Bash(python *)` cho phép lệnh `python - <<'EOF' ... EOF`, còn không có quy tắc thì lệnh bị từ chối; heredoc không làm quy tắc mất tác dụng.
+- Báo cáo được ghi bằng tool MCP `report_write` (tên đầy đủ có tiền tố `mcp__plugin_dev-core_agentflow__`), nên không cần heredoc. Lệnh `agentflow report` (nhận nội dung qua heredoc `<<'EOF'`) chỉ còn là dự phòng khi không có tool MCP. Đã thử thật bằng `claude -p`: quy tắc `Bash(python *)` cho phép lệnh `python - <<'EOF' ... EOF`, còn không có quy tắc thì lệnh bị từ chối; heredoc không làm quy tắc mất tác dụng.
+- Tám tool MCP trong `allow` chỉ đọc workspace hoặc ghi báo cáo/hồ sơ dự án theo luật của `agentflow` (báo cáo chỉ cho bước hiện tại và không ghi đè bước đã qua; hồ sơ dự án chỉ ghi khi không có task đang mở). Không có tool MCP cho việc của người (duyệt, hủy, seal, `decide`, extension, `config set`).
 - Các lệnh `agentflow decide`, `ext add`, `ext sync`, `config set`, `task seal` là việc của **người**: hook từ chối khi agent tự chạy. Bạn chạy trực tiếp: trong Claude Code gõ `! agentflow decide ...`, hoặc dùng terminal riêng (Antigravity).
 - Cách viết cho Antigravity: dùng chế độ phê duyệt lệnh của chính CLI đó; tài liệu của nó không có cú pháp quy tắc tương đương.
 

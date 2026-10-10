@@ -280,3 +280,15 @@ def test_file_tools_may_write_everywhere_else(project):
     assert hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_write(project, "Write", project / "src" / "a.py")) == ""
     assert "deny" not in hook(HookEvent.PRE_TOOL, CliKind.ANTIGRAVITY, agy_write(project, "write_to_file", project / "a.py"))
     assert hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_write(project, "Write", project / ".agentflow-notes" / "a")) == ""
+
+
+# ------------------------------------------------- remembering the project for MCP servers
+
+
+def test_antigravity_hooks_leave_a_pointer_to_the_project_and_claude_hooks_do_not(project, monkeypatch, tmp_path):
+    home = tmp_path / "pointer-home"
+    monkeypatch.setenv("AGENTFLOW_HOME", str(home))
+    hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_pre(project, "git status"))
+    assert not (home / "active-project.txt").exists()
+    hook(HookEvent.PRE_TOOL, CliKind.ANTIGRAVITY, agy_pre(project, "git status"))
+    assert (home / "active-project.txt").read_text(encoding="utf-8").strip() == str(project)

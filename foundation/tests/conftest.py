@@ -106,3 +106,9 @@ def write_workflow(path: Path, data: dict[str, Any]) -> Path:
 def workflow_file(tmp_path, workflow_data) -> Path:
     # Outside the project repo, like a workflow shipped in an installed plugin.
     return write_workflow(tmp_path / "plugin" / "workflow.yaml", workflow_data)
+
+
+@pytest.fixture(autouse=True)
+def _user_dir_in_tmp(tmp_path_factory, monkeypatch):
+    """Nothing a test runs may touch the real ~/.agentflow."""
+    monkeypatch.setenv("AGENTFLOW_HOME", str(tmp_path_factory.mktemp("user-home")))

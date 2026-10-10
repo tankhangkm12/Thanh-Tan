@@ -3,12 +3,15 @@
     uv run tools/trial_cli.py                # reinstall both plugins, then try both CLIs
     uv run tools/trial_cli.py --no-install   # skip the reinstall
     uv run tools/trial_cli.py --only claude  # (or: agy)
+    uv run tools/trial_cli.py --mcp          # the agentflow MCP tools instead of the hooks
 
 In a throw-away sample project (with an agentflow workspace) the model is asked to write a file into
 .agentflow/decisions/, to run `git push`, and to run `git status`. The evidence is not what the model says but
 what happened: the file must not exist, and the hook log (AGENTFLOW_HOOK_LOG) must show the write and the push
 denied and `git status` let through. Models are not deterministic, so each CLI gets a second try when the model
-did not make all three calls. Needs `agentflow` on PATH and the plugins installed from this repository.
+did not make all three calls. With --mcp the model is asked to call the `status` and `report_write` tools (and to
+try writing a report for a step that is not the current one, which must be refused); the evidence is the report file.
+Needs `agentflow` on PATH and the plugins installed from this repository.
 """
 
 import argparse
@@ -84,12 +87,47 @@ def trial(which: str, repo: Path) -> None:
     expect(bool(status) and all(not c["output"].strip() or "deny" not in c["output"] for c in status), f"{which}: `git status` was let through", str(status))
 
 
+MCP_MARKER = "mcp-trial-marker-7f3a"
+MCP_PROMPT = (
+    "This is an automated test of the agentflow MCP tools. Call them, one call each, in this order, and do not use the "
+    "shell or file tools: "
+    "(1) the `status` tool; "
+    "(2) the `report_write` tool with step `confirm` and content `# Trial\n{marker}`; "
+    "(3) the `report_write` tool with step `plan` and content `not allowed` (this one is expected to be refused). "
+    "Then reply with one short sentence saying what each call answered."
+)
+CLAUDE_MCP_PREFIX = "mcp__plugin_dev-core_agentflow__"
+
+
+def mcp_trial(which: str, repo: Path) -> None:
+    session = Session(repo)
+    session.af("task", "new", "mcp trial")
+    reports = repo / ".agentflow" / "tasks" / "T-001" / "reports"
+    confirm, plan = reports / "confirm.md", reports / "plan.md"
+    prompt = MCP_PROMPT.format(marker=MCP_MARKER)
+    for attempt in range(1, ATTEMPTS + 1):
+        if which == CLAUDE:
+            settings = repo.parent / "trial-allow.json"
+            allow = [f"{CLAUDE_MCP_PREFIX}{name}" for name in ("status", "report_write")]
+            settings.write_text(json.dumps({"permissions": {"allow": allow}}), encoding=ENCODING)
+            done = cli("claude", "-p", "--settings", str(settings), "--permission-mode", "default", cwd=repo, stdin=prompt)
+        else:
+            done = cli("agy", "--dangerously-skip-permissions", f"-p={prompt}", cwd=repo)
+        if confirm.is_file():
+            break
+        print(f"  attempt {attempt}: no report was written; the model said: {done.stdout.strip()[:200]}")
+    expect(confirm.is_file() and MCP_MARKER in confirm.read_text(encoding=ENCODING), f"{which}: report_write saved the report through MCP", str(confirm))
+    expect(not plan.exists(), f"{which}: a report for a step that is not current was refused", str(plan))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-install", action="store_true", help="do not reinstall the plugins first")
     parser.add_argument("--only", choices=[CLAUDE, AGY])
+    parser.add_argument("--mcp", action="store_true", help="try the MCP tools instead of the hooks")
     args = parser.parse_args(argv)
     base = Path(tempfile.mkdtemp(prefix="agentflow-trial-"))
+    os.environ["AGENTFLOW_HOME"] = str(base / "user-home")  # hooks and servers started by the CLIs inherit it
     try:
         repo = sample.create_repo(base)
         Session(repo).af("init", "--workflow", str(WORKFLOW))
@@ -97,8 +135,13 @@ def main(argv: list[str] | None = None) -> int:
             install_check(repo, with_session=False)
         for which in (CLAUDE, AGY):
             if args.only in (None, which):
-                print(f"\n-- {which}: a real session against the hooks")
-                trial(which, repo)
+                print(f"\n-- {which}: a real session against the {'MCP tools' if args.mcp else 'hooks'}")
+                if args.mcp:  # a fresh project per CLI, so each starts at T-001
+                    fresh = sample.create_repo(base / which)
+                    Session(fresh).af("init", "--workflow", str(WORKFLOW))
+                    mcp_trial(which, fresh)
+                else:
+                    trial(which, repo)
     except Failure as exc:
         print(f"\nFAILED: {exc}")
         return 1

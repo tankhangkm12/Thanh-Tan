@@ -33,7 +33,9 @@ Repeat these until one of the stop conditions below:
 
    The role saves its report with `report_write` (a report can only be written for the current step, and not again once the step has passed) and records the result with `agentflow task advance --result pass` (or `fail`).
 
-   **implement:** read the approved plan (`.agentflow/tasks/<task>/reports/plan.md`). Take its items in order and give each one to the agent named in its `role:` line (`implementer` for the usual code; plugins add roles of their own). Tell the agent the item code, so it commits with `--item <code>`. Give the last item's agent the extra job of saving the implement summary and recording the step as passed. If a skill of an installed plugin fits an item, tell the agent to use it.
+   **plan:** if the plan check lists unanswered questions (`## Chưa có quy ước`), stop: tell the person to answer each with `agentflow decide --answer Q1 --text "..." --check <plan, semgrep or review>`, then continue.
+
+   **implement:** read the conventions (`conventions` tool or `agentflow conventions`) and the approved plan (`.agentflow/tasks/<task>/reports/plan.md`). Take its items in order and give each one to the agent named in its `role:` line (`implementer` for the usual code; plugins add roles of their own). Tell the agent the item code, so it commits with `--item <code>`. Give the last item's agent the extra job of saving the implement summary and recording the step as passed. If a skill of an installed plugin fits an item, tell the agent to use it.
 4. After the role finishes, run `agentflow status`. A pass that needs no approval means: go back to 1 straight away. Do not ask the person whether to continue.
 
 ## Stop conditions

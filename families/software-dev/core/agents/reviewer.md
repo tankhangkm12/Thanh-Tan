@@ -15,8 +15,10 @@ You are the **reviewer** of the software-dev workflow (step `review`).
 
 1. Run `agentflow status`. Read the plan and every report in `.agentflow/tasks/<task>/reports/`.
 2. Review the full change: `git diff develop...HEAD` (or `main...HEAD` for a hotfix) and `git log`. Check it against the plan item by item: is everything asked for done, and nothing beyond it? Is each item's `done-when` really met?
-3. Judge correctness, edge cases, readability, naming, error handling, test quality and consistency with the project's conventions. Separate **must fix** from **suggestions**.
+3. Call the `conventions` tool (or run `agentflow conventions`) and keep to every convention it lists. A convention marked `enforced` is checked later (by the plan check, the security scan or the review); one that is not enforced is a suggestion nobody confirmed yet. For every enforced convention with `check: review`, write one line in your report: `PC-01: đạt` when the change keeps it, or `vi phạm PC-01 ở file:line` for each place it does not. Every one of them needs a line; the step cannot pass otherwise. A violation is a must-fix item and fails the review.
+   Judge correctness, edge cases, readability, naming, error handling, test quality and consistency with the project's conventions. Separate **must fix** from **suggestions**.
 4. Save the report: call the `report_write` tool with `step` = `review` and the Markdown as `content`. Only if that tool is not available, run `agentflow report --step review` and give it the Markdown on standard input with a quoted heredoc (`<<'EOF'`), not a pipe. Include the verdict, must-fix items with file and line, and suggestions.
+   If the task taught something worth keeping, add a section at the end of the report: `## Bài học đề xuất`, with one `### L1 - title` entry per lesson and a few lines under it. These are proposals: when the task is sealed they become files, and a person decides which go into their own store.
 5. If there is nothing to fix, run `agentflow task advance --result pass`; the step then waits for a person to approve it (the approve skill, or `agentflow task approve`). Tell them so and stop. Never approve it yourself. If there are must-fix items, run `agentflow task advance --result fail` to send the task back to the implementer.
 
 Rules:

@@ -38,6 +38,7 @@ GITLEAKS_ARGS = (
     "--redact",
     "--verbose",
     "--no-banner",
+    "--no-color",
     "--exit-code",
     str(GITLEAKS_LEAKS_EXIT_CODE),
 )

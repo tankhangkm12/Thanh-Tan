@@ -41,12 +41,12 @@ Mỗi nhóm khai báo quy trình của mình trong một file `workflow.yaml` đ
 | `family` | Tên nhóm, dạng `^[a-z][a-z0-9-]*$` |
 | `steps[].id`, `name`, `role` | Mã bước, tên hiển thị, role phụ trách (foundation chỉ coi role là chuỗi) |
 | `steps[].requires_approval` | Bước cần người duyệt (mặc định `false`) |
-| `steps[].on_fail` | Bước `kind: loop` sẽ chuyển tới khi bước này lỗi |
-| `steps[].kind: loop` + `loop.back_to`, `loop.max_rounds` | Bước sửa lỗi: quay về `back_to` (phải đứng trước nó), tối đa `max_rounds` vòng |
+| `max_rounds` | Số lần một task được quay lại làm lại (cả workflow) |
+| `steps[].on_fail` | Bước đứng trước mà task quay về khi bước này fail |
 
-Các bước thường chạy theo thứ tự trong danh sách; bước `loop` chỉ được vào qua `on_fail`. Hết số vòng mà vẫn lỗi thì task chuyển `blocked`, cần người quyết định.
+Các bước chạy theo thứ tự trong danh sách; không có bước "loop" riêng. Fail ở bước có `on_fail` thì task quay về bước đó và số vòng tăng 1. Hết `max_rounds`, hoặc bước không có `on_fail`, thì task chuyển `blocked`, cần người quyết định.
 
-File được kiểm hai lớp: JSON Schema (`foundation/src/agentflow/schemas/workflow.schema.json`, editor có thể dùng qua dòng `# yaml-language-server: $schema=...`) và kiểm tham chiếu trong Python (id không trùng, `on_fail`/`back_to` trỏ đúng loại bước).
+File được kiểm hai lớp: JSON Schema (`foundation/src/agentflow/schemas/workflow.schema.json`, editor có thể dùng qua dòng `# yaml-language-server: $schema=...`) và kiểm tham chiếu trong Python (id không trùng, `on_fail` trỏ tới bước đứng trước).
 
 ## Workspace của dự án
 
@@ -58,7 +58,9 @@ File được kiểm hai lớp: JSON Schema (`foundation/src/agentflow/schemas/w
   STATE.md        sinh lại từ state.json mỗi lần ghi, không sửa tay
   config.yaml     family, source_path và sha256 của workflow gốc lúc chép
   workflow.yaml   bản chép của workflow: status/next dùng bản này
-  decisions/  tasks/  project/  knowledge/
+  decisions/      mỗi lần người duyệt tiếp một task bị blocked ghi một file
+  tasks/T-001/reports/<bước>.md   báo cáo của từng bước (agentflow report)
+  project/  knowledge/
 ```
 
 - Chạy lại `init` không ghi đè `state.json` hay bản chép workflow; chỉ tạo phần còn thiếu và cập nhật `source_path`. Đổi sang workflow của nhóm khác thì bị từ chối.
@@ -76,5 +78,22 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow status` | Task đang mở, bước hiện tại, việc tiếp theo | Chưa có workspace, state hỏng |
 | `agentflow next` | Bước tiếp theo, dạng `<loại>: <mô tả>` | Như `status` |
 | `agentflow workflow sync [--force]` | Thay bản chép workflow bằng bản gốc đã kiểm | Bản gốc lỗi hoặc mất, khác nhóm, có task đang chạy |
+| `agentflow task new "<tiêu đề>" --type feature\|bugfix\|hotfix` | Tạo nhánh gitflow `<type>/T-001-<slug>` và ghi task | Cây làm việc chưa sạch, đã có task mở, thiếu nhánh gốc |
+| `agentflow task advance --result pass\|fail` | Ghi kết quả bước hiện tại | Không có task, bước không ở trạng thái cho phép |
+| `agentflow task approve [--reason ...]` | Duyệt bước đang chờ; với task `blocked` là người cho làm tiếp (ghi `decisions/`) | Như trên |
+| `agentflow task cancel` | Hủy task đang mở | Không có task đang mở |
+| `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
+| `agentflow commit "<nội dung>"` | Scan secret rồi commit với tiền tố `T-001: ` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy |
+| `agentflow guard` | Đọc `{"command","cwd"}` từ stdin, in `{"decision","rule","reason"}` | Input không phải JSON hợp lệ |
 
-Mã lỗi nằm trong `ExitCode` (`foundation/src/agentflow/constants.py`). Phần này chưa có lệnh tạo task hay chuyển bước.
+### Vòng đời task
+
+`task new` → mỗi bước: `task advance --result pass` → (bước cần duyệt) `task approve` → bước kế. Fail ở `test`/`security`/`review` quay thẳng về `implement`, đếm vòng; hết `max_rounds` (mặc định 3) thì task `blocked` và chỉ người mới `task approve` để cho làm tiếp (vòng reset về 0, ghi một file vào `decisions/`) hoặc `task cancel`. Đi hết bước cuối thì task `done`. Chỉ một task mở tại một thời điểm.
+
+### commit và guard
+
+`agentflow commit` chỉ chạy khi đang ở nhánh của task và có file staged. Gitleaks (image ghim phiên bản, chạy qua Docker, dự phòng Podman, mount chỉ đọc) quét phần staged; engine không chạy hoặc có secret thì báo lỗi và **không commit**.
+
+`agentflow guard` chặn: `git push` mọi dạng; `merge`/`commit`/`rebase`/`cherry-pick`/`revert`/`am` khi đang ở `main` hoặc `develop`; `reset --hard`; `clean` có cả `-f` và `-d`; `branch -D` (và `-d -f`); xóa tag. Hiểu lệnh ghép (`&&`, `;`, `|`), `git -C`, `bash -c "..."` và việc `git switch` sang nhánh được bảo vệ ngay trong chuỗi lệnh. Đây là lưới an toàn cho agent, không phải sandbox: alias git, script hay biến môi trường vẫn có thể vượt qua.
+
+Mã lỗi nằm trong `ExitCode` (`foundation/src/agentflow/constants.py`).

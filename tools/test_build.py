@@ -222,6 +222,8 @@ def test_the_planner_documents_the_plan_shape_and_runs_the_checker():
 
 README = REPO / "README.md"
 RULE = __import__("re").compile(r"^(Bash|PowerShell)\(agentflow( [a-z-]+)+ \*\)$")
+MCP_PREFIX = "mcp__plugin_dev-core_agentflow__"
+WORKSPACE_TOOL_NAMES = build.WORKSPACE_TOOL_NAMES
 MANDATORY_ASK = {"task approve", "task cancel", "decide"}
 
 
@@ -235,7 +237,12 @@ def readme_permissions() -> dict:
 def test_readme_permission_rules_follow_the_documented_syntax():
     permissions = readme_permissions()
     for rule in [*permissions["allow"], *permissions["ask"]]:
-        assert RULE.match(rule), rule
+        assert RULE.match(rule) or rule.startswith(MCP_PREFIX), rule
+
+
+def test_readme_allows_exactly_the_mcp_tools_agents_use():
+    allowed = {rule for rule in readme_permissions()["allow"] if rule.startswith(MCP_PREFIX)}
+    assert allowed == {MCP_PREFIX + name for name in [*WORKSPACE_TOOL_NAMES, "project_write"]}
 
 
 def test_readme_asks_for_the_commands_that_carry_a_persons_authority():

@@ -1,3 +1,8 @@
 # dev-design
 
-Covers the design steps of the software-dev workflow: turning requirements into architecture decisions, module boundaries and API contracts before any code is written. Depends on `dev-core`, which provides the shared workflow, gitflow and gates; this plugin adds only its own domain. Skeleton only: no skills or agents yet.
+Plugin thiết kế của nhóm **software-dev**. Phạm vi gồm hai mảng:
+
+- **Thiết kế giao diện:** UI brief, design token, component spec.
+- **Thiết kế hệ thống:** ADR (ghi lại quyết định kiến trúc), sơ đồ C4, contract API theo OpenAPI, data model.
+
+Plugin phụ thuộc vào `dev-core` (quy trình, gitflow, gate dùng chung) và chỉ thêm phần nghiệp vụ thiết kế của riêng nó. Hiện mới là bộ khung, chưa có skill hay agent.

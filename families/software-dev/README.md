@@ -7,7 +7,7 @@ Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn ch
 | Plugin | Phạm vi |
 |---|---|
 | `dev-core` | Quy trình, gitflow, gate dùng chung |
-| `dev-design` | Yêu cầu, kiến trúc, thiết kế API |
+| `dev-design` | Thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract API OpenAPI, data model) |
 | `dev-backend` | Service, API, dữ liệu |
 | `dev-frontend` | Giao diện, state phía client |
 | `dev-infra` | CI/CD, container, triển khai |
@@ -15,7 +15,7 @@ Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn ch
 ## Quy trình 7 bước
 
 1. **Yêu cầu**: làm rõ mục tiêu, phạm vi, tiêu chí chấp nhận.
-2. **Thiết kế**: quyết định kiến trúc, ranh giới module, hợp đồng API.
+2. **Thiết kế**: thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract OpenAPI, data model).
 3. **Lập kế hoạch**: chia việc thành task nhỏ nhất, mỗi task có tiêu chí xong kiểm được bằng lệnh.
 4. **Triển khai**: làm từng task trên nhánh feature.
 5. **Kiểm thử**: chạy test và các gate tự động; chỉ đi tiếp khi xanh.

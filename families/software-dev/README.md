@@ -2,6 +2,8 @@
 
 > **Bản nháp (MVP).** `dev-core` và `dev-backend` có nội dung dùng được; các plugin `dev-*` còn lại vẫn là khung.
 
+Cách dùng nhóm (chọn plugin, chuẩn bị dự án, khuôn yêu cầu task, checklist duyệt): [USAGE.md](USAGE.md).
+
 Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn chung của nhóm; các plugin con (`dev-design`, `dev-backend`, `dev-frontend`, `dev-infra`) phụ thuộc vào `dev-core` và chỉ thêm phần nghiệp vụ riêng.
 
 | Plugin | Phạm vi |

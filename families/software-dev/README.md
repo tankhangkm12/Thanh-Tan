@@ -44,4 +44,8 @@ Một bước chỉ được coi là xong khi tool xác nhận, không dựa và
 - Test: `uv run pytest` (hoặc test runner của dự án) phải xanh.
 - Manifest plugin: `claude plugin validate` và `agy plugin validate` phải qua.
 - Bí mật: `agentflow commit` quét Gitleaks (Docker/Podman) trên phần staged; engine không chạy là không commit.
-- Các gate khác (lint, type check, build, Semgrep, Trivy) sẽ được bổ sung sau.
+- Bước `security` (gate `scans-clean`): `agentflow scan` chạy trong container Semgrep (rule từ Semgrep Registry, chặn mức `ERROR`), Trivy (chặn lỗ hổng `HIGH`/`CRITICAL` đã có bản vá) và Gitleaks (mọi phát hiện đều chặn); thêm Semgrep với rule do chính bạn viết khi có quy ước `check: semgrep`. Thiếu kết quả, kết quả cũ hoặc còn phát hiện chặn thì `task advance --result pass` bị từ chối.
+- Bước `plan` (gate `plan-valid`): `agentflow plan check` kiểm mã mục, role, `done-when`, `docs`, luật `plan` của quy ước và mọi câu hỏi "Chưa có quy ước" đã được trả lời.
+- Bước `review` (gate `conventions-reviewed`): báo cáo review phải có một dòng cho từng quy ước `check: review`.
+- Plugin con thêm gate qua extension: `dev-backend` chạy Squawk (lint migration PostgreSQL) và Schemathesis (contract test) ở bước `test`, cùng gate `scans-clean`.
+- Lint, type check và build của chính dự án vẫn do dự án khai báo trong `done-when` của kế hoạch; agentflow chưa có gate riêng cho chúng.

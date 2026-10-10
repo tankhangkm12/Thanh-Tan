@@ -8,7 +8,7 @@ Trung tâm của nhiều **nhóm plugin** cho Claude Code và Antigravity CLI. M
 
 | Nhóm | Trạng thái | Plugin |
 |---|---|---|
-| [software-dev](families/software-dev/README.md) | MVP (`dev-core` dùng được) | `dev-core`, `dev-design`, `dev-backend`, `dev-frontend`, `dev-infra` |
+| [software-dev](families/software-dev/README.md) ([hướng dẫn sử dụng](families/software-dev/USAGE.md)) | MVP (`dev-core` dùng được) | `dev-core`, `dev-design`, `dev-backend`, `dev-frontend`, `dev-infra` |
 | [marketing](families/marketing/README.md) | Dự kiến, chưa xây | — |
 
 Kiến trúc và quy tắc phụ thuộc: [docs/architecture.md](docs/architecture.md).
@@ -294,6 +294,8 @@ agy plugin validate families/software-dev/core
 ```
 
 ## Dùng thử trên một dự án thật
+
+Hướng dẫn đầy đủ (chọn plugin, khuôn yêu cầu task, checklist duyệt, lệnh của người, tiết kiệm token): [families/software-dev/USAGE.md](families/software-dev/USAGE.md). Các bước tóm tắt:
 
 1. Cài `agentflow`: `uv tool install --force --reinstall ./foundation` (từ thư mục repo này), rồi `agentflow doctor`.
 2. Cài plugin vào Claude Code (`claude plugin marketplace add "<repo>"`, `claude plugin install dev-core@thanh-tan-plugins`, `dev-backend@thanh-tan-plugins`) và/hoặc Antigravity (`agy plugin install "<repo>/families/software-dev/core"` và `.../backend`). Mở lại CLI để nạp skill, agent, hook và server MCP.

@@ -212,3 +212,32 @@ def test_every_prompt_says_to_run_commands_separately(path):
 def test_the_planner_documents_the_plan_shape_and_runs_the_checker():
     text = (REAL_PLUGIN / build.ROLES_DIR / "planner.md").read_text(encoding="utf-8")
     assert "agentflow plan check" in text and "### C1" in text and "done-when" in text and "docs:" in text
+
+
+# README permission rules ----------------------------------------------------------
+
+README = REPO / "README.md"
+RULE = __import__("re").compile(r"^(Bash|PowerShell)\(agentflow( [a-z-]+)+ \*\)$")
+MANDATORY_ASK = {"task approve", "task cancel", "decide"}
+
+
+def readme_permissions() -> dict:
+    import re
+
+    blocks = re.findall(r"```json\n(.*?)```", README.read_text(encoding="utf-8"), flags=re.S)
+    return next(json.loads(b)["permissions"] for b in blocks if '"permissions"' in b)
+
+
+def test_readme_permission_rules_follow_the_documented_syntax():
+    permissions = readme_permissions()
+    for rule in [*permissions["allow"], *permissions["ask"]]:
+        assert RULE.match(rule), rule
+
+
+def test_readme_asks_for_the_commands_that_carry_a_persons_authority():
+    permissions = readme_permissions()
+    for tool in ("Bash", "PowerShell"):
+        for command in MANDATORY_ASK:
+            assert f"{tool}(agentflow {command} *)" in permissions["ask"]
+    allowed = " ".join(permissions["allow"])
+    assert not any(f"agentflow {command}" in allowed for command in MANDATORY_ASK)

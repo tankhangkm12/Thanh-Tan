@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 import pytest
 
 from agentflow import cli
@@ -13,7 +15,7 @@ def test_version_prints_name_and_version(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert capsys.readouterr().out.strip() == "agentflow 0.1.0"
+    assert capsys.readouterr().out.strip() == f"agentflow {version('agentflow')}"
 
 
 def test_no_command_prints_help_and_usage_code(capsys):

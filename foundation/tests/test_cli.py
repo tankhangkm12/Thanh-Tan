@@ -2,9 +2,11 @@ import pytest
 
 from agentflow import cli
 from agentflow.cli import main
-from agentflow.constants import ExitCode
+from agentflow.constants import ExitCode, StepStatus, TaskStatus
 from agentflow.doctor import ENGINE_NOT_RUNNING
-from agentflow.models import ProbeResult
+from agentflow.models import ProbeResult, State, Task
+from agentflow.state import JsonStateStore
+from agentflow.workspace import WorkspacePaths, load_workspace_workflow
 
 
 def test_version_prints_name_and_version(capsys):
@@ -99,6 +101,94 @@ def test_init_outside_git_reports_error(tmp_path, workflow_file, monkeypatch, ca
     monkeypatch.chdir(plain)
     assert main(["init", "--workflow", str(workflow_file)]) == ExitCode.NOT_GIT_REPO
     assert capsys.readouterr().err.startswith("error: not inside a git repository")
+
+
+@pytest.fixture
+def workspace(git_repo, workflow_file, monkeypatch, capsys):
+    monkeypatch.chdir(git_repo)
+    assert main(["init", "--workflow", str(workflow_file)]) == ExitCode.OK
+    capsys.readouterr()
+    return git_repo
+
+
+def save_tasks(repo, *tasks, active=None):
+    paths = WorkspacePaths(repo)
+    JsonStateStore(paths.dir, load_workspace_workflow(paths)).save(State(active_task_id=active, tasks=tasks))
+
+
+def make_task(task_id="T-001", step="check", step_status="failed", status="open", loop_round=0, branch=None):
+    return Task(task_id, "Do it", TaskStatus(status), step, StepStatus(step_status), loop_round, branch)
+
+
+@pytest.mark.parametrize("command", ["status", "next"])
+def test_status_and_next_need_a_workspace(git_repo, monkeypatch, capsys, command):
+    monkeypatch.chdir(git_repo)
+    assert main([command]) == ExitCode.NO_WORKSPACE
+    assert "agentflow init --workflow" in capsys.readouterr().err
+
+
+def test_status_without_tasks(workspace, capsys):
+    assert main(["status"]) == ExitCode.OK
+    out = capsys.readouterr().out
+    assert "workflow: sample (4 steps)" in out
+    assert "active task: none" in out
+    assert "next: start a new task at step 'confirm' (Confirm; role lead, needs approval)" in out
+
+
+def test_status_with_active_task(workspace, capsys):
+    save_tasks(
+        workspace,
+        make_task(loop_round=1, branch="feature/x"),
+        make_task("T-002", "build", "in_progress"),
+        active="T-001",
+    )
+    assert main(["status"]) == ExitCode.OK
+    out = capsys.readouterr().out
+    assert "active task: T-001 Do it" in out
+    assert "current step: step 'check' (Check; role checker), failed" in out
+    assert "loop round: 1; branch: feature/x" in out
+    assert "other open tasks: T-002 (build, open)" in out
+    assert "next: fix the failure in step 'fix'" in out and "round 2/2" in out
+
+
+@pytest.mark.parametrize(
+    ("task", "expected"),
+    [
+        (None, "start_task: start a new task at step 'confirm'"),
+        (make_task(step="confirm", step_status="awaiting_approval"), "await_approval: wait for a person"),
+        (make_task(step="build", step_status="passed"), "advance: move on to step 'check'"),
+        (make_task(loop_round=2), "blocked: blocked at step 'check'"),
+        (make_task(step_status="passed"), "done: all steps passed"),
+    ],
+)
+def test_next(workspace, capsys, task, expected):
+    if task is not None:
+        save_tasks(workspace, task, active=task.id)
+    assert main(["next"]) == ExitCode.OK
+    assert capsys.readouterr().out.startswith(expected)
+
+
+def test_next_reads_the_copy_and_warns_on_drift(workspace, workflow_file, capsys):
+    text = workflow_file.read_text(encoding="utf-8").replace("name: Confirm", "name: Confirm v2")
+    workflow_file.write_text(text, encoding="utf-8")
+    assert main(["next"]) == ExitCode.OK
+    captured = capsys.readouterr()
+    assert "(Confirm;" in captured.out  # still the copy
+    assert "agentflow workflow sync" in captured.err
+
+
+def test_next_uses_copy_when_source_is_gone(workspace, workflow_file, capsys):
+    workflow_file.unlink()
+    assert main(["next"]) == ExitCode.OK
+    captured = capsys.readouterr()
+    assert captured.out.startswith("start_task:")
+    assert "no longer exists" in captured.err
+
+
+def test_status_reports_corrupt_state(workspace, capsys):
+    (workspace / ".agentflow" / "state.json").write_text("{}", encoding="utf-8")
+    assert main(["status"]) == ExitCode.INVALID_STATE
+    assert capsys.readouterr().err.startswith("error:")
 
 
 def test_init_warns_when_source_changed_since_copy(git_repo, workflow_file, monkeypatch, capsys):

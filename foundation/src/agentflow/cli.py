@@ -3,6 +3,7 @@
 import argparse
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from agentflow.constants import (
     CONTAINER_TOOLS,
     ENCODING,
     EXCLUDE_ENTRY,
+    IN_FLIGHT_TASK_STATUSES,
     PACKAGE_NAME,
     VERSION_FLAG,
     WORKSPACE_DIR,
@@ -19,10 +21,19 @@ from agentflow.constants import (
     ToolStatus,
 )
 from agentflow.doctor import SystemToolProbe, run_doctor
+from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
-from agentflow.models import ToolCheck
+from agentflow.models import State, ToolCheck, Workflow
+from agentflow.render import NONE_TEXT, describe_action, describe_step
+from agentflow.state import JsonStateStore
 from agentflow.sync import workflow_drift
-from agentflow.workspace import init_workspace, load_config
+from agentflow.workspace import (
+    WorkspacePaths,
+    find_workspace,
+    init_workspace,
+    load_config,
+    load_workspace_workflow,
+)
 
 WORKFLOW_OPTION = "--workflow"
 ERROR_PREFIX = "error: "
@@ -41,6 +52,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = commands.add_parser(Command.INIT, help=f"create or complete {EXCLUDE_ENTRY} in this git repository")
     init.add_argument(WORKFLOW_OPTION, required=True, type=Path, help="family workflow.yaml to copy in")
+
+    commands.add_parser(Command.STATUS, help="show the open task, its current step and what comes next")
+    commands.add_parser(Command.NEXT, help="show the next step for the workflow and current state")
     return parser
 
 
@@ -97,9 +111,54 @@ def cmd_init(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+@dataclass(frozen=True)
+class _Opened:
+    paths: WorkspacePaths
+    workflow: Workflow
+    state: State
+
+
+def _open_workspace() -> _Opened:
+    """Workspace, workflow copy in use and validated state; warns when the source drifted."""
+    paths = find_workspace(Path.cwd())
+    config = load_config(paths)
+    workflow = load_workspace_workflow(paths)
+    state = JsonStateStore(paths.dir, workflow).load()
+    _warn_drift(workflow_drift(config))
+    return _Opened(paths, workflow, state)
+
+
+def cmd_status(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    workflow, state = opened.workflow, opened.state
+    task = state.active_task()
+    print(f"workspace: {opened.paths.dir}")
+    print(f"workflow: {workflow.family} ({len(workflow.steps)} steps)")
+    print(f"active task: {NONE_TEXT if task is None else f'{task.id} {task.title}'}")
+    if task is not None:
+        step = workflow.get_step(task.current_step)
+        step_text = describe_step(step) if step else task.current_step
+        print(f"current step: {step_text}, {task.step_status}")
+        print(f"task status: {task.status}; loop round: {task.loop_round}; branch: {task.branch or NONE_TEXT}")
+    others = [t for t in state.tasks if t.status in IN_FLIGHT_TASK_STATUSES and t is not task]
+    if others:
+        print("other open tasks: " + ", ".join(f"{t.id} ({t.current_step}, {t.status})" for t in others))
+    print(f"next: {describe_action(next_action(workflow, task))}")
+    return ExitCode.OK
+
+
+def cmd_next(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    action = next_action(opened.workflow, opened.state.active_task())
+    print(f"{action.kind}: {describe_action(action)}")
+    return ExitCode.OK
+
+
 HANDLERS: dict[str, Handler] = {
     Command.DOCTOR: cmd_doctor,
     Command.INIT: cmd_init,
+    Command.STATUS: cmd_status,
+    Command.NEXT: cmd_next,
 }
 
 

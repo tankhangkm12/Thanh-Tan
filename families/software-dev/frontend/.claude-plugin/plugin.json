@@ -1,0 +1,11 @@
+{
+  "name": "dev-frontend",
+  "version": "0.1.0",
+  "description": "Frontend development for the software-dev family: UI, client state and browser tests",
+  "author": {
+    "name": "tankhangkm12"
+  },
+  "dependencies": [
+    "dev-core"
+  ]
+}

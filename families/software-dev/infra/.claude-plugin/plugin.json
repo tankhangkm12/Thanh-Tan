@@ -1,0 +1,11 @@
+{
+  "name": "dev-infra",
+  "version": "0.1.0",
+  "description": "Infrastructure for the software-dev family: CI/CD, containers and deployment",
+  "author": {
+    "name": "tankhangkm12"
+  },
+  "dependencies": [
+    "dev-core"
+  ]
+}

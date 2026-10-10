@@ -68,6 +68,7 @@ class FakeGit:
         self.branches = {"main", "develop"}
         self.staged = False
         self.commits: list[str] = []
+        self.tags: set[str] = set()
 
     def current_branch(self) -> str | None:
         return self.branch
@@ -89,6 +90,24 @@ class FakeGit:
         self.commits.append(message)
         self.staged = False
         return "0" * 40
+
+    def rev_parse(self, ref: str) -> str:
+        return "0" * 40
+
+    def tag_exists(self, name: str) -> bool:
+        return name in self.tags
+
+    def create_tag(self, name: str, target: str, message: str) -> None:
+        self.tags.add(name)
+
+    def commits_between(self, base: str, head: str) -> list:
+        return []
+
+    def changed_files(self, base: str, head: str) -> list[str]:
+        return []
+
+    def identity(self) -> str:
+        return "Test <test@example.invalid>"
 
 
 class FakeScanner:

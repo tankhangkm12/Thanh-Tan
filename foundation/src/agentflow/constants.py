@@ -53,6 +53,9 @@ TASK_ID_DIGITS = 3
 SLUG_MAX_LENGTH = 40
 SLUG_FALLBACK = "task"
 COMMIT_PREFIX_SEPARATOR = ": "
+# Git trailer that ties a commit to a plan item.
+PLAN_ITEM_TRAILER = "Plan-Item"
+SUMMARY_FILE = "summary.md"
 
 # Secret scanning with Gitleaks in a container. The image is pinned on purpose.
 GITLEAKS_IMAGE = "zricethezav/gitleaks:v8.24.0"
@@ -215,6 +218,7 @@ class TaskCommand(StrEnum):
     ADVANCE = "advance"
     APPROVE = "approve"
     CANCEL = "cancel"
+    SEAL = "seal"
 
 
 class HookEvent(StrEnum):

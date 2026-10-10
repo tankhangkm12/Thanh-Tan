@@ -1,6 +1,8 @@
 """`agentflow commit`: commit staged changes on the task's own branch, after a clean secret scan."""
 
-from agentflow.constants import COMMIT_PREFIX_SEPARATOR, ExitCode
+from collections.abc import Collection
+
+from agentflow.constants import COMMIT_PREFIX_SEPARATOR, PLAN_ITEM_TRAILER, ExitCode
 from agentflow.errors import AgentflowError
 from agentflow.interfaces import GitClient, SecretScanner, StateStore
 from agentflow.models import CommitResult
@@ -9,10 +11,21 @@ from agentflow.tasks import require_active_task
 LEAKS_HINT = "secrets were found in the staged changes; nothing was committed. Remove them, restage and retry"
 
 
-def commit_staged(store: StateStore, git: GitClient, scanner: SecretScanner, message: str) -> CommitResult:
+def commit_staged(
+    store: StateStore,
+    git: GitClient,
+    scanner: SecretScanner,
+    message: str,
+    item: str | None = None,
+    plan_items: Collection[str] | None = None,
+) -> CommitResult:
+    """Commit what is staged. ``item`` ties the commit to a plan item; ``plan_items`` (when known) must contain it."""
     message = message.strip()
     if not message:
         raise AgentflowError("the commit message is empty", ExitCode.INVALID_INPUT)
+    if item is not None and plan_items is not None and item not in plan_items:
+        known = ", ".join(sorted(plan_items)) or "none"
+        raise AgentflowError(f"the plan has no item '{item}' (items: {known})", ExitCode.INVALID_INPUT)
     task = require_active_task(store.load())
     if task.branch is None:
         raise AgentflowError(f"task {task.id} has no branch recorded", ExitCode.BRANCH_PROBLEM)
@@ -31,4 +44,5 @@ def commit_staged(store: StateStore, git: GitClient, scanner: SecretScanner, mes
         raise AgentflowError(f"{LEAKS_HINT}:\n{scan.output}", ExitCode.SECRETS_FOUND)
 
     full_message = f"{task.id}{COMMIT_PREFIX_SEPARATOR}{message}"
-    return CommitResult(git.commit(full_message), full_message)
+    body = f"{full_message}\n\n{PLAN_ITEM_TRAILER}: {item}" if item else full_message
+    return CommitResult(git.commit(body), full_message)

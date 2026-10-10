@@ -11,6 +11,7 @@ from typing import Any, Protocol, runtime_checkable
 from agentflow.constants import HookEvent
 from agentflow.models import (
     CommandResult,
+    CommitInfo,
     HookInput,
     HookReply,
     ProbeResult,
@@ -86,6 +87,28 @@ class GitClient(Protocol):
 
     def commit(self, message: str) -> str:
         """Commit what is staged; return the new commit's sha."""
+        ...
+
+    def rev_parse(self, ref: str) -> str:
+        """Full sha ``ref`` points to; raises when it does not exist."""
+        ...
+
+    def tag_exists(self, name: str) -> bool: ...
+
+    def create_tag(self, name: str, target: str, message: str) -> None:
+        """Create an annotated tag on ``target``."""
+        ...
+
+    def commits_between(self, base: str, head: str) -> Sequence[CommitInfo]:
+        """Commits reachable from ``head`` and not from ``base``, oldest first."""
+        ...
+
+    def changed_files(self, base: str, head: str) -> Sequence[str]:
+        """Paths added, copied, modified or renamed from the merge base of ``base`` and ``head`` to ``head``."""
+        ...
+
+    def identity(self) -> str:
+        """The configured committer as ``Name <email>``."""
         ...
 
 

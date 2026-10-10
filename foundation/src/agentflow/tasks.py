@@ -30,6 +30,7 @@ from agentflow.fsutil import write_text_atomic
 from agentflow.interfaces import GateRunner, GitClient, StateStore
 from agentflow.models import State, Task, Workflow
 from agentflow.render import NONE_TEXT, describe_step
+from agentflow.seal import TaskSealer, require_sealed
 
 Clock = Callable[[], str]
 
@@ -93,6 +94,7 @@ def new_task(
         raise AgentflowError(
             f"finish or cancel the current task first: {listing}", ExitCode.TASK_CONFLICT
         )
+    require_sealed(state, git)
     if not git.is_clean():
         raise AgentflowError(
             "the working tree has uncommitted or untracked changes; commit, stash or remove them first",
@@ -115,10 +117,18 @@ def new_task(
 
 
 def advance_task(
-    store: StateStore, workflow: Workflow, result: TaskEvent, clock: Clock, gates: GateRunner | None = None
+    store: StateStore,
+    workflow: Workflow,
+    result: TaskEvent,
+    clock: Clock,
+    gates: GateRunner | None = None,
+    sealer: TaskSealer | None = None,
 ) -> Task:
-    """Record that the active task's current step passed or failed; a pass must clear the step's gates."""
-    return _apply(store, workflow, result, clock, gates)[1]
+    """Record that the active task's current step passed or failed; a pass must clear the step's gates.
+
+    A pass of a last step that needs no approval finishes the task, so it seals it like an approval would.
+    """
+    return _apply(store, workflow, result, clock, gates, _sealing(sealer))[1]
 
 
 def cancel_task(store: StateStore, workflow: Workflow, clock: Clock) -> Task:
@@ -126,10 +136,18 @@ def cancel_task(store: StateStore, workflow: Workflow, clock: Clock) -> Task:
 
 
 def approve_task(
-    store: StateStore, workflow: Workflow, workspace_dir: Path, clock: Clock, reason: str | None = None
+    store: StateStore,
+    workflow: Workflow,
+    workspace_dir: Path,
+    clock: Clock,
+    reason: str | None = None,
+    sealer: TaskSealer | None = None,
 ) -> ApproveResult:
-    """Approve the step awaiting approval, or override a blocked task (recorded in ``decisions/``)."""
-    before, after = _apply(store, workflow, TaskEvent.APPROVE, clock)
+    """Approve the step awaiting approval, or override a blocked task (recorded in ``decisions/``).
+
+    Approving the last step seals the task first (summary and approval tag); if that fails nothing changes.
+    """
+    before, after = _apply(store, workflow, TaskEvent.APPROVE, clock, before_save=_sealing(sealer))
     if before.status is not TaskStatus.BLOCKED:
         return ApproveResult(after)
     return ApproveResult(after, write_override_decision(workspace_dir, workflow, before, after, reason))
@@ -187,14 +205,41 @@ def require_active_task(state: State) -> Task:
 # ----------------------------------------------------------------- helpers
 
 
+def seal_finished_task(
+    store: StateStore, sealer: TaskSealer, task_id: str, commit: str | None = None
+) -> Path:
+    """For a person: write the summary and approval tag of a finished task that has none."""
+    task = next((t for t in store.load().tasks if t.id == task_id), None)
+    if task is None or task.status is not TaskStatus.DONE:
+        raise AgentflowError(f"{task_id} is not a finished task", ExitCode.INVALID_INPUT)
+    return sealer.seal(task, commit)
+
+
+def _sealing(sealer: TaskSealer | None) -> Callable[[Task, Task], None] | None:
+    if sealer is None:
+        return None
+
+    def seal(_before: Task, after: Task) -> None:
+        sealer.seal(after)
+
+    return seal
+
+
 def _apply(
-    store: StateStore, workflow: Workflow, event: TaskEvent, clock: Clock, gates: GateRunner | None = None
+    store: StateStore,
+    workflow: Workflow,
+    event: TaskEvent,
+    clock: Clock,
+    gates: GateRunner | None = None,
+    before_save: Callable[[Task, Task], None] | None = None,
 ) -> tuple[Task, Task]:
     state = store.load()
     before = require_active_task(state)
     if event is TaskEvent.PASS and gates is not None:
         _require_gates(workflow, before, gates)
     after = transition(workflow, before, event, clock())
+    if before_save is not None and after.status is TaskStatus.DONE:
+        before_save(before, after)
     tasks = tuple(after if task.id == before.id else task for task in state.tasks)
     active = after.id if after.status in IN_FLIGHT_TASK_STATUSES else None
     store.save(replace(state, active_task_id=active, tasks=tasks))

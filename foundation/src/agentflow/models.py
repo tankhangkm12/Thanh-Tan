@@ -271,6 +271,15 @@ class ScanResult:
 
 
 @dataclass(frozen=True)
+class CommitInfo:
+    """One commit of a task: its sha, subject line and the plan item it names (if any)."""
+
+    sha: str
+    subject: str
+    item: str | None = None
+
+
+@dataclass(frozen=True)
 class CommitResult:
     sha: str
     message: str

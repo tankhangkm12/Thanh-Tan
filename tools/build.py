@@ -93,7 +93,7 @@ ANTIGRAVITY_ALLOWED = frozenset(
 )
 ANTIGRAVITY_EDIT_TOOLS = frozenset({"write_to_file", "replace_file_content", "multi_replace_file_content"})
 # Roles that must never get an edit tool. Tester may (it writes tests); implementer is the code writer.
-READ_ONLY_ROLES = frozenset({"orchestrator", "planner", "security", "reviewer"})
+READ_ONLY_ROLES = frozenset({"orchestrator", "planner", "security", "reviewer", "scout"})
 # The only role that writes project documents (with the `project` capability).
 PROJECT_WRITERS = frozenset({"scout"})
 

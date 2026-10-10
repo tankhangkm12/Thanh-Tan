@@ -371,6 +371,8 @@ class ProjectWriteInfo:
     bytes: int
     conventions: int = 0
     open_questions: int = 0
+    # Conventions that were confirmed (or written as confirmed) and are now unconfirmed, because an agent cannot confirm.
+    demoted: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

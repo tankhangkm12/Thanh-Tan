@@ -10,6 +10,7 @@
     "./claude/agents/orchestrator.md",
     "./claude/agents/planner.md",
     "./claude/agents/reviewer.md",
+    "./claude/agents/scout.md",
     "./claude/agents/security.md",
     "./claude/agents/tester.md"
   ]

@@ -10,7 +10,8 @@ from importlib.metadata import version
 from pathlib import Path
 
 from agentflow.services import WorkspaceServices
-from agentflow.constants import McpCommand
+from agentflow.constants import McpCommand, ProjectCommand
+from agentflow.project import confirm_conventions, unconfirmed_conventions
 from agentflow.constants import (
     CONTAINER_TOOLS,
     ENCODING,
@@ -175,6 +176,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
 
+    project = commands.add_parser(Command.PROJECT, help="the project documents a scout wrote (.agentflow/project/)")
+    project_commands = project.add_subparsers(dest="project_command", metavar="<project command>", required=True)
+    confirm = project_commands.add_parser(ProjectCommand.CONFIRM, help="for a person: confirm conventions (PC-01 ... or --all)")
+    confirm.add_argument("codes", nargs="*", metavar="CODE")
+    confirm.add_argument("--all", action="store_true", dest="everything", help="confirm every convention")
+
     mcp = commands.add_parser(Command.MCP, help="the MCP server that gives agents the agentflow tools")
     mcp_commands = mcp.add_subparsers(dest="mcp_command", metavar="<mcp command>", required=True)
     mcp_commands.add_parser(McpCommand.SERVE, help="serve the tools over stdio (started by Claude Code or Antigravity)")
@@ -305,6 +312,12 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
         case TaskCommand.NEW:
             task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now)
             print(f"{task.id} created on branch {task.branch}")
+            unconfirmed = unconfirmed_conventions(opened.paths.dir)
+            if unconfirmed:
+                _err(
+                    f"{WARNING_PREFIX}{len(unconfirmed)} convention(s) are still unconfirmed ({', '.join(unconfirmed)}): "
+                    "a person confirms them with `agentflow project confirm`"
+                )
         case TaskCommand.ADVANCE:
             task = advance_task(store, opened.workflow, args.result, utc_now, _gates(opened), _sealer(opened))
             print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
@@ -522,6 +535,21 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_project(args: argparse.Namespace) -> ExitCode:
+    # argparse requires a project subcommand, and confirm is the only one so far.
+    paths = find_workspace(Path.cwd())
+    result = confirm_conventions(paths.dir, args.codes, args.everything)
+    if result.confirmed:
+        print(f"confirmed: {', '.join(result.confirmed)}")
+    if result.already:
+        print(f"already confirmed: {', '.join(result.already)}")
+    if result.unconfirmed:
+        print(f"still unconfirmed: {', '.join(result.unconfirmed)}")
+    if result.open_questions:
+        print(f"open questions: {', '.join(result.open_questions)} (see .agentflow/project/conventions.md)")
+    return ExitCode.OK
+
+
 def cmd_mcp(args: argparse.Namespace) -> ExitCode:
     # argparse requires an mcp subcommand, and serve is the only one so far.
     from agentflow.mcp_server import serve  # imported here: hooks start often and must stay fast
@@ -561,6 +589,7 @@ HANDLERS: dict[str, Handler] = {
     Command.COMMIT: cmd_commit,
     Command.GUARD: cmd_guard,
     Command.MCP: cmd_mcp,
+    Command.PROJECT: cmd_project,
 }
 
 

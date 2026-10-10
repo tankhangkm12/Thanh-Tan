@@ -111,6 +111,7 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow plan check [--file f]` | Kiểm kế hoạch: mã `C<n>`, role hợp lệ, `done-when`, `docs` | Có mục sai (mã `PLAN_INVALID`) |
 | `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
 | `agentflow commit "<nội dung>" [--item C1]` | Scan secret rồi commit với tiền tố `T-001: `; `--item` ghi trailer `Plan-Item: C1` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy, mục không có trong plan |
+| `agentflow project confirm <mã...>\|--all` | Việc của người: đánh dấu quy ước `confirmed` trong `project/conventions.md` | Chưa có quy ước, mã không có, file có lỗi |
 | `agentflow mcp serve` | Chạy server MCP trên stdio (do Claude Code/Antigravity khởi động) | |
 | `agentflow guard` | Đọc `{"command","cwd"}` từ stdin, in `{"decision","rule","reason"}` | Input không phải JSON hợp lệ |
 
@@ -149,6 +150,18 @@ Mọi ghi vào `.agentflow/` chỉ đi qua lệnh `agentflow` (và tool MCP củ
 Không có tool cho việc của người: duyệt, hủy, seal, `decide`, extension, `config set`, push kiến thức. Một test giữ danh sách tool là danh sách đóng.
 
 Plugin khai báo server ở `.mcp.json` (Claude Code) và `mcp_config.json` (Antigravity), cùng lệnh `agentflow mcp serve`. Điều đã thử thật nằm trong [mcp-notes.md](mcp-notes.md): tên tool ở Claude Code, tên tool của agent plugin, việc Antigravity chạy server ở thư mục plugin (nên server tìm dự án qua `cwd`, `AGENTFLOW_PROJECT_DIR`, `PWD`, rồi con trỏ `~/.agentflow/active-project.txt` mà hook Antigravity để lại), và việc Antigravity không cho giới hạn tool MCP theo role.
+
+### Hồ sơ dự án và quy ước
+
+Skill `setup` hỏi người đường dẫn tài liệu (không tự đi tìm), giao cho role `scout` (đọc, chạy lệnh; chỉ ghi qua `project_write`) đọc tài liệu và code rồi viết `.agentflow/project/{profile,architecture,sources,conventions}.md`. Chỉ ghi được khi không có task mở.
+
+`conventions.md` có dạng `### PC-01 - tiêu đề` kèm `- check:` (`plan` | `semgrep` | `review`), `- rule:`, `- status:` (`unconfirmed` | `confirmed`), `- source:`, `- description:`, tùy chọn `- overrides:`; mục `## Câu hỏi mở` chứa `### S1 - ...` với `- docs:` và `- code:` cho chỗ tài liệu và code mâu thuẫn (scout không tự chọn).
+
+Quyền xác nhận thuộc về người:
+- Quy ước agent ghi luôn là `unconfirmed`. Ghi `confirmed` thì bị đưa về `unconfirmed` (tool báo trong `demoted`).
+- Quy ước đã `confirmed` mà nội dung (tiêu đề, check, rule, source, description, overrides) bị đổi thì tự về `unconfirmed`; giữ nguyên thì vẫn `confirmed`.
+- Xóa một quy ước đã `confirmed` bị từ chối; chỉ người làm (sửa tay file).
+- `agentflow project confirm <mã...>|--all` (chỉ người chạy, guard từ chối khi agent chạy) đánh dấu `confirmed`. `agentflow task new` cảnh báo (không chặn) khi còn quy ước `unconfirmed`.
 
 ### Kế hoạch, gate và tag duyệt
 

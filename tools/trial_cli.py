@@ -4,6 +4,7 @@
     uv run tools/trial_cli.py --no-install   # skip the reinstall
     uv run tools/trial_cli.py --only claude  # (or: agy)
     uv run tools/trial_cli.py --mcp          # the agentflow MCP tools instead of the hooks
+    uv run tools/trial_cli.py --setup        # the setup skill and the scout (writes the project documents)
 
 In a throw-away sample project (with an agentflow workspace) the model is asked to write a file into
 .agentflow/decisions/, to run `git push`, and to run `git status`. The evidence is not what the model says but
@@ -120,11 +121,53 @@ def mcp_trial(which: str, repo: Path) -> None:
     expect(not plan.exists(), f"{which}: a report for a step that is not current was refused", str(plan))
 
 
+SETUP_DOC = "docs/contributing.md"
+SETUP_DOC_TEXT = (
+    "# Contributing\n\nRun the tests with `python tests/check_items.py` against a running service.\n"
+    "Never write a literal string for a fixed value (a status, a header name): use a constant.\n"
+    "Every endpoint is described in openapi.yaml.\n"
+)
+SETUP_PROMPT = (
+    "Use the setup skill of the dev-core plugin to set up this project for agentflow. When it asks where the project's "
+    f"documents are, the answer is: only `{SETUP_DOC}`. Do the whole setup now, without asking me anything else."
+)
+SETUP_SECTIONS = ("profile", "architecture", "sources", "conventions")
+
+
+def setup_trial(which: str, repo: Path) -> None:
+    """The setup skill and scout agent write the four project documents; conventions come out unconfirmed and valid."""
+    doc = repo / SETUP_DOC
+    doc.parent.mkdir(parents=True, exist_ok=True)
+    doc.write_text(SETUP_DOC_TEXT, encoding=ENCODING)
+    sample.git(repo, "add", "-A")
+    sample.git(repo, "commit", "-q", "-m", "docs")
+    project = repo / ".agentflow" / "project"
+    for attempt in range(1, ATTEMPTS + 1):
+        if which == CLAUDE:
+            done = cli("claude", "-p", "--permission-mode", "bypassPermissions", cwd=repo, stdin=SETUP_PROMPT)
+        else:
+            done = cli("agy", "--dangerously-skip-permissions", f"-p={SETUP_PROMPT}", cwd=repo)
+        if all((project / f"{name}.md").is_file() for name in SETUP_SECTIONS):
+            break
+        print(f"  attempt {attempt}: not all documents were written; the model said: {done.stdout.strip()[:300]}")
+    for name in SETUP_SECTIONS:
+        expect((project / f"{name}.md").is_file(), f"{which}: {name}.md was written through project_write", str(project))
+    expect(SETUP_DOC in (project / "sources.md").read_text(encoding=ENCODING), f"{which}: sources.md names the document the person gave")
+    text = (project / "conventions.md").read_text(encoding=ENCODING)
+    expect("status: confirmed" not in text and "status: unconfirmed" in text, f"{which}: every convention starts unconfirmed", text[:400])
+    checked = subprocess.run(
+        ["agentflow", "project", "confirm", "--all"], cwd=repo, capture_output=True, text=True, encoding=ENCODING, check=False
+    )  # the person's command doubles as the validity check: it refuses a document with problems
+    expect(checked.returncode == 0, f"{which}: the conventions the scout wrote are valid", checked.stdout + checked.stderr)
+    expect(not (repo / ".agentflow" / "tasks").glob("*") or not list((repo / ".agentflow" / "tasks").glob("T-*")), f"{which}: no task was started")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-install", action="store_true", help="do not reinstall the plugins first")
     parser.add_argument("--only", choices=[CLAUDE, AGY])
     parser.add_argument("--mcp", action="store_true", help="try the MCP tools instead of the hooks")
+    parser.add_argument("--setup", action="store_true", help="try the setup skill and the scout instead of the hooks")
     args = parser.parse_args(argv)
     base = Path(tempfile.mkdtemp(prefix="agentflow-trial-"))
     os.environ["AGENTFLOW_HOME"] = str(base / "user-home")  # hooks and servers started by the CLIs inherit it
@@ -135,8 +178,12 @@ def main(argv: list[str] | None = None) -> int:
             install_check(repo, with_session=False)
         for which in (CLAUDE, AGY):
             if args.only in (None, which):
-                print(f"\n-- {which}: a real session against the {'MCP tools' if args.mcp else 'hooks'}")
-                if args.mcp:  # a fresh project per CLI, so each starts at T-001
+                print(f"\n-- {which}: a real session against the {'setup skill' if args.setup else 'MCP tools' if args.mcp else 'hooks'}")
+                if args.setup:
+                    fresh = sample.create_repo(base / which)
+                    Session(fresh).af("init", "--workflow", str(WORKFLOW))
+                    setup_trial(which, fresh)
+                elif args.mcp:  # a fresh project per CLI, so each starts at T-001
                     fresh = sample.create_repo(base / which)
                     Session(fresh).af("init", "--workflow", str(WORKFLOW))
                     mcp_trial(which, fresh)

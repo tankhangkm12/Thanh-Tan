@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from agentflow.constants import (
@@ -14,10 +15,13 @@ from agentflow.constants import (
     KNOWLEDGE_TEXT_SUFFIXES,
     MARKDOWN_SUFFIX,
     PROJECT_DIR,
+    ConventionPrefix,
+    ConventionStatus,
     ExitCode,
     GateKind,
     ProjectSection,
 )
+from agentflow.conventions import Convention, ConventionDoc, parse_conventions, render_conventions, validate_conventions
 from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
 from agentflow.fsutil import write_text_atomic
@@ -115,8 +119,12 @@ class WorkspaceServices:
         text = content.replace(_CRLF, _LF)
         path = self.paths.dir / PROJECT_DIR / f"{section}{MARKDOWN_SUFFIX}"
         path.parent.mkdir(parents=True, exist_ok=True)
-        write_text_atomic(path, text if text.endswith(_LF) else text + _LF)
-        return ProjectWriteInfo(str(path), path.stat().st_size)
+        if section is not ProjectSection.CONVENTIONS:
+            write_text_atomic(path, text if text.endswith(_LF) else text + _LF)
+            return ProjectWriteInfo(str(path), path.stat().st_size)
+        document, demoted = _agent_conventions(text, path)
+        write_text_atomic(path, render_conventions(document))
+        return ProjectWriteInfo(str(path), path.stat().st_size, len(document.conventions), len(document.questions), demoted)
 
     # ------------------------------------------------------------------ scans
 
@@ -164,6 +172,36 @@ class WorkspaceServices:
 
     def _knowledge_root(self) -> Path:
         return self.paths.dir / KNOWLEDGE_DIR
+
+
+def _agent_conventions(text: str, path: Path) -> tuple[ConventionDoc, tuple[str, ...]]:
+    """The conventions an agent wrote, with the statuses only a person may set put right.
+
+    A convention keeps ``confirmed`` only when it is unchanged from what a person confirmed; a changed one goes back
+    to ``unconfirmed``, and a new one is never confirmed. A confirmed convention cannot be left out.
+    """
+    written = parse_conventions(text, ConventionPrefix.PROJECT)
+    problems = validate_conventions(written)
+    if problems:
+        raise AgentflowError("the conventions are not valid:\n- " + "\n- ".join(problems), ExitCode.CONVENTIONS_INVALID)
+    before = {c.code: c for c in parse_conventions(path.read_text(encoding=ENCODING), ConventionPrefix.PROJECT).conventions} if path.is_file() else {}
+    confirmed = {code: c for code, c in before.items() if c.status is ConventionStatus.CONFIRMED}
+    dropped = sorted(set(confirmed) - {c.code for c in written.conventions})
+    if dropped:
+        raise AgentflowError(
+            f"{', '.join(dropped)} is confirmed: only a person removes a confirmed convention (by editing the file)",
+            ExitCode.PROJECT_WRITE_REFUSED,
+        )
+    kept: list[Convention] = []
+    demoted: list[str] = []
+    for item in written.conventions:
+        prior = confirmed.get(item.code)
+        unchanged = prior is not None and prior.same_content(item)
+        status = ConventionStatus.CONFIRMED if unchanged else ConventionStatus.UNCONFIRMED
+        if status is not ConventionStatus.CONFIRMED and (prior is not None or item.status is ConventionStatus.CONFIRMED):
+            demoted.append(item.code)
+        kept.append(replace(item, status=status))
+    return replace(written, conventions=tuple(kept)), tuple(demoted)
 
 
 def _readable(path: Path) -> bool:

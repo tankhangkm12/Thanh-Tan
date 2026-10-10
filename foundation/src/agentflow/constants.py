@@ -147,10 +147,7 @@ class ActionKind(StrEnum):
     START_TASK = "start_task"
     CONTINUE = "continue"
     AWAIT_APPROVAL = "await_approval"
-    ADVANCE = "advance"
-    LOOP = "loop"
     BLOCKED = "blocked"
-    DONE = "done"
 
 
 class DriftStatus(StrEnum):

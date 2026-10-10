@@ -36,7 +36,7 @@ def test_state_round_trip(state_data):
     task = state.active_task()
     assert task is not None
     assert task.status is TaskStatus.OPEN
-    assert task.step_status is StepStatus.FAILED
+    assert task.step_status is StepStatus.IN_PROGRESS
     assert task.branch == "feature/thing"
     # Through JSON text, exactly like the file on disk.
     assert json.loads(json.dumps(state_to_dict(state))) == state_data

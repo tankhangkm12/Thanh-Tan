@@ -14,9 +14,16 @@ def paths(git_repo, workflow_file):
     return init_workspace(git_repo, workflow_file).paths
 
 
+STEP_STATUS_FOR = {
+    TaskStatus.OPEN: StepStatus.IN_PROGRESS,
+    TaskStatus.BLOCKED: StepStatus.FAILED,
+    TaskStatus.DONE: StepStatus.PASSED,
+}
+
+
 def put_task(paths, status=TaskStatus.OPEN, step="build"):
     store = JsonStateStore(paths.dir, load_workspace_workflow(paths))
-    task = Task("T-001", "t", status, step, StepStatus.IN_PROGRESS)
+    task = Task("T-001", "t", status, step, STEP_STATUS_FOR[status])
     active = "T-001" if status in (TaskStatus.OPEN, TaskStatus.BLOCKED) else None
     store.save(State(active_task_id=active, tasks=(task,)))
 

@@ -147,7 +147,8 @@ def cmd_status(args: argparse.Namespace) -> ExitCode:
         step = workflow.get_step(task.current_step)
         step_text = describe_step(step) if step else task.current_step
         print(f"current step: {step_text}, {task.step_status}")
-        print(f"task status: {task.status}; loop round: {task.loop_round}; branch: {task.branch or NONE_TEXT}")
+        rounds = f"{task.loop_round}/{workflow.max_rounds}"
+        print(f"task status: {task.status}; rework rounds: {rounds}; branch: {task.branch or NONE_TEXT}")
     others = [t for t in state.tasks if t.status in IN_FLIGHT_TASK_STATUSES and t is not task]
     if others:
         print("other open tasks: " + ", ".join(f"{t.id} ({t.current_step}, {t.status})" for t in others))

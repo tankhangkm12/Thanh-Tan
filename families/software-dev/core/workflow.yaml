@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../../foundation/src/agentflow/schemas/workflow.schema.json
+#
+# Quy trình 7 bước của nhóm software-dev, đọc bởi agentflow (foundation).
+# Các bước thường chạy theo thứ tự trong danh sách; bước kind: loop chỉ được vào qua on_fail.
+schema_version: 1
+family: software-dev
+steps:
+  - id: confirm
+    name: Xác nhận task
+    role: orchestrator
+    requires_approval: true
+
+  - id: plan
+    name: Vào workspace và lập kế hoạch
+    role: planner
+    requires_approval: true
+
+  - id: implement
+    name: Triển khai
+    role: implementer
+
+  - id: test
+    name: Kiểm thử
+    role: tester
+    on_fail: loop
+
+  - id: security
+    name: Kiểm tra bảo mật
+    role: security
+    on_fail: loop
+
+  - id: review
+    name: Review
+    role: reviewer
+    requires_approval: true
+    on_fail: loop
+
+  - id: loop
+    name: Sửa lỗi
+    role: implementer
+    kind: loop
+    loop:
+      back_to: implement
+      max_rounds: 3

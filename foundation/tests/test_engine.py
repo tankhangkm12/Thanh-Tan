@@ -8,7 +8,7 @@ from agentflow.models import Task, workflow_from_dict
 
 @pytest.fixture
 def workflow(workflow_data):
-    # Sample: confirm -> build -> check (on_fail: fix) ; fix loops back to build, max 2 rounds.
+    # Sample: confirm -> build -> check (on_fail: build), max 2 rounds.
     return workflow_from_dict(workflow_data)
 
 
@@ -55,9 +55,9 @@ def test_passing_last_main_step_is_done(workflow):
     assert next_action(workflow, task("check", StepStatus.PASSED)).kind is ActionKind.DONE
 
 
-def test_failure_loops_and_counts_rounds(workflow):
-    assert ids(next_action(workflow, task("check", StepStatus.FAILED, loop_round=0))) == (ActionKind.LOOP, "fix", 1)
-    assert ids(next_action(workflow, task("check", StepStatus.FAILED, loop_round=1))) == (ActionKind.LOOP, "fix", 2)
+def test_failure_goes_back_to_on_fail_and_counts_rounds(workflow):
+    assert ids(next_action(workflow, task("check", StepStatus.FAILED, loop_round=0))) == (ActionKind.LOOP, "build", 1)
+    assert ids(next_action(workflow, task("check", StepStatus.FAILED, loop_round=1))) == (ActionKind.LOOP, "build", 2)
 
 
 def test_failure_after_max_rounds_blocks(workflow):
@@ -68,16 +68,8 @@ def test_failure_after_max_rounds_blocks(workflow):
     )
 
 
-def test_passed_loop_step_returns_to_back_to(workflow):
-    assert ids(next_action(workflow, task("fix", StepStatus.PASSED, loop_round=1))) == (ActionKind.ADVANCE, "build", None)
-
-
 def test_failure_without_on_fail_blocks(workflow):
     assert next_action(workflow, task("build", StepStatus.FAILED)).kind is ActionKind.BLOCKED
-
-
-def test_failed_loop_step_blocks(workflow):
-    assert next_action(workflow, task("fix", StepStatus.FAILED, loop_round=1)).kind is ActionKind.BLOCKED
 
 
 def test_blocked_task_stays_blocked(workflow):

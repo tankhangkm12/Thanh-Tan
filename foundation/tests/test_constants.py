@@ -6,7 +6,6 @@ from agentflow import constants as c
 
 ENUMS = [
     c.ExitCode,
-    c.StepKind,
     c.TaskStatus,
     c.StepStatus,
     c.HistoryEvent,

@@ -11,17 +11,11 @@ import yaml
 SAMPLE_WORKFLOW: dict[str, Any] = {
     "schema_version": 1,
     "family": "sample",
+    "max_rounds": 2,
     "steps": [
         {"id": "confirm", "name": "Confirm", "role": "lead", "requires_approval": True},
         {"id": "build", "name": "Build", "role": "builder"},
-        {"id": "check", "name": "Check", "role": "checker", "on_fail": "fix"},
-        {
-            "id": "fix",
-            "name": "Fix",
-            "role": "builder",
-            "kind": "loop",
-            "loop": {"back_to": "build", "max_rounds": 2},
-        },
+        {"id": "check", "name": "Check", "role": "checker", "on_fail": "build"},
     ],
 }
 

@@ -99,7 +99,7 @@ def test_render_active_task(workflow, state_data):
     text = render_state_md(state_from_dict(state_data), workflow)
     assert "- Active task: T-001 Do the thing" in text
     assert "- Branch: feature/thing" in text
-    assert "- Next: fix the failure in step 'fix'" in text and "round 2/2" in text
+    assert "- Next: fix the failure in step 'build'" in text and "round 2/2" in text
     assert "| T-001 | Do the thing | open | check | failed | feature/thing |" in text
 
 

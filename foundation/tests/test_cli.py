@@ -130,7 +130,7 @@ def test_status_and_next_need_a_workspace(git_repo, monkeypatch, capsys, command
 def test_status_without_tasks(workspace, capsys):
     assert main(["status"]) == ExitCode.OK
     out = capsys.readouterr().out
-    assert "workflow: sample (4 steps)" in out
+    assert "workflow: sample (3 steps)" in out
     assert "active task: none" in out
     assert "next: start a new task at step 'confirm' (Confirm; role lead, needs approval)" in out
 
@@ -148,7 +148,7 @@ def test_status_with_active_task(workspace, capsys):
     assert "current step: step 'check' (Check; role checker), failed" in out
     assert "loop round: 1; branch: feature/x" in out
     assert "other open tasks: T-002 (build, open)" in out
-    assert "next: fix the failure in step 'fix'" in out and "round 2/2" in out
+    assert "next: fix the failure in step 'build'" in out and "round 2/2" in out
 
 
 @pytest.mark.parametrize(

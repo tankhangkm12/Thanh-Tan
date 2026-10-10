@@ -23,9 +23,8 @@ def describe_step(step: Step) -> str:
 
 
 def describe_action(action: NextAction) -> str:
-    max_rounds = action.step.loop.max_rounds if action.step and action.step.loop else None
     return _ACTION_TEXT[action.kind].format(
         step=describe_step(action.step) if action.step else NONE_TEXT,
         round=action.loop_round,
-        max_rounds=max_rounds,
+        max_rounds=action.max_rounds,
     )

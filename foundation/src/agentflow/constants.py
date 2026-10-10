@@ -52,11 +52,6 @@ class ExitCode(IntEnum):
     INVALID_CONFIG = 11
 
 
-class StepKind(StrEnum):
-    STEP = "step"
-    LOOP = "loop"
-
-
 class TaskStatus(StrEnum):
     OPEN = "open"
     BLOCKED = "blocked"
@@ -144,16 +139,13 @@ class WorkflowCommand(StrEnum):
 class WorkflowKey(StrEnum):
     SCHEMA_VERSION = "schema_version"
     FAMILY = "family"
+    MAX_ROUNDS = "max_rounds"
     STEPS = "steps"
     ID = "id"
     NAME = "name"
     ROLE = "role"
-    KIND = "kind"
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
-    LOOP = "loop"
-    BACK_TO = "back_to"
-    MAX_ROUNDS = "max_rounds"
 
 
 class StateKey(StrEnum):

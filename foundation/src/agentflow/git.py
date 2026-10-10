@@ -85,6 +85,11 @@ class SubprocessGit:
         _checked(self.root, *COMMIT_ARGS, message)
         return _checked(self.root, *HEAD_SHA_ARGS)
 
+    def head_or_empty(self) -> str:
+        """The current commit, or an empty string when there is none."""
+        result = run_git(self.root, *HEAD_SHA_ARGS)
+        return result.stdout.strip() if result.returncode == 0 else ""
+
     def rev_parse(self, ref: str) -> str:
         return _checked(self.root, "rev-parse", "--verify", f"{ref}^{{commit}}")
 
@@ -95,12 +100,17 @@ class SubprocessGit:
         _checked(self.root, "tag", "--annotate", "--message", message, name, target)
 
     def commits_between(self, base: str, head: str) -> list[CommitInfo]:
-        output = _checked(self.root, "log", "--reverse", LOG_FORMAT, f"{base}..{head}")
+        # Not `_checked`: it strips the output, and Python treats the separator characters as whitespace.
+        done = run_git(self.root, "log", "--reverse", LOG_FORMAT, f"{base}..{head}")
+        if done.returncode != 0:
+            raise AgentflowError(f"git log failed: {(done.stderr or done.stdout).strip()}", ExitCode.GIT_FAILED)
+        output = done.stdout
         commits = []
         for record in output.split(RECORD_SEPARATOR):
-            if not record.strip():
+            record = record.strip("\r\n")
+            if not record:
                 continue
-            sha, subject, item = record.strip().split(FIELD_SEPARATOR)
+            sha, subject, item = record.split(FIELD_SEPARATOR)
             commits.append(CommitInfo(sha, subject, item.strip() or None))
         return commits
 

@@ -207,6 +207,8 @@ class Command(StrEnum):
     GUARD = "guard"
     HOOK = "hook"
     PLAN = "plan"
+    SCAN = "scan"
+    DECIDE = "decide"
 
 
 class WorkflowCommand(StrEnum):
@@ -389,3 +391,46 @@ class PlanField(StrEnum):
 PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
 PLAN_NO_DOCS_PREFIX = "không có"
 PLAN_NO_FILES_PREFIX = "không có"
+
+# ----------------------------------------------------------------- scans
+
+SCANS_DIR = "scans"
+SCAN_SUMMARY_FILE = "summary.json"
+SEMGREP_IMAGE = "semgrep/semgrep:1.180.0"
+TRIVY_IMAGE = "aquasec/trivy:0.75.0"
+TRIVY_CACHE_VOLUME = "agentflow-trivy-cache"
+SEMGREP_RULES_DIR = "semgrep-rules"
+CACHE_DIR_ENV = "AGENTFLOW_CACHE_DIR"
+APP_CACHE_DIR = "agentflow"
+SEMGREP_RULES_URL = "https://semgrep.dev/c/{ruleset}"
+SEMGREP_DEFAULT_RULESETS = ("p/default",)
+SEMGREP_RULES_MAX_AGE_SECONDS = 7 * 24 * 3600
+FETCH_TIMEOUT_SECONDS = 120
+HOST_GATEWAY_NAME = "host.docker.internal"
+DECISION_SUPPRESS_SUFFIX = "suppress"
+
+
+class NetworkMode(StrEnum):
+    """Network a scan container gets. Extensions may only ask for ``none`` or ``host-gateway``."""
+
+    NONE = "none"
+    BRIDGE = "bridge"
+    HOST_GATEWAY = "host-gateway"
+
+
+class ResultKind(StrEnum):
+    """How a scan tool's output becomes findings."""
+
+    JSON_FINDINGS = "json_findings"
+    EXIT_CODE = "exit_code"
+
+
+class ScanStatus(StrEnum):
+    CLEAN = "clean"
+    BLOCKED = "blocked"
+    SKIPPED = "skipped"
+
+
+class FileScope(StrEnum):
+    CHANGED = "changed"
+

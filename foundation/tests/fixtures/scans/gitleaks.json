@@ -1,4 +1,4 @@
-﻿[
+[
  {
   "RuleID": "github-pat",
   "Description": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure.",

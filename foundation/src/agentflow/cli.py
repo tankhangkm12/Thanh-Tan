@@ -14,6 +14,7 @@ from agentflow.constants import (
     EXCLUDE_ENTRY,
     IN_FLIGHT_TASK_STATUSES,
     PACKAGE_NAME,
+    SEMGREP_DEFAULT_RULESETS,
     STEP_RESULTS,
     VERSION_FLAG,
     WORKSPACE_DIR,
@@ -43,7 +44,13 @@ from agentflow.models import State, ToolCheck, Workflow
 from agentflow.plan import parse_plan
 from agentflow.projectcontext import load_project_context
 from agentflow.render import NONE_TEXT, describe_action, describe_step
-from agentflow.seal import TaskSealer
+from agentflow.models import Task
+from agentflow.scan import ScanService, all_tools, summary_lines, tools_for_step, unsuppressed_blocking
+from agentflow.scan_store import ScanStore, suppressed_ids, write_suppression
+from agentflow.scan_tools import VAR_RANGE
+from agentflow.scan_types import ScanContext
+from agentflow.seal import NOT_SCANNED, TaskSealer, base_branch
+from agentflow.semgrep_rules import HttpRuleFetcher, default_cache_dir
 from agentflow.runner import SubprocessRunner
 from agentflow.scanner import ContainerGitleaksScanner
 from agentflow.state import JsonStateStore, utc_now
@@ -74,11 +81,14 @@ STEP_OPTION = "--step"
 SHORT_SHA_LENGTH = 9
 WORKFLOW_OPTION = "--workflow"
 FILE_OPTION = "--file"
+ALL_OPTION = "--all"
+SUPPRESS_OPTION = "--suppress"
 COMMIT_OPTION = "--commit"
 ITEM_OPTION = "--item"
 FORCE_OPTION = "--force"
 ERROR_PREFIX = "error: "
 WARNING_PREFIX = "warning: "
+SEMGREP_RULESETS_KEY = "scan.semgrep.rulesets"
 SYNC_HINT = "run `agentflow workflow sync` to use the new version"
 
 Handler = Callable[[argparse.Namespace], ExitCode]
@@ -115,6 +125,13 @@ def build_parser() -> argparse.ArgumentParser:
     seal = task_commands.add_parser(TaskCommand.SEAL, help="for a person: write summary.md and the approval tag of a finished task")
     seal.add_argument("task_id", help="id of a finished task, e.g. T-001")
     seal.add_argument(COMMIT_OPTION, help="tag this commit instead of the task branch's tip (e.g. after the branch was deleted)")
+
+    scan = commands.add_parser(Command.SCAN, help="run the scanners of the current step in containers (--all: every configured scan)")
+    scan.add_argument(ALL_OPTION, action="store_true", help="run every configured scan, not only the current step's")
+
+    decide = commands.add_parser(Command.DECIDE, help="for a person: record a decision about the active task")
+    decide.add_argument(SUPPRESS_OPTION, required=True, metavar="FINDING_ID", help="accept this scan finding as a false positive")
+    decide.add_argument(REASON_OPTION, required=True, help="why it is acceptable")
 
     plan = commands.add_parser(Command.PLAN, help="check the plan of the active task")
     plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
@@ -277,7 +294,10 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
 
 
 def _sealer(opened: _Opened) -> TaskSealer:
-    return TaskSealer(SubprocessGit(opened.paths.root), opened.paths.dir, opened.workflow, utc_now)
+    def scan_lines(task: Task) -> list[str]:
+        return summary_lines(ScanStore(opened.paths.dir), opened.paths.dir, task.id) or NOT_SCANNED
+
+    return TaskSealer(SubprocessGit(opened.paths.root), opened.paths.dir, opened.workflow, utc_now, scan_lines)
 
 
 def _plan_item_codes(opened: _Opened) -> set[str] | None:
@@ -294,7 +314,78 @@ def _plan_item_codes(opened: _Opened) -> set[str] | None:
 
 def _gates(opened: _Opened) -> WorkspaceGates:
     project = load_project_context(opened.paths.dir, opened.workflow)
-    return WorkspaceGates(GateContext(opened.paths.dir, opened.workflow, project))
+    git = SubprocessGit(opened.paths.root)
+    context = GateContext(opened.paths.dir, opened.workflow, project, git.head_or_empty)
+    return WorkspaceGates(context, lambda step: [kind for step_id, kind in project.extra_gates if step_id == step.id])
+
+
+def _semgrep_rulesets(lookup) -> tuple[str, ...]:
+    configured = lookup(SEMGREP_RULESETS_KEY)
+    if isinstance(configured, str):
+        return (configured,)
+    return tuple(configured) if configured else SEMGREP_DEFAULT_RULESETS
+
+
+def cmd_scan(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    task = require_active_task(opened.state)
+    project = load_project_context(opened.paths.dir, opened.workflow)
+    specs = all_tools(opened.workflow, project) if args.all else tools_for_step(task.current_step, opened.workflow, project)
+    if not specs:
+        print(f"no scans are configured for step '{task.current_step}'")
+        return ExitCode.OK
+    git = SubprocessGit(opened.paths.root)
+    if not git.is_clean():
+        raise AgentflowError(
+            "the working tree has uncommitted changes; scan results must describe the committed branch, so commit or stash first",
+            ExitCode.DIRTY_WORKING_TREE,
+        )
+    base = base_branch(task)
+    if not git.branch_exists(base):
+        raise AgentflowError(f"base branch '{base}' does not exist locally", ExitCode.BRANCH_PROBLEM)
+    head = git.rev_parse("HEAD")
+    context = ScanContext(
+        repo=opened.paths.root,
+        base=base,
+        head=head,
+        changed_files=git.changed_files(base, head),
+        lookup=project.lookup,
+        cache_dir=default_cache_dir(),
+        rulesets=_semgrep_rulesets(project.lookup),
+        extra={VAR_RANGE: f"{base}..{head}"},
+        fetcher=HttpRuleFetcher(),
+        warn=lambda message: _err(f"{WARNING_PREFIX}{message}"),
+    )
+    store = ScanStore(opened.paths.dir)
+    outcomes = ScanService(SubprocessRunner(), store).run(task.id, specs, context)
+    suppressed = suppressed_ids(opened.paths.dir, task.id)
+    blocked = 0
+    for outcome in outcomes:
+        left = unsuppressed_blocking(outcome, suppressed)
+        blocked += len(left)
+        note = f" ({outcome.note})" if outcome.note else ""
+        print(f"{outcome.tool}: {outcome.status}, {len(outcome.findings)} finding(s), {len(left)} blocking{note}")
+        for finding in left:
+            print(f"  - {finding.id} [{finding.severity}] {finding.message}".rstrip())
+    print(f"results: {store.scans_dir(task.id)}")
+    if blocked:
+        raise AgentflowError(f"{blocked} blocking finding(s); fix them, or a person suppresses a false positive with `agentflow decide`", ExitCode.SCAN_BLOCKED)
+    return ExitCode.OK
+
+
+def cmd_decide(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    task = require_active_task(opened.state)
+    known = {f.id: f for outcome in ScanStore(opened.paths.dir).load(task.id).values() for f in outcome.findings}
+    finding = known.get(args.suppress)
+    if finding is None:
+        raise AgentflowError(
+            f"no finding '{args.suppress}' in the scan results of {task.id} (run `agentflow scan` and copy the id)",
+            ExitCode.INVALID_INPUT,
+        )
+    path = write_suppression(opened.paths.dir, task.id, finding, args.reason, utc_now())
+    print(f"decision recorded: {path}")
+    return ExitCode.OK
 
 
 def cmd_plan(args: argparse.Namespace) -> ExitCode:
@@ -366,6 +457,8 @@ HANDLERS: dict[str, Handler] = {
     Command.NEXT: cmd_next,
     Command.WORKFLOW: cmd_workflow,
     Command.TASK: cmd_task,
+    Command.SCAN: cmd_scan,
+    Command.DECIDE: cmd_decide,
     Command.PLAN: cmd_plan,
     Command.REPORT: cmd_report,
     Command.COMMIT: cmd_commit,

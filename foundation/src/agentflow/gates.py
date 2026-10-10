@@ -1,10 +1,12 @@
 """Gates: checks a step has to satisfy before it can pass. Foundation knows the kinds, workflows choose where they apply."""
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from agentflow.constants import ENCODING, MARKDOWN_SUFFIX, REPORTS_DIR, TASKS_DIR, GateKind
+from agentflow.scan import scan_problems, tools_for_step
+from agentflow.scan_store import ScanStore
 from agentflow.models import Step, Task, Workflow
 from agentflow.plan import check_plan, parse_plan
 from agentflow.projectcontext import ProjectContext
@@ -15,6 +17,8 @@ class GateContext:
     workspace_dir: Path
     workflow: Workflow
     project: ProjectContext
+    # Current commit of the project; scan results must be for it. ``None`` skips the freshness check.
+    head: Callable[[], str] = field(default=lambda: "")
 
 
 GateCheck = Callable[[GateContext, Task, Step], list[str]]
@@ -36,7 +40,14 @@ def _plan_valid(context: GateContext, task: Task, step: Step) -> list[str]:
     return plan_problems(path.read_text(encoding=ENCODING), context.project)
 
 
-CHECKS: dict[GateKind, GateCheck] = {GateKind.PLAN_VALID: _plan_valid}
+def _scans_clean(context: GateContext, task: Task, step: Step) -> list[str]:
+    specs = tools_for_step(step.id, context.workflow, context.project)
+    return scan_problems(
+        ScanStore(context.workspace_dir), context.workspace_dir, task, specs, context.head(), context.project.lookup
+    )
+
+
+CHECKS: dict[GateKind, GateCheck] = {GateKind.PLAN_VALID: _plan_valid, GateKind.SCANS_CLEAN: _scans_clean}
 
 
 class WorkspaceGates:

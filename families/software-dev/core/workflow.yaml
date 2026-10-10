@@ -30,6 +30,7 @@ steps:
   - id: security
     name: Kiểm tra bảo mật
     role: security
+    gates: [scans-clean]
     on_fail: implement
 
   - id: review

@@ -40,6 +40,8 @@ GIT_TOPLEVEL_ARGS = ("rev-parse", "--show-toplevel")
 GIT_PATH_ARGS = ("rev-parse", "--git-path")
 GIT_EXCLUDE_PATH = "info/exclude"
 
+# When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
+HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15
 VERSION_FLAG = "--version"
 ENGINE_INFO_ARG = "info"

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -11,6 +12,7 @@ from pathlib import Path
 from agentflow.constants import (
     CONTAINER_TOOLS,
     ENCODING,
+    HOOK_LOG_ENV,
     EXCLUDE_ENTRY,
     IN_FLIGHT_TASK_STATUSES,
     PACKAGE_NAME,
@@ -525,11 +527,13 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
 
 def cmd_hook(args: argparse.Namespace) -> ExitCode:
     # Hooks must not break the agent: report problems on stderr but always exit 0.
+    stdin_text = sys.stdin.read()
     try:
-        output = handle_hook(args.event, args.cli, sys.stdin.read(), GitBranchLookup())
+        output = handle_hook(args.event, args.cli, stdin_text, GitBranchLookup())
     except Exception as exc:  # noqa: BLE001 - a crashing hook would otherwise surface as a tool error
         _err(f"{WARNING_PREFIX}agentflow hook failed: {exc}")
         return ExitCode.OK
+    _log_hook_call(args, stdin_text, output)
     if output:
         print(output)
     return ExitCode.OK
@@ -562,6 +566,19 @@ def _warn_drift(drift: DriftStatus) -> None:
         _err(f"{WARNING_PREFIX}the workflow source changed since it was copied; {SYNC_HINT}")
     elif drift is DriftStatus.SOURCE_MISSING:
         _err(f"{WARNING_PREFIX}the workflow source no longer exists; using the copy in {WORKSPACE_DIR}/")
+
+
+def _log_hook_call(args: argparse.Namespace, stdin_text: str, output: str) -> None:
+    """Append the call to the file named by ``HOOK_LOG_ENV``, if set; a log that cannot be written is ignored."""
+    target = os.environ.get(HOOK_LOG_ENV)
+    if not target:
+        return
+    entry = {"event": args.event, "cli": args.cli, "stdin": stdin_text, "output": output}
+    try:
+        with open(target, "a", encoding=ENCODING) as handle:
+            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 
 def _err(message: str) -> None:

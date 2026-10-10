@@ -244,8 +244,11 @@ def warn_if_ask_rules_missing(settings_path: Path) -> bool:
     return not missing
 
 
-def install_check(repo: Path) -> None:
-    """(Re)install dev-core and dev-backend into both CLIs from this repository, then check what they load."""
+def install_check(repo: Path, with_session: bool = True) -> None:
+    """(Re)install dev-core and dev-backend into both CLIs from this repository, then check what they load.
+
+    ``with_session`` also runs one short `claude -p` session (it needs the sample project's settings).
+    """
     print("\n-- Claude Code")
     marketplaces = cli("claude", "plugin", "marketplace", "list")
     if MARKETPLACE not in marketplaces.stdout:
@@ -264,22 +267,23 @@ def install_check(repo: Path) -> None:
         entry = installed.get(f"{name}@{MARKETPLACE}")
         expect(entry is not None and entry.get("enabled", True) and entry.get("version") == version, f"Claude Code lists {name} {version} enabled", str(entry))
 
-    print("\n-- Claude Code loads skills, agents and the hook (one short `claude -p` call)")
-    if not (repo / ".agentflow").is_dir():  # the hooks only act in a project that has a workspace
-        Session(repo).af("init", "--workflow", str(WORKFLOW))
-    ask_ok = warn_if_ask_rules_missing(repo / ".claude" / "settings.json")
-    expect(ask_ok, "the sample project's settings have the mandatory ask rules")
-    push_settings = repo.parent / "allow-push.json"
-    push_settings.write_text(json.dumps({"permissions": {"allow": ["Bash(git push *)"]}}), encoding=ENCODING)
-    prompt = "Use the Bash tool exactly once to run: git push origin develop\nThen reply with one short sentence saying what happened."
-    done = cli("claude", "-p", "--output-format", "stream-json", "--verbose", "--settings", str(push_settings), "--permission-mode", "default", cwd=repo, stdin=prompt)
-    events = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
-    init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
-    text = json.dumps(init)
-    for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
-        expect(needle in text, f"Claude Code loaded {needle}", text[:400])
-    results = json.dumps([e for e in events if e.get("type") == "user"])
-    expect("git push is blocked for agents" in results, "the dev-core hook blocked `git push` in a real session", results[:600])
+    if with_session:
+        print("\n-- Claude Code loads skills, agents and the hook (one short `claude -p` call)")
+        if not (repo / ".agentflow").is_dir():  # the hooks only act in a project that has a workspace
+            Session(repo).af("init", "--workflow", str(WORKFLOW))
+        ask_ok = warn_if_ask_rules_missing(repo / ".claude" / "settings.json")
+        expect(ask_ok, "the sample project's settings have the mandatory ask rules")
+        push_settings = repo.parent / "allow-push.json"
+        push_settings.write_text(json.dumps({"permissions": {"allow": ["Bash(git push *)"]}}), encoding=ENCODING)
+        prompt = "Use the Bash tool exactly once to run: git push origin develop\nThen reply with one short sentence saying what happened."
+        done = cli("claude", "-p", "--output-format", "stream-json", "--verbose", "--settings", str(push_settings), "--permission-mode", "default", cwd=repo, stdin=prompt)
+        events = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
+        init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
+        text = json.dumps(init)
+        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
+            expect(needle in text, f"Claude Code loaded {needle}", text[:400])
+        results = json.dumps([e for e in events if e.get("type") == "user"])
+        expect("git push is blocked for agents" in results, "the dev-core hook blocked `git push` in a real session", results[:600])
 
     print("\n-- Antigravity")
     for name, path in ((BACKEND_NAME, BACKEND), (CORE_NAME, CORE)):

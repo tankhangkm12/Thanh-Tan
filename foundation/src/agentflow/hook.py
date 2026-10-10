@@ -32,7 +32,7 @@ from agentflow.workspace import GitWorkspaceLookup, WorkspacePaths, find_workspa
 
 RULES_TEXT = (
     "Rules: change task state only through `agentflow task ...`; save step reports with "
-    "`agentflow report --step <id>`; commit with `agentflow commit`; never edit files under .agentflow/ "
+    "the `report_write` tool (or `agentflow report --step <id>`); commit with `agentflow commit`; never edit files under .agentflow/ "
     "by hand (the file tools are blocked there too); never push."
 )
 NO_TASK_TEXT = "No active task. To begin, use the start skill (it runs `agentflow task new`)."

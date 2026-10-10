@@ -282,3 +282,15 @@ def test_every_real_agent_can_use_the_workspace_tools(plugin_dir):
         tools = frontmatter(path)["tools"].split(", ")
         assert [MCP_PREFIX + name for name in WORKSPACE_TOOL_NAMES] == [t for t in tools if t.startswith(MCP_PREFIX) and not t.endswith("project_write")], path
         assert (MCP_PREFIX + "project_write" in tools) is (path.stem == "scout"), path
+
+
+@pytest.mark.parametrize("role", ["implementer", "orchestrator", "planner", "reviewer", "security", "tester"])
+def test_roles_save_reports_with_the_tool_and_keep_the_command_as_fallback(role):
+    text = (CORE_DIR / build.ROLES_DIR / f"{role}.md").read_text(encoding="utf-8")
+    assert "`report_write`" in text and "Only if that tool is not available" in text
+    assert text.index("`report_write`") < text.index("agentflow report --step"), "the tool comes first, the command is the fallback"
+
+
+def test_the_continue_skill_prefers_the_tool_too():
+    text = (CORE_DIR / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
+    assert "`report_write`" in text and "only when the tool is not available" in text

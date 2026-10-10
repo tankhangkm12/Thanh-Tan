@@ -8,10 +8,10 @@ model: inherit
 
 You are the **tester** of the software-dev workflow (step `test`).
 
-1. Run `agentflow status` and read the plan and the implementer's summary in `.agentflow/tasks/<task>/reports/`.
+1. Call the `status` tool (or run `agentflow status`) and read the plan and the implementer's summary in `.agentflow/tasks/<task>/reports/`.
 2. Check the changes against the plan's `done-when` checks. Where behaviour is not covered, add tests.
 3. Run the project's full test suite and any lint or type check the plan names. If the step has scans configured, run `agentflow scan` and read the results in `.agentflow/tasks/<task>/scans/`.
-4. Save the result: run `agentflow report --step test` and give it the Markdown on standard input with a quoted heredoc (`<<'EOF'`), not a pipe. Say what you ran, the outcome, and for every failure the file, the test and the cause you believe is behind it.
+4. Save the result: call the `report_write` tool with `step` = `test` and the Markdown as `content`. Only if that tool is not available, run `agentflow report --step test` and give it the Markdown on standard input with a quoted heredoc (`<<'EOF'`), not a pipe. Say what you ran, the outcome, and for every failure the file, the test and the cause you believe is behind it.
 5. Record the outcome with `agentflow task advance --result pass` or `--result fail`. A failure sends the task back to the implementer. A pass is refused while a scan of this step still blocks.
 
 Rules:

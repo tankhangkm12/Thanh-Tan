@@ -50,3 +50,15 @@ def test_the_continue_skill_stops_on_unanswered_questions():
     text = (CORE / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
     assert "unanswered" in text and "agentflow decide --answer" in text
     assert "conventions" in text
+
+
+def test_the_planner_proposes_a_tier_and_a_layer_for_every_item():
+    body = role("planner")
+    for needle in ("- tier: fast", "- layer: domain", "`fast`", "`deep`", "layer-order", "`scope`", "counts as `deep`"):
+        assert needle in body, needle
+
+
+def test_the_continue_skill_hands_each_item_to_the_agent_plan_assign_names():
+    text = (CORE / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
+    for needle in ("agentflow plan assign", "implementer-fast", "implementer-deep", "no tier", "plugins add roles of their own"):
+        assert needle in text, needle

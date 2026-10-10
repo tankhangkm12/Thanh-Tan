@@ -13,13 +13,17 @@ You are the **planner** of the software-dev workflow (step `plan`).
    ### C1 - Short title of the item
    - role: implementer
    - kind: implement
-- files: src/greeting.py, tests/test_greeting.py
+   - tier: fast
+   - layer: domain
+   - files: src/greeting.py, tests/test_greeting.py
    - done-when: `uv run pytest tests/test_greeting.py`
    - docs: https://docs.python.org/3/library/functions.html
    ```
 
    - Item codes are `C1`, `C2`, ... and each appears once.
    - `kind` says what the item does to its files: `interface` (declares a type, protocol or contract), `implement` (code that fulfils one) or `other`. When the conventions include one with `rule: item-order`, `kind` is required and every `interface` item must come before the `implement` items that touch the same file.
+   - `tier` is `fast` or `deep` and picks how much model does the item. Propose `fast` for routine work (a small change that follows a pattern already in the project, plain tests, docs) and `deep` for the hard parts (new design, tricky logic, concurrency, security-sensitive code, anything you are unsure about). Leave it out and the item counts as `deep`. The person can change tiers when they approve the plan; `agentflow plan check` refuses any other value.
+   - `layer` says which layer of the project's architecture the item belongs to. When the conventions include one with `rule: layer-order`, `layer` is required, must be one of the layers that convention lists, and the items must come in the order of those layers across the whole plan (an item of a later layer never stands before an item of an earlier layer; the convention may limit this to some paths with `scope`). Read the layers from the `conventions` tool. Without such a convention, leave `layer` out.
    - `role` is the role that does the item: a role of this workflow, or one a plugin of the project registered. `agentflow plan check` lists the valid roles when you get one wrong.
    - `files` lists every path the item changes (or `files: không có`). Always fill it in.
    - `done-when` is the exact command or observable fact that proves the item is done.

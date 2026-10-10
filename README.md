@@ -191,6 +191,8 @@ Chạy `init → task → plan check → advance/approve → commit (Gitleaks th
 ```
 uv run tools/smoke_backend.py                    # dev-core + dev-backend trên dự án mẫu (PostgreSQL trong Docker)
 uv run tools/smoke_backend.py --only-install-check   # cài lại hai plugin vào Claude Code và Antigravity rồi kiểm tra
+uv run tools/smoke_modes.py                           # tier, layer-order, role grant (MCP giả) và task small
+uv run tools/trial_cli.py --modes --only agy          # Antigravity thật: agent fast làm một mục, grant với MCP giả
 ```
 
 ### Quy ước và kho kiến thức

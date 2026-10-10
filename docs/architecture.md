@@ -123,6 +123,15 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 
 `agentflow guard` chặn: `git push` mọi dạng; mọi dạng `git commit` trong dự án đã có `.agentflow/` (chỉ cho commit qua `agentflow commit`; repo không có `.agentflow/` thì không chặn); `merge`/`commit`/`rebase`/`cherry-pick`/`revert`/`am` khi đang ở `main` hoặc `develop`; `reset --hard`; `clean` có cả `-f` và `-d`; `branch -D` (và `-d -f`); xóa tag; tạo tag hoặc ref dưới `agentflow/` (tag duyệt chỉ do `task approve` tạo); các lệnh của người (`decide`, `ext add`, `ext sync`, `config set`, `task seal`) khi agent tự chạy. Hiểu lệnh ghép (`&&`, `;`, `|`), `git -C`, `bash -c "..."` và việc `git switch` sang nhánh được bảo vệ ngay trong chuỗi lệnh. Đây là lưới an toàn cho agent, không phải sandbox: alias git, script hay biến môi trường vẫn có thể vượt qua.
 
+### Bảo vệ workspace
+
+Mọi ghi vào `.agentflow/` chỉ đi qua lệnh `agentflow` (và tool MCP của nó). Hook `pre-tool` chặn hai đường khác:
+
+- **Tool ghi file của CLI.** Claude Code: `Write`, `Edit`, `NotebookEdit` (và `MultiEdit` cho chắc); Antigravity: `write_to_file`, `replace_file_content`, `multi_replace_file_content`. Đường dẫn được đổi thành tuyệt đối, bỏ `.`/`..`/dấu phân cách thừa, theo symlink; trên Windows so tên không phân biệt hoa thường. Một thư mục `.agentflow` chỉ được bảo vệ khi trong nó có `config.yaml`, nên thư mục trùng tên (`.agentflow-notes`) không bị ảnh hưởng.
+- **Lệnh shell ghi vào `.agentflow/`, mức cố gắng tốt nhất.** Chuyển hướng `>`, `>>`, `>|`, `&>`, `2>`; `tee`, `cp`/`copy` (chỉ đích), `mv`, `rm`, `touch`, `truncate`, `mkdir`, `sed -i`, `dd of=`; `Set-Content`, `Add-Content`, `Out-File`, `Clear-Content`, `New-Item`, `Remove-Item`, `Copy-Item`, `Move-Item` và bí danh PowerShell. Lệnh ghép, `cd` trước đó và `bash -c "..."` được hiểu. Thân heredoc được bỏ qua (đó là dữ liệu cho lệnh đọc nó), nên `agentflow report ... <<'EOF'` có dấu `>` trong nội dung không bị chặn nhầm. Đọc `.agentflow/` luôn được phép.
+
+Đây là lưới an toàn, **không phải sandbox**. Không bị chặn: `python -c`/`node -e` và script (`bash run.sh`), alias, biến môi trường, hay một chương trình khác tự ghi file. Muốn chặn cứng cần sandbox của hệ điều hành hoặc quyền `deny` của CLI.
+
 ### Kế hoạch, gate và tag duyệt
 
 - Mỗi mục kế hoạch là một khối `### C1 - tiêu đề` kèm `role:`, `files:`, `done-when:`, `docs:` (xem README). `plan check` đòi mã duy nhất, role thuộc bộ role hợp lệ (role của workflow cộng role extension đăng ký), `done-when` không rỗng, `docs` là link hoặc `không có — <lý do>`.
@@ -135,7 +144,7 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 - **Trivy** (`aquasec/trivy:0.75.0`, `fs --scanners vuln`, volume cache `agentflow-trivy-cache` cho DB): chặn khi `HIGH`/`CRITICAL` **đã có bản vá** (`FixedVersion`).
 - **Gitleaks** (`v8.24.0`): quét các commit của task (`base..HEAD`); bất kỳ phát hiện nào cũng chặn.
 - Gate `scans-clean` gắn vào bước `security`: `advance --result pass` bị từ chối nếu thiếu kết quả, kết quả cũ (HEAD đã đổi) hoặc còn phát hiện chặn chưa được bỏ qua.
-- Báo nhầm chỉ được bỏ qua bằng file trong `decisions/` do `agentflow decide --suppress` tạo; lệnh này chỉ người chạy được (hook từ chối khi agent tự chạy). Agent không có đường nào hạ mức. Giới hạn: agent có công cụ ghi file vẫn *về kỹ thuật* tạo được file trong `decisions/`; prompt cấm việc đó nhưng hook chưa chặn.
+- Báo nhầm chỉ được bỏ qua bằng file trong `decisions/` do `agentflow decide --suppress` tạo; lệnh này chỉ người chạy được (hook từ chối khi agent tự chạy). Agent không có đường nào hạ mức. Hook chặn mọi tool ghi file vào `.agentflow/` (xem mục "Bảo vệ workspace"), nên agent không tự tạo được file trong `decisions/` bằng tool của CLI.
 - Cấu hình bộ rule Semgrep bằng khóa `scan.semgrep.rulesets` (mặc định `p/default`).
 
 - Hook Stop chỉ nhắc khi bước đang `in_progress` và đã có báo cáo của bước ghi sau lúc bước bắt đầu.

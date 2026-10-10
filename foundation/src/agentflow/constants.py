@@ -108,6 +108,27 @@ class ExitCode(IntEnum):
     KNOWLEDGE_NOT_FOUND = 32
 
 
+class ToolName(StrEnum):
+    """The MCP tools agentflow offers an agent. Nothing that is a person's call (approve, cancel, seal, decide,
+    extensions, settings, pushing knowledge, confirming conventions) is on this list."""
+
+    STATUS = "status"
+    NEXT_STEP = "next_step"
+    PLAN_CHECK = "plan_check"
+    REPORT_WRITE = "report_write"
+    PROJECT_WRITE = "project_write"
+    SCAN_SUMMARY = "scan_summary"
+    KNOWLEDGE_SEARCH = "knowledge_search"
+    KNOWLEDGE_READ = "knowledge_read"
+
+
+MCP_SERVER_NAME = "agentflow"
+# The tools that only read the workspace (the rest write a report or a project document).
+READ_ONLY_TOOLS = frozenset(
+    {ToolName.STATUS, ToolName.NEXT_STEP, ToolName.PLAN_CHECK, ToolName.SCAN_SUMMARY, ToolName.KNOWLEDGE_SEARCH, ToolName.KNOWLEDGE_READ}
+)
+
+
 class ProjectSection(StrEnum):
     """The project documents a scout writes (``.agentflow/project/<section>.md``)."""
 
@@ -233,11 +254,16 @@ class Command(StrEnum):
     COMMIT = "commit"
     GUARD = "guard"
     HOOK = "hook"
+    MCP = "mcp"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
     EXT = "ext"
     CONFIG = "config"
+
+
+class McpCommand(StrEnum):
+    SERVE = "serve"
 
 
 class WorkflowCommand(StrEnum):

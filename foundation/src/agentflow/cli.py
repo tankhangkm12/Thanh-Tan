@@ -10,6 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from agentflow.services import WorkspaceServices
+from agentflow.constants import McpCommand
 from agentflow.constants import (
     CONTAINER_TOOLS,
     ENCODING,
@@ -173,6 +174,10 @@ def build_parser() -> argparse.ArgumentParser:
     commit.add_argument(ITEM_OPTION, help="plan item (C1, ...) this commit belongs to")
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
+
+    mcp = commands.add_parser(Command.MCP, help="the MCP server that gives agents the agentflow tools")
+    mcp_commands = mcp.add_subparsers(dest="mcp_command", metavar="<mcp command>", required=True)
+    mcp_commands.add_parser(McpCommand.SERVE, help="serve the tools over stdio (started by Claude Code or Antigravity)")
 
     hook = commands.add_parser(Command.HOOK, help="answer a Claude Code or Antigravity hook (JSON on stdin)")
     hook.add_argument("event", type=HookEvent, choices=list(HookEvent))
@@ -517,6 +522,14 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_mcp(args: argparse.Namespace) -> ExitCode:
+    # argparse requires an mcp subcommand, and serve is the only one so far.
+    from agentflow.mcp_server import serve  # imported here: hooks start often and must stay fast
+
+    serve()
+    return ExitCode.OK
+
+
 def cmd_hook(args: argparse.Namespace) -> ExitCode:
     # Hooks must not break the agent: report problems on stderr but always exit 0.
     stdin_text = sys.stdin.read()
@@ -547,6 +560,7 @@ HANDLERS: dict[str, Handler] = {
     Command.REPORT: cmd_report,
     Command.COMMIT: cmd_commit,
     Command.GUARD: cmd_guard,
+    Command.MCP: cmd_mcp,
 }
 
 

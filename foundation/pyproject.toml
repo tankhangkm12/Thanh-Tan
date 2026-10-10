@@ -5,7 +5,7 @@ description = "Shared, domain-agnostic engine for the plugin families in this re
 authors = [
     { name = "tankhangkm12" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = []
 
 [project.scripts]

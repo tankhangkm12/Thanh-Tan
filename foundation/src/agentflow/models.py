@@ -6,6 +6,7 @@ they only map plain JSON/YAML values onto the dataclasses.
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 from agentflow.constants import (
@@ -16,6 +17,7 @@ from agentflow.constants import (
     GuardDecision,
     GuardRule,
     HistoryEvent,
+    ReplyKind,
     StateKey,
     StepStatus,
     TaskStatus,
@@ -269,6 +271,23 @@ class ScanResult:
 class CommitResult:
     sha: str
     message: str
+
+
+@dataclass(frozen=True)
+class HookInput:
+    """What a hook needs from a CLI's payload, in one shape for every CLI."""
+
+    cwd: Path | None = None
+    command: str | None = None
+    # Claude: this Stop hook already ran this turn. Antigravity: 0-based model invocation number.
+    stop_hook_active: bool = False
+    invocation_num: int | None = None
+
+
+@dataclass(frozen=True)
+class HookReply:
+    kind: ReplyKind = ReplyKind.NONE
+    text: str = ""
 
 
 @dataclass(frozen=True)

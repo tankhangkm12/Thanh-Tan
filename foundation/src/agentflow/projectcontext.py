@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from agentflow.constants import CheckKind, GateKind, PlanRuleKind
+from agentflow.conventions import Convention
 from agentflow.convention_sources import load_effective_conventions, semgrep_rule_files
-from agentflow.plan_rules import ItemOrderRule
+from agentflow.plan_rules import ItemOrderRule, LayerOrderRule
 from agentflow.ext_rules import ExtensionRules
 from agentflow.extensions import load_registered
 from agentflow.interfaces import PlanRule, PlanWideRule
@@ -47,16 +48,21 @@ class ProjectContext:
     rules: ExtensionRules | None = None
 
 
+_PLAN_RULES = frozenset({PlanRuleKind.ITEM_ORDER, PlanRuleKind.LAYER_ORDER})
+
+
+def _plan_rule(convention: Convention) -> PlanWideRule:
+    if convention.rule == PlanRuleKind.LAYER_ORDER:
+        return LayerOrderRule(convention.code, convention.layer_names, convention.scope_globs)
+    return ItemOrderRule(convention.code)
+
+
 def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectContext:
     paths = WorkspacePaths(workspace_dir.parent)
     roles = {step.role for step in workflow.steps}
     registered = load_registered(paths)
     effective = load_effective_conventions(workspace_dir)
-    wide = tuple(
-        ItemOrderRule(item.convention.code)
-        for item in effective.checked_by(CheckKind.PLAN)
-        if item.convention.rule == PlanRuleKind.ITEM_ORDER
-    )
+    wide = tuple(_plan_rule(item.convention) for item in effective.checked_by(CheckKind.PLAN) if item.convention.rule in _PLAN_RULES)
     custom, custom_problems = semgrep_rule_files(workspace_dir, effective)
     from_conventions = {
         "plan_wide_rules": wide,

@@ -172,6 +172,8 @@ def build_parser() -> argparse.ArgumentParser:
     decide.add_argument("--text", help="the convention the answer sets, in one line (with --answer)")
     decide.add_argument("--check", choices=[str(kind) for kind in CheckKind], help="how it is checked (with --answer)")
     decide.add_argument("--rule", help="item-order for plan, a rule file in knowledge/semgrep/ for semgrep (with --answer)")
+    decide.add_argument("--layers", help="layer-order: the layers from first to last, comma separated (with --answer)")
+    decide.add_argument("--scope", help="layer-order: path globs that limit the rule, comma separated; none means the whole plan (with --answer)")
     decide.add_argument("--overrides", help="the code of a lower-priority convention this one replaces (with --answer)")
     decide.add_argument("--global", dest="to_store", action="store_true", help="also add it to your personal knowledge store (with --answer)")
 
@@ -538,12 +540,13 @@ def _decide_answer(opened: _Opened, args: argparse.Namespace) -> ExitCode:
         raise AgentflowError(f"--global needs your knowledge store: run `agentflow knowledge init` first ({store})", ExitCode.INVALID_INPUT)
     code = next_code(opened.paths.dir)
     path = write_answer(
-        opened.paths.dir, scope, args.answer, code, args.text, CheckKind(args.check), args.rule, args.overrides, utc_now()
+        opened.paths.dir, scope, args.answer, code, args.text, CheckKind(args.check), args.rule, args.overrides, utc_now(),
+        args.layers, args.scope,
     )
     print(f"decision recorded: {path} ({code}, from {where})")
     if args.to_store:
         title = f"{args.answer} ({scope})"
-        kept = add_personal_convention(store, title, args.check, args.rule, args.text.strip(), f"answer to {args.answer} of {scope}")
+        kept = add_personal_convention(store, title, args.check, args.rule, args.text.strip(), f"answer to {args.answer} of {scope}", args.layers, args.scope)
         print(f"added to your knowledge store: {kept}")
     return ExitCode.OK
 

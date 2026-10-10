@@ -44,6 +44,9 @@ def reference_problems(workflow: Workflow) -> list[str]:
     counts = Counter(step.id for step in workflow.steps)
     problems += [f"duplicate step id '{step_id}'" for step_id, n in counts.items() if n > 1]
 
+    step_roles = {step.role for step in workflow.steps}
+    problems += [f"tiered role '{role}' is not the role of any step" for role in workflow.tiered_roles if role not in step_roles]
+
     position = {step.id: index for index, step in enumerate(workflow.steps)}
     for index, step in enumerate(workflow.steps):
         if step.on_fail is None:

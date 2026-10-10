@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
+from agentflow.assign import WorkflowAgentNames, assignment_lines
 from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
 from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand
@@ -181,6 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
     check = plan_commands.add_parser(PlanCommand.CHECK, help="every item needs a code, a valid role, done-when and docs")
     check.add_argument(FILE_OPTION, type=Path, help="check this Markdown file instead of the task's plan report")
+    plan_commands.add_parser(PlanCommand.ASSIGN, help="which agent takes each plan item: its role, and its tier where the role has tiers")
 
     report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
     report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
@@ -570,9 +572,20 @@ def cmd_decide(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def _plan_assign(opened: _Opened) -> ExitCode:
+    items = _plan_items(opened)
+    if items is None:
+        raise AgentflowError("no plan report yet: nothing to assign", ExitCode.PLAN_INVALID)
+    names = WorkflowAgentNames(opened.workflow.tiered_roles)
+    for line in assignment_lines(list(items.values()), names):
+        print(line)
+    return ExitCode.OK
+
+
 def cmd_plan(args: argparse.Namespace) -> ExitCode:
-    # argparse requires a plan subcommand, and check is the only one so far.
     opened = _open_workspace()
+    if args.plan_command == PlanCommand.ASSIGN:
+        return _plan_assign(opened)
     project = load_project_context(opened.paths.dir, opened.workflow)
     if args.file is not None:
         problems = plan_problems(args.file.read_text(encoding=ENCODING), project)

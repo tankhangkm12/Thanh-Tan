@@ -507,6 +507,7 @@ class WorkflowKey(StrEnum):
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
     GATES = "gates"
+    TIERED_ROLES = "tiered_roles"
 
 
 class GateKind(StrEnum):
@@ -519,6 +520,7 @@ class GateKind(StrEnum):
 
 class PlanCommand(StrEnum):
     CHECK = "check"
+    ASSIGN = "assign"
 
 
 class ExtCommand(StrEnum):
@@ -596,6 +598,8 @@ class PlanTier(StrEnum):
 
 
 DEFAULT_PLAN_TIER = PlanTier.DEEP
+# An agent of a tiered role is named <role>-<tier>.
+AGENT_NAME_SEPARATOR = "-"
 LIST_SEPARATOR = ","
 
 PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"

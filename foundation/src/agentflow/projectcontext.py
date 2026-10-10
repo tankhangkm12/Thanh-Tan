@@ -53,7 +53,7 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
         if item.convention.rule == PlanRuleKind.ITEM_ORDER
     )
     if not registered:
-        return ProjectContext(RoleSet(frozenset(roles)), plan_wide_rules=wide, require_files=bool(wide))
+        return ProjectContext(RoleSet(frozenset(roles)), plan_wide_rules=wide)
     settings = load_config(paths).settings
     extensions = [item.extension for item in registered]
     roles |= {role for extension in extensions for role in extension.role_ids}
@@ -65,7 +65,7 @@ def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectCont
     return ProjectContext(
         roles=RoleSet(frozenset(roles)),
         plan_rules=(rules,),
-        require_files=rules.requires_files or bool(wide),
+        require_files=rules.requires_files,
         plan_wide_rules=wide,
         scan_tools=tuple(tool for extension in extensions for tool in extension.scan_tools),
         extra_gates=tuple(gate for extension in extensions for gate in extension.gates),

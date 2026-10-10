@@ -48,6 +48,7 @@ SHELL_PWD_ENV = "PWD"
 USER_DIR_ENV = "AGENTFLOW_HOME"
 USER_DIR_NAME = ".agentflow"
 ACTIVE_PROJECT_FILE = "active-project.txt"
+ANSWER_OPTION = "--answer"
 USER_CONFIG_FILE = "user.yaml"
 DEFAULT_KNOWLEDGE_DIR_NAME = "knowledge"
 # When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).

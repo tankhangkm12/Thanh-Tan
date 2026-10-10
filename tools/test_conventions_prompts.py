@@ -60,7 +60,7 @@ def test_the_planner_proposes_a_tier_and_a_layer_for_every_item():
 
 def test_the_continue_skill_hands_each_item_to_the_agent_plan_assign_names():
     text = (CORE / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
-    for needle in ("agentflow plan assign", "implementer-fast", "implementer-deep", "no tier", "plugins add roles of their own"):
+    for needle in ("agentflow plan assign --cli claude", "--cli antigravity", "project-", "agentflow role grant", "implementer-fast", "implementer-deep", "no tier", "plugins add roles of their own"):
         assert needle in text, needle
 
 

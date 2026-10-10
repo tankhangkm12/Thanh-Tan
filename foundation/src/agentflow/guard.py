@@ -72,6 +72,7 @@ _PERSON_ONLY = frozenset(
     {
         ("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal"), ("project", "confirm"),
         ("knowledge", "init"), ("knowledge", "pull"), ("knowledge", "push"),
+        ("role", "grant"), ("role", "revoke"), ("role", "sync"),
     }  # fmt: skip
 )
 _SWITCH = "switch"
@@ -107,8 +108,8 @@ REASONS = {
 }
 
 REASONS[GuardRule.WORKSPACE_WRITE] = (
-    "files under .agentflow/ are written by agentflow only: use the `agentflow` commands "
-    "(or its MCP tools), never edit or write there by hand"
+    "files under .agentflow/ (and the project-* agents in .claude/agents/ that `agentflow role` generates) are written by "
+    "agentflow only: use the `agentflow` commands (or its MCP tools), never edit or write there by hand"
 )
 
 ALLOW = GuardVerdict(GuardDecision.ALLOW)

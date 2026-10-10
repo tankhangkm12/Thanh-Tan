@@ -96,15 +96,16 @@ def git_exclude_file(root: Path) -> Path:
     return path if path.is_absolute() else root / path
 
 
-def ensure_excluded(exclude_file: Path) -> bool:
-    """Add the workspace entry to the exclude file; return True if it was missing."""
+def ensure_excluded(exclude_file: Path, entry: str = EXCLUDE_ENTRY) -> bool:
+    """Add ``entry`` (by default the workspace) to the exclude file; return True if it was missing."""
+    equivalents = EXCLUDE_EQUIVALENTS if entry == EXCLUDE_ENTRY else frozenset({entry, _SLASH + entry})
     existing = exclude_file.read_bytes().decode(ENCODING, errors="replace") if exclude_file.exists() else ""
-    if any(line.strip() in EXCLUDE_EQUIVALENTS for line in existing.splitlines()):
+    if any(line.strip() in equivalents for line in existing.splitlines()):
         return False
     exclude_file.parent.mkdir(parents=True, exist_ok=True)
     separator = "" if existing == "" or existing.endswith("\n") else "\n"
     with exclude_file.open("ab") as handle:
-        handle.write(f"{separator}{EXCLUDE_ENTRY}\n".encode(ENCODING))
+        handle.write(f"{separator}{entry}\n".encode(ENCODING))
     return True
 
 

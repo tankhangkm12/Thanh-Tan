@@ -232,6 +232,26 @@ Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`.
 
 Size được ghi vào `state.json` (trường `size`), `STATE.md`, `agentflow status` và `summary.md`. Kế hoạch dài hơn 3 mục thì chia thành task khác hoặc bắt đầu lại bằng `normal`. Nghiệp vụ nằm trong `workflow.yaml` của dev-core (mục `sizes`), không nằm trong foundation: xem [architecture.md](docs/architecture.md#foundation--nhóm-hợp-đồng-workflow).
 
+### Cấp tool theo dự án cho role
+
+Mặc định mỗi role chỉ có tool đã ghi trong agent của plugin. Một dự án có thể cho role dùng thêm tool MCP của riêng nó (ví dụ MCP của hệ thống ticket hay cơ sở dữ liệu) mà **không sửa plugin**. Đây là việc của người, agent không chạy được (guard chặn):
+
+```
+agentflow role grant implementer mcp__tracker__*          # cả server, hoặc một tool: mcp__tracker__create_issue
+agentflow role grant reviewer mcp__tracker__get_issue     # role chỉ đọc: chỉ tool đọc, đúng tên
+agentflow role revoke implementer mcp__tracker__*
+agentflow role list                                       # grant, agent đang mang chúng, trạng thái current/stale/missing
+agentflow role sync                                       # sinh lại sau khi cập nhật plugin
+```
+
+Tên tool là tên MCP đầy đủ như Claude Code đặt: `mcp__<server>__<tool>` (server của plugin là `mcp__plugin_<plugin>_<server>__<tool>`); `mcp__<server>` hoặc `mcp__<server>__*` là cả server.
+
+**Role chỉ đọc** (`orchestrator`, `planner`, `security`, `reviewer`, `scout`, khai báo ở `read_only_roles` trong `workflow.yaml`) chỉ được cấp **tool đọc, đúng tên**: không dùng `*` hay tên server, và tên tool phải bắt đầu bằng `get`, `list`, `read`, `search`, `query`, `find`, `describe`, `view` hoặc `status`; tên khác (`write_…`, `create_…`, `update_…`, `getaway`…) bị từ chối. Đây là kiểm tra **theo tên**: agentflow không hỏi được server MCP khác xem tool làm gì, nên hãy tự xem tool đọc trước khi cấp.
+
+**Claude Code.** Tài liệu cho thấy `tools` của agent plugin cố định, `mcpServers` bị bỏ qua với agent plugin, và agent trong `.claude/agents/` của dự án được đọc thêm. Vì vậy `role grant` ghi vào `.agentflow/config.yaml` rồi sinh, cho từng agent của role, một bản sao cấp dự án `.claude/agents/project-<agent>.md` (ví dụ `project-implementer-fast.md`): cùng prompt, cùng model, `tools` được nối thêm tool đã cấp, kèm dòng ghi sha256 của file nguồn. Các file này chỉ ở local: `.claude/agents/project-*.md` được thêm vào `.git/info/exclude` (không sửa `.gitignore`), và hook chặn agent ghi vào chúng. Skill `continue` chạy `agentflow plan assign --cli claude`, lệnh này trả tên `project-…` khi role có grant. Sau khi cập nhật plugin, `agentflow role list` báo `stale` và `agentflow role sync` sinh lại. Muốn bỏ hẳn: `role revoke` (hết grant thì các file bị xóa; chỉ file do agentflow sinh mới bị xóa).
+
+**Antigravity.** Role vốn thấy mọi server MCP đã cài ([docs/mcp-notes.md](docs/mcp-notes.md)), nên `role grant` chỉ **ghi nhận** để cấu hình hai CLI đồng bộ; không sinh file và `plan assign --cli antigravity` luôn trả agent của plugin. Luật dành cho role chỉ đọc vẫn áp dụng khi ghi nhận.
+
 ### Tier và thứ tự lớp
 
 **Tier.** Mỗi mục kế hoạch có thể ghi `tier: fast` hoặc `tier: deep`; thiếu thì là `deep`. Planner đề xuất, bạn sửa trực tiếp trong báo cáo plan khi duyệt (hoặc nhờ planner sửa), và `agentflow plan check` từ chối giá trị khác. Skill `continue` chạy `agentflow plan assign` (in `mã role tier agent` cho từng mục) rồi giao mục `fast` cho `implementer-fast`, mục `deep` cho `implementer-deep`; role không chia tier (như `db-engineer` của dev-backend) luôn dùng một agent duy nhất, và agent đó đặt ở mức mạnh nhất.

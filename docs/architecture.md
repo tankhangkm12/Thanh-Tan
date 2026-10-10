@@ -43,6 +43,8 @@ Mỗi nhóm khai báo quy trình của mình trong một file `workflow.yaml` đ
 | `steps[].requires_approval` | Bước cần người duyệt (mặc định `false`) |
 | `tiered_roles` | Role có một agent cho mỗi tier của mục kế hoạch (`<role>-fast`, `<role>-deep`); role khác chỉ có một agent. Tùy chọn; mỗi role phải là role của một bước |
 | `sizes` | Cỡ task, tùy chọn: `default` và `profiles.<tên>`. Mỗi profile có thể có `skip_approval` (các bước không cần duyệt với cỡ này; phải là bước vốn cần duyệt), `max_plan_items` (số mục tối đa của kế hoạch) và `scans` (bước → id các tool scan được chạy; bước không liệt kê chạy hết). Foundation chỉ đọc các tham số này, không biết cỡ nào ứng với nghiệp vụ gì |
+| `read_only_roles` | Role chỉ đọc: `role grant` chỉ cấp cho chúng tool đọc, đúng tên. Tùy chọn |
+| `agent_dirs` | CLI → thư mục (tính từ file workflow) chứa file agent đã sinh, để `role grant` chép sang dự án. Tùy chọn |
 | `max_rounds` | Số lần một task được quay lại làm lại (cả workflow) |
 | `steps[].on_fail` | Bước đứng trước mà task quay về khi bước này fail |
 | `steps[].gates` | Gate bước phải qua trước khi `task advance --result pass` được nhận: `plan-valid` (kế hoạch qua `plan check`, kể cả quy ước `item-order` và mọi câu hỏi "Chưa có quy ước" đã được trả lời), `scans-clean` (kết quả scan không còn mục chặn), `conventions-reviewed` (báo cáo review có một dòng cho từng quy ước `check: review`) |
@@ -114,6 +116,8 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow config get <khóa>` / `config set <khóa> <giá trị>` / `config check` | Đọc, đặt (việc của người), kiểm cài đặt dự án theo schema của các extension | Chưa đặt (`SETTINGS_INVALID`) |
 | `agentflow plan check [--file f]` | Kiểm kế hoạch: mã `C<n>`, role hợp lệ, `done-when`, `docs` | Có mục sai (mã `PLAN_INVALID`) |
 | `agentflow plan assign` | In `mã role tier agent` cho từng mục của kế hoạch đang dùng (tier thiếu là `deep`; agent là `<role>-<tier>` nếu role nằm trong `tiered_roles`, ngược lại là `<role>`) | Chưa có báo cáo plan |
+| `agentflow role grant <role> <tool>` / `revoke` / `sync` | Việc của người: cấp (hoặc thu hồi) cho role một tool MCP trong dự án này, ghi vào `role_grants` của `config.yaml`; với Claude Code sinh `.claude/agents/project-<agent>.md` mang thêm tool đó (`sync` sinh lại theo plugin đang cài) | Role không có, tool không phải tên/mẫu MCP, role chỉ đọc bị cấp tool không đọc hoặc mẫu (`ROLE_GRANT_REFUSED`), không thấy file agent của plugin, đã cấp rồi / chưa cấp |
+| `agentflow role list` | Grant của dự án, agent đang mang chúng và trạng thái (`current`, `stale`, `missing`), ghi chú Antigravity | |
 | `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
 | `agentflow commit "<nội dung>" [--item C1]` | Scan secret rồi commit với tiền tố `T-001: `; `--item` ghi trailer `Plan-Item: C1` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy, mục không có trong plan |
 | `agentflow project confirm <mã...>\|--all` | Việc của người: đánh dấu quy ước `confirmed` trong `project/conventions.md` | Chưa có quy ước, mã không có, file có lỗi |
@@ -142,6 +146,12 @@ Mọi ghi vào `.agentflow/` chỉ đi qua lệnh `agentflow` (và tool MCP củ
 - **Lệnh shell ghi vào `.agentflow/`, mức cố gắng tốt nhất.** Chuyển hướng `>`, `>>`, `>|`, `&>`, `2>`; `tee`, `cp`/`copy` (chỉ đích), `mv`, `rm`, `touch`, `truncate`, `mkdir`, `sed -i`, `dd of=`; `Set-Content`, `Add-Content`, `Out-File`, `Clear-Content`, `New-Item`, `Remove-Item`, `Copy-Item`, `Move-Item` và bí danh PowerShell. Lệnh ghép, `cd` trước đó và `bash -c "..."` được hiểu. Thân heredoc được bỏ qua (đó là dữ liệu cho lệnh đọc nó), nên `agentflow report ... <<'EOF'` có dấu `>` trong nội dung không bị chặn nhầm. Đọc `.agentflow/` luôn được phép.
 
 Đây là lưới an toàn, **không phải sandbox**. Không bị chặn: `python -c`/`node -e` và script (`bash run.sh`), alias, biến môi trường, hay một chương trình khác tự ghi file. Muốn chặn cứng cần sandbox của hệ điều hành hoặc quyền `deny` của CLI.
+
+### Cấp tool theo dự án
+
+`config.yaml` có thêm `role_grants` (role → danh sách tên hoặc mẫu tool MCP), chỉ ghi qua `agentflow role grant|revoke` (việc của người, guard từ chối khi agent chạy). `agentflow` kiểm role có tồn tại (role của workflow hoặc extension), tên phải là `mcp__<server>`, `mcp__<server>__*` hoặc `mcp__<server>__<tool>`, và role trong `read_only_roles` chỉ nhận tool có tên chính xác bắt đầu bằng một động từ đọc (`ReadVerb`: get, list, read, search, query, find, describe, view, status).
+
+Claude Code (theo tài liệu sub-agents và plugins-reference): `tools` của agent plugin là allowlist cố định, `mcpServers`/`hooks`/`permissionMode` bị bỏ qua với agent plugin, còn agent ở `.claude/agents/` của dự án được nạp. Nên với mỗi agent của role (`<role>` hoặc `<role>-fast`/`<role>-deep` nếu role nằm trong `tiered_roles`), agentflow chép file agent của plugin (thư mục `agent_dirs.claude` cạnh file workflow hoặc cạnh `extension.yaml` đã đăng ký) thành `.claude/agents/project-<agent>.md`: đổi `name`, nối thêm tool vào `tools`, thêm dòng `Generated by agentflow role sync from <file> (sha256 ...)`. `.claude/agents/project-*.md` nằm trong `.git/info/exclude`. File chỉ bị xóa khi có dòng đánh dấu đó. Hook `pre-tool` chặn tool ghi file và lệnh shell ghi vào các file này (khi dự án có `.agentflow/`). `plan assign --cli claude` dùng tên `project-…` nếu file tồn tại. Antigravity không cần bản sao vì mọi agent thấy mọi MCP đã cài; grant chỉ được ghi nhận.
 
 ### Tool MCP
 

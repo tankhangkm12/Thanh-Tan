@@ -12,6 +12,8 @@ Plugin lõi của nhóm **software-dev**. Giữ những gì mọi plugin `dev-*`
 | Server MCP | `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity) | Chạy `agentflow mcp serve`: 9 tool cho agent (xem [architecture](../../../docs/architecture.md#tool-mcp)) |
 | Hook | `hooks/hooks.json` (Claude Code), `hooks.json` (Antigravity) | Chặn lệnh git nguy hiểm, `git commit` trực tiếp và mọi ghi vào `.agentflow/` (tool ghi file; lệnh shell ở mức cố gắng tốt nhất), nạp tóm tắt task đầu phiên, nhắc cập nhật trạng thái khi dừng (chỉ khi bước đang chạy và đã có báo cáo mới) |
 
+`workflow.yaml` còn khai báo `read_only_roles` (đồng bộ với `READ_ONLY_ROLES` của `build.py`, một test giữ hai danh sách bằng nhau) và `agent_dirs` (`claude/agents`, `agents`) để `agentflow role grant` biết chép agent nào sang `.claude/agents/` của dự án. Xem [Cấp tool theo dự án](../../../README.md#cấp-tool-theo-dự-án-cho-role).
+
 Skill gọi lệnh `agentflow` và không bao giờ sửa tay file trong `.agentflow/`. Hook chỉ hoạt động trong dự án đã có `.agentflow/`.
 
 Trong Claude Code, tên đầy đủ của skill là `/dev-core:setup`, `/dev-core:start`, `/dev-core:continue`, `/dev-core:status`, `/dev-core:approve`.

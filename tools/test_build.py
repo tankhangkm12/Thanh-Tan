@@ -374,3 +374,13 @@ def test_the_workflow_names_the_tiered_role_and_every_tier_has_an_agent():
     for tier in ("fast", "deep"):
         assert (CORE_DIR / "claude" / "agents" / f"implementer-{tier}.md").is_file()
         assert (CORE_DIR / "agents" / f"implementer-{tier}.md").is_file()
+
+
+def test_the_workflow_read_only_roles_are_the_ones_build_keeps_from_editing():
+    workflow = yaml.safe_load((CORE_DIR / "workflow.yaml").read_text(encoding="utf-8"))
+    assert set(workflow["read_only_roles"]) == set(build.READ_ONLY_ROLES)
+
+
+def test_the_workflow_says_where_the_generated_agents_are():
+    workflow = yaml.safe_load((CORE_DIR / "workflow.yaml").read_text(encoding="utf-8"))
+    assert workflow["agent_dirs"] == {"claude": build.CLAUDE_AGENTS_DIR.as_posix(), "antigravity": build.ANTIGRAVITY_AGENTS_DIR.as_posix()}

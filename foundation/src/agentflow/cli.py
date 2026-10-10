@@ -9,10 +9,12 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
-from agentflow.assign import WorkflowAgentNames, assignment_lines
+from agentflow.assign import ProjectAgentNames, WorkflowAgentNames, assignment_lines
 from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
-from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand
+from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand, RoleCommand
+from agentflow.interfaces import AgentNames
+from agentflow.roles import RoleGrants
 from agentflow.constants import ANSWER_OPTION, DECISION_SCOPE_PROJECT, CheckKind
 from agentflow.convention_sources import next_code, write_answer
 from agentflow.knowledge import add_personal_convention, init_store, pull_files, push_file
@@ -184,7 +186,19 @@ def build_parser() -> argparse.ArgumentParser:
     plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
     check = plan_commands.add_parser(PlanCommand.CHECK, help="every item needs a code, a valid role, done-when and docs")
     check.add_argument(FILE_OPTION, type=Path, help="check this Markdown file instead of the task's plan report")
-    plan_commands.add_parser(PlanCommand.ASSIGN, help="which agent takes each plan item: its role, and its tier where the role has tiers")
+    assign = plan_commands.add_parser(PlanCommand.ASSIGN, help="which agent takes each plan item: its role, and its tier where the role has tiers")
+    assign.add_argument(CLI_OPTION, type=CliKind, choices=list(CliKind), default=CliKind.CLAUDE, help="the CLI that will call the agents (default: claude)")
+
+    role = commands.add_parser(Command.ROLE, help="tools a person grants a role for this project")
+    role_commands = role.add_subparsers(dest="role_command", metavar="<role command>", required=True)
+    grant = role_commands.add_parser(RoleCommand.GRANT, help="for a person: let a role use an MCP tool (or a pattern such as mcp__server__*) in this project")
+    grant.add_argument("role")
+    grant.add_argument("tool", help="mcp__<server>, mcp__<server>__* or mcp__<server>__<tool>")
+    revoke = role_commands.add_parser(RoleCommand.REVOKE, help="for a person: take a granted tool away again")
+    revoke.add_argument("role")
+    revoke.add_argument("tool")
+    role_commands.add_parser(RoleCommand.LIST, help="the grants of this project and the agents that carry them")
+    role_commands.add_parser(RoleCommand.SYNC, help="for a person: write the project agents again from the grants and the installed plugins")
 
     report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
     report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
@@ -577,11 +591,13 @@ def cmd_decide(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
-def _plan_assign(opened: _Opened) -> ExitCode:
+def _plan_assign(opened: _Opened, args: argparse.Namespace) -> ExitCode:
     items = _plan_items(opened)
     if items is None:
         raise AgentflowError("no plan report yet: nothing to assign", ExitCode.PLAN_INVALID)
-    names = WorkflowAgentNames(opened.workflow.tiered_roles)
+    names: AgentNames = WorkflowAgentNames(opened.workflow.tiered_roles)
+    if args.cli is CliKind.CLAUDE:  # Antigravity agents already see every installed MCP server
+        names = ProjectAgentNames(names, RoleGrants(opened.paths, opened.workflow).project_agent_for)
     for line in assignment_lines(list(items.values()), names):
         print(line)
     return ExitCode.OK
@@ -590,7 +606,7 @@ def _plan_assign(opened: _Opened) -> ExitCode:
 def cmd_plan(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     if args.plan_command == PlanCommand.ASSIGN:
-        return _plan_assign(opened)
+        return _plan_assign(opened, args)
     project = load_project_context(opened.paths.dir, opened.workflow, opened.state.active_task())
     if args.file is not None:
         problems = plan_problems(args.file.read_text(encoding=ENCODING), project)
@@ -601,6 +617,24 @@ def cmd_plan(args: argparse.Namespace) -> ExitCode:
             print(f"- {problem}")
         raise AgentflowError(f"the plan has {len(problems)} problem(s)", ExitCode.PLAN_INVALID)
     print("plan ok")
+    return ExitCode.OK
+
+
+def cmd_role(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    grants = RoleGrants(opened.paths, opened.workflow)
+    match args.role_command:
+        case RoleCommand.GRANT:
+            lines = grants.grant(args.role, args.tool)
+            lines.insert(0, f"{args.role} may use {args.tool} in this project")
+        case RoleCommand.REVOKE:
+            lines = grants.revoke(args.role, args.tool)
+            lines.insert(0, f"{args.role} no longer has {args.tool}")
+        case RoleCommand.SYNC:
+            lines = grants.sync() or ["project agents are up to date"]
+        case _:
+            lines = grants.listing()
+    print("\n".join(lines))
     return ExitCode.OK
 
 
@@ -709,6 +743,7 @@ HANDLERS: dict[str, Handler] = {
     Command.TASK: cmd_task,
     Command.EXT: cmd_ext,
     Command.CONFIG: cmd_config,
+    Command.ROLE: cmd_role,
     Command.SCAN: cmd_scan,
     Command.DECIDE: cmd_decide,
     Command.PLAN: cmd_plan,

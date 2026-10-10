@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
+from agentflow.services import WorkspaceServices
 from agentflow.constants import (
     CONTAINER_TOOLS,
     ENCODING,
@@ -480,17 +481,9 @@ def cmd_plan(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     project = load_project_context(opened.paths.dir, opened.workflow)
     if args.file is not None:
-        text = args.file.read_text(encoding=ENCODING)
+        problems = plan_problems(args.file.read_text(encoding=ENCODING), project)
     else:
-        task = require_active_task(opened.state)
-        step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
-        if step is None:
-            raise AgentflowError("the workflow has no step that checks a plan", ExitCode.INVALID_INPUT)
-        path = plan_report_path(opened.paths.dir, task.id, step.id)
-        if not path.is_file():
-            raise AgentflowError(f"no plan report yet: {path}", ExitCode.PLAN_INVALID)
-        text = path.read_text(encoding=ENCODING)
-    problems = plan_problems(text, project)
+        problems = list(WorkspaceServices(opened.paths).plan_check().problems)
     if problems:
         for problem in problems:
             print(f"- {problem}")
@@ -501,9 +494,8 @@ def cmd_plan(args: argparse.Namespace) -> ExitCode:
 
 def cmd_report(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
-    task = require_active_task(opened.state)
-    path = write_report(opened.paths.dir, opened.workflow, task, args.step, sys.stdin.read())
-    print(f"report saved: {path}")
+    info = WorkspaceServices(opened.paths).write_report(args.step, sys.stdin.read())
+    print(f"report saved: {info.path}")
     return ExitCode.OK
 
 

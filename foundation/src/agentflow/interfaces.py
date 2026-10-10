@@ -8,15 +8,23 @@ from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-from agentflow.constants import HookEvent
+from agentflow.constants import HookEvent, ProjectSection
 from agentflow.models import (
     CommandResult,
     CommitInfo,
     HookInput,
     HookReply,
+    KnowledgeFile,
+    KnowledgeHit,
+    NextInfo,
+    PlanCheckInfo,
     ProbeResult,
+    ProjectWriteInfo,
+    ReportInfo,
     ScanResult,
+    ScanSummaryInfo,
     State,
+    StatusInfo,
     Workflow,
 )
 
@@ -164,6 +172,32 @@ class GateRunner(Protocol):
     """Checks a step's gates; each returned string is a reason the step may not pass yet."""
 
     def problems(self, task: Any, step: Any) -> Sequence[str]: ...
+
+
+@runtime_checkable
+class WorkspaceService(Protocol):
+    """What an agent may do with a workspace, whether it asks through the CLI or through MCP tools.
+
+    Every call reads the workspace afresh (a server outlives many task changes) and raises ``AgentflowError``
+    when a rule is broken. Nothing here approves, cancels, seals, decides, registers extensions or changes
+    settings: those stay with a person.
+    """
+
+    def status(self) -> StatusInfo: ...
+
+    def next_step(self) -> NextInfo: ...
+
+    def plan_check(self) -> PlanCheckInfo: ...
+
+    def write_report(self, step: str, content: str) -> ReportInfo: ...
+
+    def write_project(self, section: ProjectSection, content: str) -> ProjectWriteInfo: ...
+
+    def scan_summary(self) -> ScanSummaryInfo: ...
+
+    def knowledge_search(self, query: str, limit: int) -> Sequence[KnowledgeHit]: ...
+
+    def knowledge_read(self, file: str) -> KnowledgeFile: ...
 
 
 @runtime_checkable

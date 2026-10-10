@@ -328,6 +328,81 @@ class HookInput:
 
 
 @dataclass(frozen=True)
+class TaskInfo:
+    id: str
+    title: str
+    branch: str | None
+    status: str
+    current_step: str
+    step_status: str
+    loop_round: int
+    max_rounds: int
+
+
+@dataclass(frozen=True)
+class StatusInfo:
+    workspace: str
+    workflow: str
+    active_task: TaskInfo | None
+    next: str
+
+
+@dataclass(frozen=True)
+class NextInfo:
+    kind: str
+    description: str
+
+
+@dataclass(frozen=True)
+class PlanCheckInfo:
+    ok: bool
+    problems: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ReportInfo:
+    path: str
+    bytes: int
+
+
+@dataclass(frozen=True)
+class ProjectWriteInfo:
+    path: str
+    bytes: int
+    conventions: int = 0
+    open_questions: int = 0
+
+
+@dataclass(frozen=True)
+class ScanToolInfo:
+    tool: str
+    status: str
+    findings: int
+    blocking: int
+
+
+@dataclass(frozen=True)
+class ScanSummaryInfo:
+    task: str | None
+    tools: tuple[ScanToolInfo, ...] = ()
+    # Ids of blocking findings no person has suppressed.
+    blocking: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class KnowledgeHit:
+    file: str
+    line: int
+    text: str
+
+
+@dataclass(frozen=True)
+class KnowledgeFile:
+    file: str
+    content: str
+
+
+@dataclass(frozen=True)
 class HookReply:
     kind: ReplyKind = ReplyKind.NONE
     text: str = ""

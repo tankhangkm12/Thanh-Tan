@@ -17,7 +17,9 @@ CONFIG_FILE = "config.yaml"
 WORKFLOW_COPY_FILE = "workflow.yaml"
 DECISIONS_DIR = "decisions"
 TASKS_DIR = "tasks"
-WORKSPACE_SUBDIRS = (DECISIONS_DIR, TASKS_DIR, "project", "knowledge")
+PROJECT_DIR = "project"
+KNOWLEDGE_DIR = "knowledge"
+WORKSPACE_SUBDIRS = (DECISIONS_DIR, TASKS_DIR, PROJECT_DIR, KNOWLEDGE_DIR)
 # Per-task files: <workspace>/tasks/<task id>/reports/<step id>.md
 REPORTS_DIR = "reports"
 MARKDOWN_SUFFIX = ".md"
@@ -102,6 +104,25 @@ class ExitCode(IntEnum):
     EXTENSION_INVALID = 28
     SETTINGS_INVALID = 29
     REPORT_REFUSED = 30
+    PROJECT_WRITE_REFUSED = 31
+    KNOWLEDGE_NOT_FOUND = 32
+
+
+class ProjectSection(StrEnum):
+    """The project documents a scout writes (``.agentflow/project/<section>.md``)."""
+
+    PROFILE = "profile"
+    ARCHITECTURE = "architecture"
+    SOURCES = "sources"
+    CONVENTIONS = "conventions"
+
+
+# Limits for what the knowledge tools hand to a model.
+KNOWLEDGE_TEXT_SUFFIXES = frozenset({".md", ".yaml", ".yml", ".txt", ".json"})
+KNOWLEDGE_MAX_FILE_BYTES = 200_000
+KNOWLEDGE_SEARCH_DEFAULT_LIMIT = 10
+KNOWLEDGE_SEARCH_MAX_LIMIT = 50
+KNOWLEDGE_HIT_MAX_CHARS = 240
 
 
 class TaskType(StrEnum):

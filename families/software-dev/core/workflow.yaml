@@ -16,6 +16,7 @@ steps:
     name: Vào workspace và lập kế hoạch
     role: planner
     requires_approval: true
+    gates: [plan-valid]
 
   - id: implement
     name: Triển khai

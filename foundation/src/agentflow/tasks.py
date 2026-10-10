@@ -19,6 +19,7 @@ from agentflow.constants import (
     TASK_ID_PREFIX,
     TASKS_DIR,
     ExitCode,
+    StepStatus,
     TaskEvent,
     TaskStatus,
     TaskType,
@@ -26,7 +27,7 @@ from agentflow.constants import (
 from agentflow.engine import resume_target, start_task, transition
 from agentflow.errors import AgentflowError
 from agentflow.fsutil import write_text_atomic
-from agentflow.interfaces import GitClient, StateStore
+from agentflow.interfaces import GateRunner, GitClient, StateStore
 from agentflow.models import State, Task, Workflow
 from agentflow.render import NONE_TEXT, describe_step
 
@@ -113,9 +114,11 @@ def new_task(
     return task
 
 
-def advance_task(store: StateStore, workflow: Workflow, result: TaskEvent, clock: Clock) -> Task:
-    """Record that the active task's current step passed or failed."""
-    return _apply(store, workflow, result, clock)[1]
+def advance_task(
+    store: StateStore, workflow: Workflow, result: TaskEvent, clock: Clock, gates: GateRunner | None = None
+) -> Task:
+    """Record that the active task's current step passed or failed; a pass must clear the step's gates."""
+    return _apply(store, workflow, result, clock, gates)[1]
 
 
 def cancel_task(store: StateStore, workflow: Workflow, clock: Clock) -> Task:
@@ -184,11 +187,25 @@ def require_active_task(state: State) -> Task:
 # ----------------------------------------------------------------- helpers
 
 
-def _apply(store: StateStore, workflow: Workflow, event: TaskEvent, clock: Clock) -> tuple[Task, Task]:
+def _apply(
+    store: StateStore, workflow: Workflow, event: TaskEvent, clock: Clock, gates: GateRunner | None = None
+) -> tuple[Task, Task]:
     state = store.load()
     before = require_active_task(state)
+    if event is TaskEvent.PASS and gates is not None:
+        _require_gates(workflow, before, gates)
     after = transition(workflow, before, event, clock())
     tasks = tuple(after if task.id == before.id else task for task in state.tasks)
     active = after.id if after.status in IN_FLIGHT_TASK_STATUSES else None
     store.save(replace(state, active_task_id=active, tasks=tasks))
     return before, after
+
+
+def _require_gates(workflow: Workflow, task: Task, gates: GateRunner) -> None:
+    step = workflow.get_step(task.current_step)
+    if step is None or task.step_status is not StepStatus.IN_PROGRESS:
+        return  # `transition` reports these
+    problems = gates.problems(task, step)
+    if problems:
+        listing = "\n  - ".join(problems)
+        raise AgentflowError(f"step '{step.id}' cannot pass yet:\n  - {listing}", ExitCode.GATE_FAILED)

@@ -130,3 +130,10 @@ class PlanRule(Protocol):
     """An extra check on one plan item (supplied by an extension); returns problem messages."""
 
     def problems(self, item: Any) -> Sequence[str]: ...
+
+
+@runtime_checkable
+class GateRunner(Protocol):
+    """Checks a step's gates; each returned string is a reason the step may not pass yet."""
+
+    def problems(self, task: Any, step: Any) -> Sequence[str]: ...

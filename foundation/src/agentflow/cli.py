@@ -20,6 +20,8 @@ from agentflow.constants import (
     CliKind,
     Command,
     DriftStatus,
+    GateKind,
+    PlanCommand,
     ExitCode,
     HookEvent,
     SyncOutcome,
@@ -33,10 +35,12 @@ from agentflow.commit import commit_staged
 from agentflow.doctor import SystemToolProbe, run_doctor
 from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
+from agentflow.gates import GateContext, WorkspaceGates, plan_problems, plan_report_path
 from agentflow.git import GitBranchLookup, SubprocessGit
 from agentflow.guard import evaluate, parse_request, verdict_to_dict
 from agentflow.hook import handle_hook
 from agentflow.models import State, ToolCheck, Workflow
+from agentflow.projectcontext import load_project_context
 from agentflow.render import NONE_TEXT, describe_action, describe_step
 from agentflow.runner import SubprocessRunner
 from agentflow.scanner import ContainerGitleaksScanner
@@ -65,6 +69,7 @@ REASON_OPTION = "--reason"
 STEP_OPTION = "--step"
 SHORT_SHA_LENGTH = 9
 WORKFLOW_OPTION = "--workflow"
+FILE_OPTION = "--file"
 FORCE_OPTION = "--force"
 ERROR_PREFIX = "error: "
 WARNING_PREFIX = "warning: "
@@ -101,6 +106,11 @@ def build_parser() -> argparse.ArgumentParser:
     approve = task_commands.add_parser(TaskCommand.APPROVE, help="approve the step, or resume a blocked task")
     approve.add_argument(REASON_OPTION, help="why a blocked task is resumed (kept in decisions/)")
     task_commands.add_parser(TaskCommand.CANCEL, help="cancel the active task")
+
+    plan = commands.add_parser(Command.PLAN, help="check the plan of the active task")
+    plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
+    check = plan_commands.add_parser(PlanCommand.CHECK, help="every item needs a code, a valid role, done-when and docs")
+    check.add_argument(FILE_OPTION, type=Path, help="check this Markdown file instead of the task's plan report")
 
     report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
     report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
@@ -237,7 +247,7 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
             task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now)
             print(f"{task.id} created on branch {task.branch}")
         case TaskCommand.ADVANCE:
-            task = advance_task(store, opened.workflow, args.result, utc_now)
+            task = advance_task(store, opened.workflow, args.result, utc_now, _gates(opened))
             print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
         case TaskCommand.APPROVE:
             result = approve_task(store, opened.workflow, opened.paths.dir, utc_now, args.reason)
@@ -250,6 +260,35 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
             print(f"{task.id} cancelled")
     state = store.load()
     print(f"next: {describe_action(next_action(opened.workflow, state.active_task()))}")
+    return ExitCode.OK
+
+
+def _gates(opened: _Opened) -> WorkspaceGates:
+    project = load_project_context(opened.paths.dir, opened.workflow)
+    return WorkspaceGates(GateContext(opened.paths.dir, opened.workflow, project))
+
+
+def cmd_plan(args: argparse.Namespace) -> ExitCode:
+    # argparse requires a plan subcommand, and check is the only one so far.
+    opened = _open_workspace()
+    project = load_project_context(opened.paths.dir, opened.workflow)
+    if args.file is not None:
+        text = args.file.read_text(encoding=ENCODING)
+    else:
+        task = require_active_task(opened.state)
+        step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
+        if step is None:
+            raise AgentflowError("the workflow has no step that checks a plan", ExitCode.INVALID_INPUT)
+        path = plan_report_path(opened.paths.dir, task.id, step.id)
+        if not path.is_file():
+            raise AgentflowError(f"no plan report yet: {path}", ExitCode.PLAN_INVALID)
+        text = path.read_text(encoding=ENCODING)
+    problems = plan_problems(text, project)
+    if problems:
+        for problem in problems:
+            print(f"- {problem}")
+        raise AgentflowError(f"the plan has {len(problems)} problem(s)", ExitCode.PLAN_INVALID)
+    print("plan ok")
     return ExitCode.OK
 
 
@@ -296,6 +335,7 @@ HANDLERS: dict[str, Handler] = {
     Command.NEXT: cmd_next,
     Command.WORKFLOW: cmd_workflow,
     Command.TASK: cmd_task,
+    Command.PLAN: cmd_plan,
     Command.REPORT: cmd_report,
     Command.COMMIT: cmd_commit,
     Command.GUARD: cmd_guard,

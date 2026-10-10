@@ -203,6 +203,7 @@ class Command(StrEnum):
     COMMIT = "commit"
     GUARD = "guard"
     HOOK = "hook"
+    PLAN = "plan"
 
 
 class WorkflowCommand(StrEnum):
@@ -320,6 +321,18 @@ class WorkflowKey(StrEnum):
     ROLE = "role"
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
+    GATES = "gates"
+
+
+class GateKind(StrEnum):
+    """Checks a step must pass before ``task advance --result pass`` is accepted."""
+
+    PLAN_VALID = "plan-valid"
+    SCANS_CLEAN = "scans-clean"
+
+
+class PlanCommand(StrEnum):
+    CHECK = "check"
 
 
 class StateKey(StrEnum):

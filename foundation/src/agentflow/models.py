@@ -65,6 +65,10 @@ class Workflow:
     tiered_roles: tuple[str, ...] = ()
     sizes: tuple[SizeProfile, ...] = ()
     default_size: str | None = None
+    # Roles that only read: a project may grant them read-only tools and nothing else.
+    read_only_roles: tuple[str, ...] = ()
+    # CLI -> folder (relative to the workflow file) holding that CLI's generated agent files.
+    agent_dirs: Mapping[str, str] = field(default_factory=dict)
 
     def size_profile(self, size: str | None) -> SizeProfile | None:
         return next((profile for profile in self.sizes if profile.id == size), None) if size else None
@@ -91,6 +95,8 @@ def workflow_from_dict(data: Mapping[str, Any]) -> Workflow:
         tiered_roles=tuple(data.get(WorkflowKey.TIERED_ROLES, ())),
         sizes=tuple(_size_from_dict(name, item) for name, item in data.get(WorkflowKey.SIZES, {}).get(SizeKey.PROFILES, {}).items()),
         default_size=data.get(WorkflowKey.SIZES, {}).get(SizeKey.DEFAULT),
+        read_only_roles=tuple(data.get(WorkflowKey.READ_ONLY_ROLES, ())),
+        agent_dirs=dict(data.get(WorkflowKey.AGENT_DIRS, {})),
     )
 
 
@@ -240,6 +246,8 @@ class WorkspaceConfig:
     extensions: tuple[ExtensionRef, ...] = ()
     # Project settings that extensions read (``agentflow config get/set``), keyed by each extension's settings key.
     settings: Mapping[str, Any] = field(default_factory=dict)
+    # Tools a person granted a role for this project: role -> MCP tool names or patterns.
+    role_grants: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def config_from_dict(data: Mapping[str, Any]) -> WorkspaceConfig:
@@ -256,6 +264,7 @@ def config_from_dict(data: Mapping[str, Any]) -> WorkspaceConfig:
             for item in data.get(ConfigKey.EXTENSIONS, ())
         ),
         settings=data.get(ConfigKey.SETTINGS, {}),
+        role_grants={role: tuple(tools) for role, tools in data.get(ConfigKey.ROLE_GRANTS, {}).items()},
     )
 
 
@@ -280,6 +289,8 @@ def config_to_dict(config: WorkspaceConfig) -> dict[str, Any]:
         ]
     if config.settings:
         data[str(ConfigKey.SETTINGS)] = config.settings
+    if config.role_grants:
+        data[str(ConfigKey.ROLE_GRANTS)] = {role: list(tools) for role, tools in config.role_grants.items()}
     return data
 
 

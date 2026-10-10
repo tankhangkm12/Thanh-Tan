@@ -189,6 +189,31 @@ class AgentNames(Protocol):
 
 
 @runtime_checkable
+class RoleGrantPolicy(Protocol):
+    """Decides whether a project may grant a role a tool; raises ``AgentflowError`` (``ROLE_GRANT_REFUSED``) when not."""
+
+    def check(self, role: str, tool: str) -> None: ...
+
+
+@runtime_checkable
+class AgentOverlay(Protocol):
+    """The project-level copies of a CLI's plugin agents that carry the tools granted to roles."""
+
+    def render(self, tools_by_agent: "Mapping[str, Sequence[str]]") -> "Mapping[str, str]":
+        """File name -> content of every project agent the granted tools call for (plugin agent name -> tools).
+        Raises when a plugin agent's file is missing."""
+        ...
+
+    def write(self, files: "Mapping[str, str]") -> Sequence[str]:
+        """Write ``files`` and remove the project agents agentflow generated earlier that are no longer wanted; return changes."""
+        ...
+
+    def state(self, files: "Mapping[str, str]") -> "Mapping[str, str]":
+        """File name -> ``current``, ``stale`` (differs from what the grants and sources call for) or ``missing``."""
+        ...
+
+
+@runtime_checkable
 class GateRunner(Protocol):
     """Checks a step's gates; each returned string is a reason the step may not pass yet."""
 

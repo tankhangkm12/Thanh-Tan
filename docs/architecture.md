@@ -139,7 +139,7 @@ Mọi ghi vào `.agentflow/` chỉ đi qua lệnh `agentflow` (và tool MCP củ
 
 ### Tool MCP
 
-`agentflow mcp serve` (SDK `mcp` 2.x, stdio) cho agent tám tool, mỗi tool gọi `WorkspaceService` (`services.py`), cùng mã với CLI nên cùng luật; luật bị vi phạm trả về dưới dạng lỗi tool kèm thông báo rõ.
+`agentflow mcp serve` (SDK `mcp` 2.x, stdio) cho agent chín tool, mỗi tool gọi `WorkspaceService` (`services.py`), cùng mã với CLI nên cùng luật; luật bị vi phạm trả về dưới dạng lỗi tool kèm thông báo rõ.
 
 | Tool | Việc |
 |---|---|
@@ -148,6 +148,7 @@ Mọi ghi vào `.agentflow/` chỉ đi qua lệnh `agentflow` (và tool MCP củ
 | `report_write(step, content)` | Ghi báo cáo. **Chỉ cho bước hiện tại của task đang mở, khi bước còn `in_progress`**: từ chối bước khác và từ chối ghi đè báo cáo của bước đã qua/đang chờ duyệt (cả `agentflow report`) |
 | `project_write(section, content)` | Ghi `project/{profile,architecture,sources,conventions}.md`; từ chối khi còn task mở |
 | `scan_summary` | Kết quả scan và phát hiện chặn còn lại |
+| `conventions` | Quy ước đã gộp từ decisions, project, kho cá nhân; `enforced=false` là quy ước dự án chưa xác nhận |
 | `knowledge_search`, `knowledge_read` | Chỉ đọc bản chép trong `.agentflow/knowledge/` |
 
 Không có tool cho việc của người: duyệt, hủy, seal, `decide`, extension, `config set`, push kiến thức. Một test giữ danh sách tool là danh sách đóng.

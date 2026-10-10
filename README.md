@@ -1,6 +1,6 @@
 # Thanh-Tan-
 
-> **MVP.** Dùng được: plugin `dev-core` (quy trình task, hook an toàn, scan bảo mật, 4 skill, 6 role) và `dev-backend` (role `db-engineer`, 6 skill, Squawk, Schemathesis) cho Claude Code và Antigravity CLI, chạy trên động cơ `agentflow`. Các plugin `dev-design`, `dev-frontend`, `dev-infra` vẫn là khung.
+> **MVP.** Dùng được: plugin `dev-core` (quy trình task, hook an toàn, scan bảo mật, tool MCP, quy ước và kho kiến thức, 5 skill, 7 role) và `dev-backend` (role `db-engineer`, 6 skill, Squawk, Schemathesis) cho Claude Code và Antigravity CLI, chạy trên động cơ `agentflow`. Các plugin `dev-design`, `dev-frontend`, `dev-infra` vẫn là khung.
 
 Trung tâm của nhiều **nhóm plugin** cho Claude Code và Antigravity CLI. Mỗi nhóm có core và chuẩn riêng; mọi nhóm dùng chung một động cơ là `foundation/` (package Python `agentflow`).
 
@@ -68,7 +68,7 @@ claude plugin marketplace add "<repo>"
 claude plugin install dev-core@thanh-tan-plugins
 ```
 
-Kiểm tra: `claude plugin list` phải thấy `dev-core@thanh-tan-plugins` ở trạng thái enabled. Mở lại Claude Code, gõ `/dev-core:` sẽ thấy `start`, `continue`, `status`, `approve`. 6 agent hiện dưới tên `dev-core:orchestrator`, `dev-core:planner`, `dev-core:implementer`, `dev-core:tester`, `dev-core:security`, `dev-core:reviewer`. (Lệnh `claude plugin details` hiện báo `Agents (0)` do cách đếm của nó; agent vẫn được nạp.) Cập nhật: `claude plugin update dev-core@thanh-tan-plugins`.
+Kiểm tra: `claude plugin list` phải thấy `dev-core@thanh-tan-plugins` ở trạng thái enabled. Mở lại Claude Code, gõ `/dev-core:` sẽ thấy `setup`, `start`, `continue`, `status`, `approve`. 7 agent hiện dưới tên `dev-core:orchestrator`, `dev-core:planner`, `dev-core:implementer`, `dev-core:tester`, `dev-core:security`, `dev-core:reviewer`. (Lệnh `claude plugin details` hiện báo `Agents (0)` do cách đếm của nó; agent vẫn được nạp.) Cập nhật: `claude plugin update dev-core@thanh-tan-plugins`.
 
 ### Bước 2b: cài vào Antigravity CLI
 
@@ -78,7 +78,7 @@ agy plugin list
 agy agents
 ```
 
-`agy plugin list` phải có `dev-core` với `skills`, `agents`, `hooks`; `agy agents` liệt kê 6 role. `agy plugin install` chép một bản vào máy, nên sau mỗi lần `git pull` hãy chạy lại lệnh cài. Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
+`agy plugin list` phải có `dev-core` với `skills`, `agents`, `hooks`; `agy agents` liệt kê 7 role của dev-core (thêm `db-engineer` khi cài dev-backend). `agy plugin install` chép một bản vào máy, nên sau mỗi lần `git pull` hãy chạy lại lệnh cài. Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
 
 ### Cài thêm dev-backend
 
@@ -88,6 +88,13 @@ agy plugin install "<repo>/families/software-dev/backend"
 ```
 
 Rồi trong dự án, **bạn** đăng ký extension và đặt cài đặt (xem [dev-backend](families/software-dev/backend/README.md)): `agentflow ext add`, `agentflow config set backend.*`, `agentflow config check`.
+
+### Thay đổi từ agentflow 0.5.0 (dev-core 0.4.0, dev-backend 0.2.0)
+
+- Hook chặn mọi tool ghi file vào `.agentflow/` (Claude Code: `Write`, `Edit`, `NotebookEdit`; Antigravity: `write_to_file`, `replace_file_content`, `multi_replace_file_content`) và các lệnh shell phổ biến ghi vào đó (mức cố gắng tốt nhất, không phải sandbox: `python -c`, script, alias vẫn qua được).
+- Server MCP `agentflow mcp serve` (tool `status`, `next_step`, `plan_check`, `report_write`, `project_write`, `scan_summary`, `conventions`, `knowledge_search`, `knowledge_read`) khai báo sẵn trong dev-core; báo cáo không còn cần heredoc. `report_write` chỉ ghi báo cáo của bước hiện tại và không ghi đè báo cáo của bước đã qua.
+- Skill `setup` và role `scout` hồ sơ hóa dự án có sẵn; quy ước (`PC-`, `DC-`, `KC-`), câu hỏi "Chưa có quy ước", rule Semgrep của riêng bạn, gate review theo từng quy ước, kho kiến thức cá nhân và bài học đề xuất: xem [Quy ước và kho kiến thức](#quy-ước-và-kho-kiến-thức).
+- `agentflow` kéo thêm gói `mcp` (SDK chính thức). Antigravity chạy server MCP trong thư mục plugin nên tìm dự án qua `cwd`, `AGENTFLOW_PROJECT_DIR`, `PWD` rồi `~/.agentflow/active-project.txt` (xem [docs/mcp-notes.md](docs/mcp-notes.md)). Cập nhật `agentflow` khi có phiên `agy` đang mở có thể báo `Access is denied`: đóng phiên đó, hoặc `uv pip install --python <venv của tool>\Scripts\python.exe --reinstall ./foundation`.
 
 ### Bước 3: dùng trong một dự án
 
@@ -227,3 +234,16 @@ uv run --with pyyaml --with pytest pytest tools
 claude plugin validate --strict families/software-dev/core
 agy plugin validate families/software-dev/core
 ```
+
+## Dùng thử trên một dự án thật
+
+1. Cài `agentflow`: `uv tool install --force --reinstall ./foundation` (từ thư mục repo này), rồi `agentflow doctor`.
+2. Cài plugin vào Claude Code (`claude plugin marketplace add "<repo>"`, `claude plugin install dev-core@thanh-tan-plugins`, `dev-backend@thanh-tan-plugins`) và/hoặc Antigravity (`agy plugin install "<repo>/families/software-dev/core"` và `.../backend`). Mở lại CLI để nạp skill, agent, hook và server MCP.
+3. Dán khối `permissions` ở **Bước 4** vào `.claude/settings.json` của dự án. Quy tắc `ask` là bắt buộc.
+4. Trong dự án (repo git có `main` và `develop`, cây làm việc sạch): `agentflow init --workflow "<repo>/families/software-dev/core/workflow.yaml"`. Với dev-backend, thêm bước của **bạn**: `agentflow ext add "<repo>/families/software-dev/backend/extension.yaml"`, `agentflow config set backend.*`, `agentflow config check`.
+5. **Hồ sơ hóa dự án:** gõ `/dev-core:setup` (Antigravity: nhờ agent dùng skill `setup`). Bạn đưa đường dẫn tài liệu; scout đọc rồi viết `.agentflow/project/*.md`. Mở các file đó, trả lời câu hỏi mở `S1...` bằng `agentflow decide --answer S1 --text "..." --check review`, rồi xác nhận quy ước đồng ý: `agentflow project confirm PC-01 PC-02` (hoặc `--all`).
+6. **Kho kiến thức (tùy chọn):** `agentflow knowledge init`; đặt rule Semgrep của bạn vào `<kho>/semgrep/` và quy ước cá nhân vào `<kho>/conventions.md`; chép vào dự án bằng `agentflow knowledge pull semgrep/<rule>.yaml conventions.md`.
+7. **Làm việc:** `/dev-core:start`, rồi `/dev-core:continue`. Agent tự chạy các bước không cần duyệt và dừng ở `confirm`, `plan`, `review` để bạn `agentflow task approve` (hoặc `/dev-core:approve`). Plan có mục `## Chưa có quy ước` thì bạn trả lời bằng `agentflow decide --answer Q1 ...` rồi để agent chạy tiếp. Phát hiện chặn của scan mà bạn xác nhận là báo nhầm: `agentflow decide --suppress <id> --reason "..."`.
+8. **Sau khi xong:** xem `.agentflow/tasks/<task>/summary.md` (mục, commit, scan, "Bài học đề xuất") và tag `git tag -l "agentflow/*"`. Bài học đáng giữ: `agentflow knowledge push .agentflow/tasks/<task>/lessons/L1.md`. Merge và push là việc của bạn.
+
+Các lệnh của người (`decide`, `project confirm`, `knowledge init|pull|push`, `ext add|sync`, `config set`, `task seal`): trong Claude Code gõ với tiền tố `!`; agent tự chạy sẽ bị hook từ chối.

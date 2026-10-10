@@ -6,7 +6,7 @@ Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn ch
 
 | Plugin | Phạm vi |
 |---|---|
-| `dev-core` | Quy trình, gitflow, gate, hook an toàn, 4 skill và 6 role dùng chung |
+| `dev-core` | Quy trình, gitflow, gate, hook an toàn, server MCP, quy ước, 5 skill và 7 role dùng chung |
 | `dev-design` | Thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract API OpenAPI, data model) |
 | `dev-backend` | Service, API, dữ liệu: role `db-engineer`, 6 skill, Squawk và Schemathesis qua extension (xem [README](backend/README.md)) |
 | `dev-frontend` | Giao diện, state phía client |

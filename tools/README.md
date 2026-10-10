@@ -8,6 +8,9 @@ Script build và bảo trì repo. Viết bằng Python, chạy qua uv (`uv run`)
 | `test_build.py` | Test của `build.py` và của dev-core (role, skill, tool, file sinh ra phải khớp nguồn; quy tắc prompt: không nối lệnh, nói rõ agent không push/merge/PR; khối quy tắc permissions trong README) |
 | `smoke.py` | Thử end-to-end `agentflow` (init, task, plan check, commit, scan thật, guard, hook) trên repo tạm. Cần Docker |
 | `smoke_backend.py` | Thử end-to-end dev-core + dev-backend trên dự án mẫu (`sample_backend.py`: Python một endpoint, PostgreSQL trong Docker, migration lên/xuống, spec OpenAPI). `--until plan|implement` dừng sớm; `--install-check` cài lại `dev-core`, `dev-backend` vào Claude Code (marketplace local) và Antigravity (đường dẫn local) rồi xác nhận skill, agent, hook được nạp (một lượt `claude -p` ngắn) và in cảnh báo nếu settings của dự án mẫu thiếu quy tắc `ask` bắt buộc |
+| `smoke_support.py`, `conventions_smoke.py` | Phần dùng chung của hai smoke: `Session`/`expect`, và luồng quy ước (scout ghi qua server MCP thật, người xác nhận và trả lời, rule Semgrep của người, gate review, bài học, các lần ghi bị chặn) |
+| `trial_cli.py` | Phiên **thật** của `claude -p` và `agy -p` với plugin đã cài, trong repo tạm: mặc định thử hook (ghi vào `.agentflow/` và `git push` bị chặn, `git status` vẫn chạy); `--mcp` thử tool `status`/`report_write`; `--setup` thử skill `setup` và scout. Kết luận dựa trên hiệu ứng thật (file có tồn tại không, log hook `AGENTFLOW_HOOK_LOG`), không dựa vào lời model; mỗi CLI được thử lại một lần |
+| `test_setup.py`, `test_conventions_prompts.py` | Test câu chữ của role `scout`, skill `setup` và prompt làm việc theo quy ước |
 | `test_smoke_backend.py` | Test của các hàm phụ trợ trong smoke_backend (không cần Docker) |
 | `test_backend.py` | Test của dev-backend: role `db-engineer`, 6 skill không giả định stack, agent sinh ra khớp nguồn |
 

@@ -48,6 +48,9 @@ SHELL_PWD_ENV = "PWD"
 USER_DIR_ENV = "AGENTFLOW_HOME"
 USER_DIR_NAME = ".agentflow"
 ACTIVE_PROJECT_FILE = "active-project.txt"
+ANSWER_OPTION = "--answer"
+USER_CONFIG_FILE = "user.yaml"
+DEFAULT_KNOWLEDGE_DIR_NAME = "knowledge"
 # When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
 HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15
@@ -69,6 +72,8 @@ COMMIT_PREFIX_SEPARATOR = ": "
 # Git trailer that ties a commit to a plan item.
 PLAN_ITEM_TRAILER = "Plan-Item"
 SUMMARY_FILE = "summary.md"
+LESSONS_DIR = "lessons"
+LESSONS_HEADING = "Bài học đề xuất"
 
 # Secret scanning with Gitleaks in a container. The image is pinned on purpose.
 GITLEAKS_IMAGE = "zricethezav/gitleaks:v8.24.0"
@@ -125,6 +130,7 @@ class ToolName(StrEnum):
     REPORT_WRITE = "report_write"
     PROJECT_WRITE = "project_write"
     SCAN_SUMMARY = "scan_summary"
+    CONVENTIONS = "conventions"
     KNOWLEDGE_SEARCH = "knowledge_search"
     KNOWLEDGE_READ = "knowledge_read"
 
@@ -132,7 +138,15 @@ class ToolName(StrEnum):
 MCP_SERVER_NAME = "agentflow"
 # The tools that only read the workspace (the rest write a report or a project document).
 READ_ONLY_TOOLS = frozenset(
-    {ToolName.STATUS, ToolName.NEXT_STEP, ToolName.PLAN_CHECK, ToolName.SCAN_SUMMARY, ToolName.KNOWLEDGE_SEARCH, ToolName.KNOWLEDGE_READ}
+    {
+        ToolName.STATUS,
+        ToolName.NEXT_STEP,
+        ToolName.PLAN_CHECK,
+        ToolName.SCAN_SUMMARY,
+        ToolName.CONVENTIONS,
+        ToolName.KNOWLEDGE_SEARCH,
+        ToolName.KNOWLEDGE_READ,
+    }
 )
 
 
@@ -174,6 +188,18 @@ class ConventionField(StrEnum):
     CODE = "code"
 
 
+class ConventionSource(StrEnum):
+    """Where an effective convention came from, in the order of priority."""
+
+    DECISION = "decisions"
+    PROJECT = "project"
+    PERSONAL = "knowledge"
+
+
+CONVENTIONS_FILE = "conventions.md"
+DECISION_ANSWER_INFIX = "answer"
+DECISION_ANSWER_KIND = "convention-answer"
+DECISION_SCOPE_PROJECT = "project"
 OPEN_QUESTIONS_HEADING = "## Câu hỏi mở"
 SETUP_QUESTION_PATTERN = r"S\d+"
 SEMGREP_RULE_SUFFIXES = (".yaml", ".yml")
@@ -306,6 +332,8 @@ class Command(StrEnum):
     HOOK = "hook"
     MCP = "mcp"
     PROJECT = "project"
+    CONVENTIONS = "conventions"
+    KNOWLEDGE = "knowledge"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
@@ -315,6 +343,23 @@ class Command(StrEnum):
 
 class ProjectCommand(StrEnum):
     CONFIRM = "confirm"
+
+
+class UserConfigKey(StrEnum):
+    KNOWLEDGE_DIR = "knowledge_dir"
+
+
+class KnowledgePlace(StrEnum):
+    """Where in the personal store a pushed file goes."""
+
+    LESSONS = "lessons"
+    PATTERNS = "patterns"
+
+
+class KnowledgeCommand(StrEnum):
+    INIT = "init"
+    PULL = "pull"
+    PUSH = "push"
 
 
 class McpCommand(StrEnum):
@@ -465,6 +510,7 @@ class GateKind(StrEnum):
 
     PLAN_VALID = "plan-valid"
     SCANS_CLEAN = "scans-clean"
+    CONVENTIONS_REVIEWED = "conventions-reviewed"
 
 
 class PlanCommand(StrEnum):
@@ -521,9 +567,24 @@ class PlanField(StrEnum):
     FILES = "files"
     DONE_WHEN = "done-when"
     DOCS = "docs"
+    KIND = "kind"
+    # Fields of a question under "Chưa có quy ước".
+    ASK = "ask"
+    OPTIONS = "options"
+    NEEDED_BY = "needed-by"
+
+
+class PlanItemKind(StrEnum):
+    """What a plan item does to its files, for the ``item-order`` convention."""
+
+    INTERFACE = "interface"
+    IMPLEMENT = "implement"
+    OTHER = "other"
 
 
 PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
+PLAN_QUESTION_CODE_PATTERN = r"Q[0-9]+"
+PLAN_QUESTIONS_HEADING = "Chưa có quy ước"
 PLAN_NO_DOCS_PREFIX = "không có"
 PLAN_NO_FILES_PREFIX = "không có"
 
@@ -532,6 +593,10 @@ PLAN_NO_FILES_PREFIX = "không có"
 SCANS_DIR = "scans"
 SCAN_SUMMARY_FILE = "summary.json"
 SEMGREP_IMAGE = "semgrep/semgrep:1.180.0"
+# Rules a person wrote for their conventions: kept in the knowledge store (``semgrep/``) and copied next to the workspace.
+SEMGREP_CONVENTION_RULES_DIR = "semgrep"
+CUSTOM_RULES_MOUNT = "/custom-rules"
+CUSTOM_RULES_CACHE_DIR = "convention-rules"
 TRIVY_IMAGE = "aquasec/trivy:0.75.0"
 TRIVY_CACHE_VOLUME = "agentflow-trivy-cache"
 SEMGREP_RULES_DIR = "semgrep-rules"

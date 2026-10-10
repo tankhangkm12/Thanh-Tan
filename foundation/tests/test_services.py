@@ -279,3 +279,12 @@ def test_an_unconfirmed_convention_may_be_deleted_and_added(service, repo):
 
 def test_other_sections_are_not_parsed_as_conventions(service):
     assert service.write_project(ProjectSection.ARCHITECTURE, "### not a convention\njust text").conventions == 0
+
+
+def test_conventions_lists_what_is_enforced(service, repo):
+    assert list(service.conventions()) == []
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    items = {item.code: item for item in service.conventions()}
+    assert set(items) == {"PC-01", "PC-02"} and not items["PC-01"].enforced and items["PC-01"].source == "project"
+    confirm_by_hand(repo, "PC-02")
+    assert {item.code: item.enforced for item in service.conventions()} == {"PC-01": False, "PC-02": True}

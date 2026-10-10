@@ -392,6 +392,18 @@ class ScanSummaryInfo:
 
 
 @dataclass(frozen=True)
+class ConventionInfo:
+    code: str
+    title: str
+    source: str
+    check: str
+    rule: str | None
+    description: str
+    # False for a project convention nobody confirmed yet: a suggestion, not checked.
+    enforced: bool
+
+
+@dataclass(frozen=True)
 class KnowledgeHit:
     file: str
     line: int

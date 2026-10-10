@@ -5,13 +5,25 @@ A plan is Markdown. Each checklist item is a heading ``### C1 - <title>`` follow
 """
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
 
-from agentflow.constants import PLAN_ITEM_CODE_PATTERN, PLAN_NO_DOCS_PREFIX, PLAN_NO_FILES_PREFIX, PlanField
-from agentflow.interfaces import PlanRule, RoleRegistry
+from agentflow.constants import (
+    PLAN_ITEM_CODE_PATTERN,
+    PLAN_NO_DOCS_PREFIX,
+    PLAN_NO_FILES_PREFIX,
+    PLAN_QUESTION_CODE_PATTERN,
+    PLAN_QUESTIONS_HEADING,
+    PlanField,
+    PlanItemKind,
+)
+from agentflow.interfaces import PlanRule, PlanWideRule, RoleRegistry
 
 _HEADING = re.compile(rf"^###\s+({PLAN_ITEM_CODE_PATTERN})\b\s*(?:[—–:-]+\s*)?(.*?)\s*$")
+_QUESTION_HEADING = re.compile(rf"^###\s+({PLAN_QUESTION_CODE_PATTERN})\b\s*(?:[—–:-]+\s*)?(.*?)\s*$")
+_SECTION_HEADING = re.compile(r"^##\s+(.*?)\s*$")
+_ITEM_FIELDS = {PlanField.ROLE, PlanField.FILES, PlanField.DONE_WHEN, PlanField.DOCS, PlanField.KIND}
+_QUESTION_FIELDS = {PlanField.ASK, PlanField.OPTIONS, PlanField.NEEDED_BY}
 _BAD_HEADING = re.compile(r"^###\s+(\S+)")
 _FIELD = re.compile(r"^\s*[-*]\s+([A-Za-z-]+)\s*:\s*(.*?)\s*$")
 _FIELD_NAMES = {field.value: field for field in PlanField}
@@ -32,6 +44,8 @@ class PlanItem:
     done_when: str | None = None
     # Raw docs value: URLs, or "không có — <reason>".
     docs: str | None = None
+    # interface, implement or other (lower case); ``None`` when the item has no kind line.
+    kind: str | None = None
 
     @property
     def docs_links(self) -> tuple[str, ...]:
@@ -39,10 +53,22 @@ class PlanItem:
 
 
 @dataclass(frozen=True)
+class PlanQuestion:
+    """A convention the project lacks, which the planner needs a person to decide."""
+
+    code: str
+    title: str
+    ask: str | None = None
+    options: str | None = None
+    needed_by: str | None = None
+
+
+@dataclass(frozen=True)
 class Plan:
     items: tuple[PlanItem, ...]
     # Headings that start with ``###`` but are not a valid item code, kept to report them.
     bad_headings: tuple[str, ...] = ()
+    questions: tuple[PlanQuestion, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -56,19 +82,42 @@ class PlanProblem:
 
 def parse_plan(text: str) -> Plan:
     items: list[PlanItem] = []
+    questions: list[PlanQuestion] = []
     bad: list[str] = []
     current: dict[str, object] | None = None
+    asked: dict[str, str] | None = None
+    in_questions = False
     in_fence = False
 
     def close() -> None:
+        nonlocal asked
         if current is not None:
             items.append(PlanItem(**current))  # type: ignore[arg-type]
+        if asked is not None:
+            questions.append(PlanQuestion(**asked))  # type: ignore[arg-type]
+            asked = None
 
     for line in text.replace("\r\n", "\n").split("\n"):
         if line.strip().startswith(_CODE_FENCE):
             in_fence = not in_fence
             continue
         if in_fence:
+            continue
+        section = _SECTION_HEADING.match(line)
+        if section:
+            close()
+            current = None
+            in_questions = section.group(1).strip().lower() == PLAN_QUESTIONS_HEADING.lower()
+            continue
+        if in_questions:
+            question = _QUESTION_HEADING.match(line)
+            if question:
+                close()
+                asked = {"code": question.group(1), "title": question.group(2)}
+                continue
+            field = _FIELD.match(line)
+            if asked is not None and field and field.group(1).lower() in {f.value for f in _QUESTION_FIELDS}:
+                asked[PlanField(field.group(1).lower()).name.lower()] = field.group(2)
             continue
         heading = _HEADING.match(line)
         if heading:
@@ -85,7 +134,7 @@ def parse_plan(text: str) -> Plan:
         if current is not None and field and field.group(1).lower() in _FIELD_NAMES:
             _store(current, _FIELD_NAMES[field.group(1).lower()], field.group(2))
     close()
-    return Plan(tuple(items), tuple(bad))
+    return Plan(tuple(items), tuple(bad), tuple(questions))
 
 
 def _store(current: dict[str, object], field: PlanField, value: str) -> None:
@@ -98,6 +147,8 @@ def _store(current: dict[str, object], field: PlanField, value: str) -> None:
             current["done_when"] = value
         case PlanField.DOCS:
             current["docs"] = value
+        case PlanField.KIND:
+            current["kind"] = value.strip(_BACKTICKS).strip().lower()
 
 
 def _parse_files(value: str) -> tuple[str, ...]:
@@ -125,6 +176,8 @@ def check_plan(
     roles: RoleRegistry,
     rules: Sequence[PlanRule] = (),
     require_files: bool = False,
+    wide_rules: Sequence[PlanWideRule] = (),
+    answered_questions: Collection[str] | None = None,
 ) -> list[PlanProblem]:
     """Every problem found, so the planner can fix them in one go."""
     problems: list[PlanProblem] = [PlanProblem(f"heading '### {name}' is not a valid item code (C1, C2, ...)") for name in plan.bad_headings]
@@ -139,7 +192,30 @@ def check_plan(
         problems += _item_problems(item, valid_roles, require_files)
         for rule in rules:
             problems += (PlanProblem(message, item.code) for message in rule.problems(item))
+    for wide in wide_rules:
+        problems += (PlanProblem(message, code) for code, message in wide.problems(plan.items))
+    problems += _question_problems(plan, answered_questions)
     return problems
+
+
+def _question_problems(plan: Plan, answered: Collection[str] | None) -> list[PlanProblem]:
+    """A question needs to say what it asks, and (inside a task) a person's answer before the plan may pass."""
+    found: list[PlanProblem] = []
+    seen: set[str] = set()
+    for question in plan.questions:
+        if question.code in seen:
+            found.append(PlanProblem("duplicate question code", question.code))
+        seen.add(question.code)
+        if not (question.ask or "").strip():
+            found.append(PlanProblem(f"missing '{PlanField.ASK}' (say what the person must decide)", question.code))
+        if answered is not None and question.code not in answered:
+            found.append(
+                PlanProblem(
+                    f"no answer yet: a person answers with `agentflow decide --answer {question.code} --text \"...\" --check plan|semgrep|review`",
+                    question.code,
+                )
+            )
+    return found
 
 
 def _item_problems(item: PlanItem, valid_roles: Iterable[str], require_files: bool) -> list[PlanProblem]:
@@ -152,6 +228,8 @@ def _item_problems(item: PlanItem, valid_roles: Iterable[str], require_files: bo
         found.append(PlanProblem(f"missing '{PlanField.DONE_WHEN}'", item.code))
     if (message := docs_problem(item.docs)) is not None:
         found.append(PlanProblem(message, item.code))
+    if item.kind is not None and item.kind not in {kind.value for kind in PlanItemKind}:
+        found.append(PlanProblem(f"unknown kind '{item.kind}' (one of: {', '.join(PlanItemKind)})", item.code))
     if require_files and item.files is None:
         found.append(PlanProblem(f"missing '{PlanField.FILES}' (list the paths this item changes, or '{PLAN_NO_FILES_PREFIX}')", item.code))
     return found

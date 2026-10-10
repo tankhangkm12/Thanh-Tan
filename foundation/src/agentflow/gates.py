@@ -1,10 +1,12 @@
 """Gates: checks a step has to satisfy before it can pass. Foundation knows the kinds, workflows choose where they apply."""
 
-from collections.abc import Callable, Sequence
+import re
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agentflow.constants import ENCODING, MARKDOWN_SUFFIX, REPORTS_DIR, TASKS_DIR, GateKind
+from agentflow.constants import ENCODING, MARKDOWN_SUFFIX, REPORTS_DIR, TASKS_DIR, CheckKind, GateKind
+from agentflow.convention_sources import answered_questions, load_effective_conventions
 from agentflow.scan import scan_problems, tools_for_step
 from agentflow.scan_store import ScanStore
 from agentflow.models import Step, Task, Workflow
@@ -28,16 +30,19 @@ def plan_report_path(workspace_dir: Path, task_id: str, step_id: str) -> Path:
     return workspace_dir / TASKS_DIR / task_id / REPORTS_DIR / f"{step_id}{MARKDOWN_SUFFIX}"
 
 
-def plan_problems(text: str, project: ProjectContext) -> list[str]:
+def plan_problems(text: str, project: ProjectContext, answered: Collection[str] | None = None) -> list[str]:
+    """Problems of a plan. ``answered`` are the questions a person answered; ``None`` skips that check (no task)."""
     plan = parse_plan(text)
-    return [str(p) for p in check_plan(plan, project.roles, project.plan_rules, project.require_files)]
+    found = check_plan(plan, project.roles, project.plan_rules, project.require_files, project.plan_wide_rules, answered)
+    return [str(p) for p in found]
 
 
 def _plan_valid(context: GateContext, task: Task, step: Step) -> list[str]:
     path = plan_report_path(context.workspace_dir, task.id, step.id)
     if not path.is_file():
         return [f"no plan report for step '{step.id}' yet (save it with `agentflow report --step {step.id}`)"]
-    return plan_problems(path.read_text(encoding=ENCODING), context.project)
+    answered = answered_questions(context.workspace_dir, task.id)
+    return plan_problems(path.read_text(encoding=ENCODING), context.project, answered)
 
 
 def _scans_clean(context: GateContext, task: Task, step: Step) -> list[str]:
@@ -47,7 +52,41 @@ def _scans_clean(context: GateContext, task: Task, step: Step) -> list[str]:
     )
 
 
-CHECKS: dict[GateKind, GateCheck] = {GateKind.PLAN_VALID: _plan_valid, GateKind.SCANS_CLEAN: _scans_clean}
+def _conventions_reviewed(context: GateContext, task: Task, step: Step) -> list[str]:
+    """The review report must say, for each enforced ``check: review`` convention, that it is met or where it is not."""
+    wanted = [item.convention for item in load_effective_conventions(context.workspace_dir).checked_by(CheckKind.REVIEW)]
+    if not wanted:
+        return []
+    path = plan_report_path(context.workspace_dir, task.id, step.id)
+    if not path.is_file():
+        return [f"no report for step '{step.id}' yet: it must cover {', '.join(c.code for c in wanted)}"]
+    text = path.read_text(encoding=ENCODING)
+    problems: list[str] = []
+    for convention in wanted:
+        code = re.escape(convention.code)
+        violation = re.search(rf"vi phạm\s+`?{code}`?(?![\w-])\s+ở\s+(\S+:\d+)", text, re.IGNORECASE)
+        loose = re.search(rf"vi phạm\s+`?{code}`?(?![\w-])", text, re.IGNORECASE)
+        met = re.search(rf"(?im)^[\s>*-]*`?{code}`?(?![\w-])\s*[:\-–—]\s*đạt\b", text)
+        if violation:
+            problems.append(
+                f"{convention.code} is violated at {violation.group(1)}: a review that finds a violation fails "
+                "(`agentflow task advance --result fail`) so the implementer can fix it"
+            )
+        elif loose:
+            problems.append(f"{convention.code}: a violation must say where (`vi phạm {convention.code} ở file:line`)")
+        elif not met:
+            problems.append(
+                f"{convention.code} ({convention.title}) is not covered: write `{convention.code}: đạt` or "
+                f"`vi phạm {convention.code} ở file:line`"
+            )
+    return problems
+
+
+CHECKS: dict[GateKind, GateCheck] = {
+    GateKind.PLAN_VALID: _plan_valid,
+    GateKind.SCANS_CLEAN: _scans_clean,
+    GateKind.CONVENTIONS_REVIEWED: _conventions_reviewed,
+}
 
 
 class WorkspaceGates:

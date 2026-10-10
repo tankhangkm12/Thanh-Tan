@@ -63,6 +63,9 @@ class CurrentProjectServices:
     def scan_summary(self):
         return self._service().scan_summary()
 
+    def conventions(self):
+        return self._service().conventions()
+
     def knowledge_search(self, query, limit):
         return self._service().knowledge_search(query, limit)
 
@@ -111,6 +114,9 @@ def build_server(service: WorkspaceService) -> MCPServer:
     def scan_summary() -> dict[str, Any]:
         return service.scan_summary()
 
+    def conventions() -> list[dict[str, Any]]:
+        return service.conventions()
+
     def knowledge_search(query: str, limit: int = KNOWLEDGE_SEARCH_DEFAULT_LIMIT) -> list[dict[str, Any]]:
         return service.knowledge_search(query, limit)
 
@@ -136,6 +142,12 @@ def build_server(service: WorkspaceService) -> MCPServer:
         project_write,
     )
     register(ToolName.SCAN_SUMMARY, "Results of the scans run for the active task and the blocking findings left.", scan_summary)
+    register(
+        ToolName.CONVENTIONS,
+        "The conventions to work to, merged from decisions, the project and the person's own store (highest priority first). "
+        "`enforced` is false for project conventions nobody confirmed yet.",
+        conventions,
+    )
     register(
         ToolName.KNOWLEDGE_SEARCH,
         "Search the knowledge files a person copied into .agentflow/knowledge/ (case-insensitive). Returns file, line and text.",

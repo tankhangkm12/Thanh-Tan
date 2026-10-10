@@ -43,7 +43,7 @@ Mỗi nhóm khai báo quy trình của mình trong một file `workflow.yaml` đ
 | `steps[].requires_approval` | Bước cần người duyệt (mặc định `false`) |
 | `max_rounds` | Số lần một task được quay lại làm lại (cả workflow) |
 | `steps[].on_fail` | Bước đứng trước mà task quay về khi bước này fail |
-| `steps[].gates` | Gate bước phải qua trước khi `task advance --result pass` được nhận: `plan-valid` (kế hoạch qua `plan check`), `scans-clean` (kết quả scan không còn mục chặn) |
+| `steps[].gates` | Gate bước phải qua trước khi `task advance --result pass` được nhận: `plan-valid` (kế hoạch qua `plan check`, kể cả quy ước `item-order` và mọi câu hỏi "Chưa có quy ước" đã được trả lời), `scans-clean` (kết quả scan không còn mục chặn), `conventions-reviewed` (báo cáo review có một dòng cho từng quy ước `check: review`) |
 
 Các bước chạy theo thứ tự trong danh sách; không có bước "loop" riêng. Fail ở bước có `on_fail` thì task quay về bước đó và số vòng tăng 1. Hết `max_rounds`, hoặc bước không có `on_fail`, thì task chuyển `blocked`, cần người quyết định.
 
@@ -112,6 +112,9 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
 | `agentflow commit "<nội dung>" [--item C1]` | Scan secret rồi commit với tiền tố `T-001: `; `--item` ghi trailer `Plan-Item: C1` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy, mục không có trong plan |
 | `agentflow project confirm <mã...>\|--all` | Việc của người: đánh dấu quy ước `confirmed` trong `project/conventions.md` | Chưa có quy ước, mã không có, file có lỗi |
+| `agentflow conventions` | Liệt kê quy ước đã gộp từ decisions, project và kho cá nhân (quy ước chưa xác nhận ghi rõ là gợi ý) | |
+| `agentflow decide --answer <Q1\|S1> --text ... --check plan\|semgrep\|review [--rule r] [--overrides code] [--global]` | Việc của người: trả lời câu hỏi (của plan hoặc của setup), sinh quy ước `DC-NN` trong `decisions/`; `--global` ghi thêm `KC-NN` vào kho cá nhân | Không có câu hỏi đó, thiếu `--text`/`--check`, đã trả lời, quy ước không hợp lệ |
+| `agentflow knowledge init [--dir D]` / `pull <file...>` / `push <file> [--as lessons\|patterns]` | Việc của người: tạo khung kho cá nhân; chép file người chọn vào `.agentflow/knowledge/`; đưa một bài học từ workspace về kho | Đường dẫn ra ngoài kho/workspace, file đã có ở đích |
 | `agentflow mcp serve` | Chạy server MCP trên stdio (do Claude Code/Antigravity khởi động) | |
 | `agentflow guard` | Đọc `{"command","cwd"}` từ stdin, in `{"decision","rule","reason"}` | Input không phải JSON hợp lệ |
 
@@ -162,6 +165,21 @@ Quyền xác nhận thuộc về người:
 - Quy ước đã `confirmed` mà nội dung (tiêu đề, check, rule, source, description, overrides) bị đổi thì tự về `unconfirmed`; giữ nguyên thì vẫn `confirmed`.
 - Xóa một quy ước đã `confirmed` bị từ chối; chỉ người làm (sửa tay file).
 - `agentflow project confirm <mã...>|--all` (chỉ người chạy, guard từ chối khi agent chạy) đánh dấu `confirmed`. `agentflow task new` cảnh báo (không chặn) khi còn quy ước `unconfirmed`.
+
+### Quy ước, kho kiến thức và bài học
+
+**Ba nguồn quy ước**, ưu tiên từ cao xuống: `decisions/` (câu trả lời của người, `DC-NN`) > `project/conventions.md` (`PC-NN`) > `knowledge/conventions.md` (bản chép quy ước cá nhân, `KC-NN`). `agentflow conventions` (và tool MCP `conventions`) gộp chúng; một quy ước thay quy ước khác khi ghi `overrides: <mã>` và nguồn của nó ưu tiên cao hơn. Quy ước của người (DC, KC) có hiệu lực ngay; quy ước của dự án chỉ được kiểm sau khi người `project confirm`.
+
+**Ba cách kiểm** (`check:` là tập đóng):
+- `plan`: hiện có `rule: item-order`. Mục kế hoạch có thêm `kind: interface|implement|other`; mục `interface` phải đứng trước mục `implement` đụng cùng file. Khi quy ước này đang hiệu lực, `kind` là bắt buộc, và mục interface/implement phải có `files`.
+- `semgrep`: `rule: <file>.yaml` là rule do **người** viết, để trong `.agentflow/knowledge/semgrep/` (người chép từ kho cá nhân bằng `knowledge pull semgrep/<file>`). Chạy cùng scan ở bước `security` như một tool riêng `semgrep-conventions` (container riêng, mount chỉ đọc, không mạng); rule chỉ chặn khi `severity` là ERROR/HIGH/CRITICAL. Thiếu hoặc hỏng file rule là lỗi cứng, không bỏ qua im lặng. Không dùng rule của Semgrep Registry ở đây.
+- `review`: gate `conventions-reviewed` đòi báo cáo review có `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng` cho **từng** quy ước hiệu lực; có vi phạm thì không cho `pass` (phải `fail` để implementer sửa).
+
+**Câu hỏi.** Planner không đoán: mục `## Chưa có quy ước` trong plan có `### Q1 - ...` (`- ask:`, `- options:`, `- needed-by:`). Gate `plan-valid` chặn tới khi người chạy `agentflow decide --answer Q1 --text "..." --check <loại>`; câu trả lời thành quy ước `DC-NN` (`decisions/<task>-answer-Q1.md`). Câu hỏi `S1` của scout (tài liệu và code mâu thuẫn) trả lời cùng lệnh, file `decisions/project-answer-S1.md`.
+
+**Kho cá nhân** nằm ngoài mọi repo: đường dẫn ở `~/.agentflow/user.yaml` (`knowledge_dir`, mặc định `~/knowledge`; `AGENTFLOW_HOME` đổi thư mục `~/.agentflow`). Khung gồm `index.md`, `conventions.md`, `sources.md`, `lessons/`, `patterns/`, `semgrep/`. Chỉ người chạy `knowledge init/pull/push` (guard từ chối khi agent chạy) và agent không bao giờ ghi vào kho; tool MCP `knowledge_*` chỉ đọc bản chép trong `.agentflow/knowledge/`.
+
+**Bài học.** Cuối báo cáo review, reviewer có thể thêm `## Bài học đề xuất` (`### L1 - tiêu đề`). Khi seal, `agentflow` tách thành `tasks/<task>/lessons/L<n>.md`, liệt kê trong `summary.md`; người chọn bài nào đưa về kho bằng `agentflow knowledge push <file>`.
 
 ### Kế hoạch, gate và tag duyệt
 

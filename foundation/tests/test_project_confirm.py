@@ -114,3 +114,12 @@ def test_task_new_warns_while_conventions_are_unconfirmed(ws, capsys):
 def test_task_new_does_not_warn_without_conventions(ws, capsys):
     code, _, err = run(capsys, "task", "new", "first")
     assert code == ExitCode.OK and "unconfirmed" not in err
+
+
+def test_conventions_command_lists_the_merged_conventions(ws, capsys):
+    code, out, _ = run(capsys, "conventions")
+    assert code == ExitCode.OK and "no conventions yet" in out
+    put(ws)
+    run(capsys, "project", "confirm", "PC-02")
+    code, out, _ = run(capsys, "conventions")
+    assert "PC-01 (project, check=review) [unconfirmed" in out and "PC-02 (project, check=plan rule=item-order):" in out

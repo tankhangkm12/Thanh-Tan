@@ -13,7 +13,7 @@ from agentflow.placeholders import expand_args, expand_text
 from agentflow.projectcontext import ProjectContext
 from agentflow.scan_read import read_result
 from agentflow.scan_store import ScanStore, suppressed_ids
-from agentflow.scan_tools import BUILTIN_TOOLS
+from agentflow.scan_tools import BUILTIN_TOOLS, custom_semgrep_spec
 from agentflow.scan_types import Condition, MountSpec, ScanContext, ScanFinding, ScanOutcome, ScanToolSpec
 
 JSON_OUTPUT_SUFFIX = ".json"
@@ -40,13 +40,20 @@ def scan_gated_steps(workflow: Workflow, project: ProjectContext) -> set[str]:
 def tools_for_step(step_id: str, workflow: Workflow, project: ProjectContext) -> list[ScanToolSpec]:
     """Built-in tools belong to the step the workflow itself gates; extension tools name their own step."""
     own = any(step.id == step_id and GateKind.SCANS_CLEAN in step.gates for step in workflow.steps)
-    tools = list(BUILTIN_TOOLS) if own else []
+    tools = (list(BUILTIN_TOOLS) + _convention_tools(project)) if own else []
     return tools + [tool for tool in project.scan_tools if tool.step == step_id]
 
 
 def all_tools(workflow: Workflow, project: ProjectContext) -> list[ScanToolSpec]:
     has_own = any(GateKind.SCANS_CLEAN in step.gates for step in workflow.steps)
-    return (list(BUILTIN_TOOLS) if has_own else []) + list(project.scan_tools)
+    return ((list(BUILTIN_TOOLS) + _convention_tools(project)) if has_own else []) + list(project.scan_tools)
+
+
+def _convention_tools(project: ProjectContext) -> list[ScanToolSpec]:
+    """Semgrep with the project's own rules, when enforced conventions ask for it (or their rule files are unusable)."""
+    if not project.custom_semgrep and not project.custom_semgrep_problems:
+        return []
+    return [custom_semgrep_spec(project.custom_semgrep, project.custom_semgrep_problems)]
 
 
 def output_name(spec: ScanToolSpec) -> str:

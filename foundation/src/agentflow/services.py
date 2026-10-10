@@ -26,7 +26,9 @@ from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
 from agentflow.fsutil import write_text_atomic
 from agentflow.gates import plan_problems, plan_report_path
+from agentflow.convention_sources import answered_questions, load_effective_conventions
 from agentflow.models import (
+    ConventionInfo,
     KnowledgeFile,
     KnowledgeHit,
     NextInfo,
@@ -95,7 +97,7 @@ class WorkspaceServices:
         if not path.is_file():
             raise AgentflowError(f"no plan report yet: {path}", ExitCode.PLAN_INVALID)
         project = load_project_context(self.paths.dir, workflow)
-        problems = plan_problems(path.read_text(encoding=ENCODING), project)
+        problems = plan_problems(path.read_text(encoding=ENCODING), project, answered_questions(self.paths.dir, task.id))
         return PlanCheckInfo(not problems, tuple(problems))
 
     def write_report(self, step: str, content: str) -> ReportInfo:
@@ -136,6 +138,17 @@ class WorkspaceServices:
         return _scan_summary(self.paths.dir, task)
 
     # --------------------------------------------------------------- knowledge
+
+    def conventions(self) -> Sequence[ConventionInfo]:
+        effective = load_effective_conventions(self.paths.dir)
+        enforced = {id(item) for item in effective.enforced}
+        return [
+            ConventionInfo(
+                item.convention.code, item.convention.title, str(item.source), str(item.convention.check),
+                item.convention.rule, item.convention.description or "", id(item) in enforced,
+            )
+            for item in effective.items
+        ]  # fmt: skip
 
     def knowledge_search(self, query: str, limit: int) -> Sequence[KnowledgeHit]:
         needle = query.strip().lower()

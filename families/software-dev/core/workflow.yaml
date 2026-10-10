@@ -37,4 +37,5 @@ steps:
     name: Review
     role: reviewer
     requires_approval: true
+    gates: [conventions-reviewed]
     on_fail: implement

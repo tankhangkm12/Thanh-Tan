@@ -69,7 +69,10 @@ _COMMIT = "commit"
 _UPDATE_REF = "update-ref"
 # Commands only a person runs (an agent would be granting itself decisions), as their leading words.
 _PERSON_ONLY = frozenset(
-    {("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal"), ("project", "confirm")}
+    {
+        ("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal"), ("project", "confirm"),
+        ("knowledge", "init"), ("knowledge", "pull"), ("knowledge", "push"),
+    }  # fmt: skip
 )
 _SWITCH = "switch"
 _CHECKOUT = "checkout"

@@ -21,6 +21,7 @@ from agentflow.errors import AgentflowError
 from agentflow.fsutil import write_text_atomic
 from agentflow.gates import plan_report_path
 from agentflow.interfaces import GitClient
+from agentflow.lessons import read_lessons, write_lessons
 from agentflow.models import State, Task, Workflow
 from agentflow.plan import PlanItem, parse_plan
 from agentflow.summary import build_summary
@@ -92,7 +93,9 @@ class TaskSealer:
         approver, at = self.git.identity(), self.clock()
         base = base_branch(task)
         commits = self.git.commits_between(base, tip) if self.git.branch_exists(base) else []
-        text = build_summary(task, self.plan_items(task), commits, self.scan_lines(task), approver, at)
+        lessons = read_lessons(plan_report_path(self.workspace_dir, task.id, self.workflow.steps[-1].id))
+        write_lessons(self.workspace_dir, task.id, lessons)
+        text = build_summary(task, self.plan_items(task), commits, self.scan_lines(task), approver, at, lessons)
         path = self.workspace_dir / TASKS_DIR / task.id / SUMMARY_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
         write_text_atomic(path, text)

@@ -14,6 +14,7 @@ from agentflow.constants import HookEvent, ProjectSection
 from agentflow.models import (
     CommandResult,
     CommitInfo,
+    ConventionInfo,
     HookInput,
     HookReply,
     KnowledgeFile,
@@ -174,6 +175,13 @@ class PlanRule(Protocol):
 
 
 @runtime_checkable
+class PlanWideRule(Protocol):
+    """A check on a whole plan (such as the order of its items); returns ``(item code or None, message)`` pairs."""
+
+    def problems(self, items: Sequence[Any]) -> Sequence[tuple[str | None, str]]: ...
+
+
+@runtime_checkable
 class GateRunner(Protocol):
     """Checks a step's gates; each returned string is a reason the step may not pass yet."""
 
@@ -209,6 +217,8 @@ class WorkspaceService(Protocol):
     def write_project(self, section: ProjectSection, content: str) -> ProjectWriteInfo: ...
 
     def scan_summary(self) -> ScanSummaryInfo: ...
+
+    def conventions(self) -> Sequence[ConventionInfo]: ...
 
     def knowledge_search(self, query: str, limit: int) -> Sequence[KnowledgeHit]: ...
 

@@ -9,8 +9,14 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
+from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
-from agentflow.constants import McpCommand, ProjectCommand
+from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand
+from agentflow.constants import ANSWER_OPTION, DECISION_SCOPE_PROJECT, CheckKind
+from agentflow.convention_sources import next_code, write_answer
+from agentflow.knowledge import add_personal_convention, init_store, pull_files, push_file
+from agentflow.project import load_conventions
+from agentflow.userconfig import knowledge_dir, save_knowledge_dir
 from agentflow.project import confirm_conventions, unconfirmed_conventions
 from agentflow.constants import (
     CONTAINER_TOOLS,
@@ -158,9 +164,16 @@ def build_parser() -> argparse.ArgumentParser:
     scan = commands.add_parser(Command.SCAN, help="run the scanners of the current step in containers (--all: every configured scan)")
     scan.add_argument(ALL_OPTION, action="store_true", help="run every configured scan, not only the current step's")
 
-    decide = commands.add_parser(Command.DECIDE, help="for a person: record a decision about the active task")
-    decide.add_argument(SUPPRESS_OPTION, required=True, metavar="FINDING_ID", help="accept this scan finding as a false positive")
-    decide.add_argument(REASON_OPTION, required=True, help="why it is acceptable")
+    decide = commands.add_parser(Command.DECIDE, help="for a person: record a decision (accept a scan finding, or answer a question)")
+    what = decide.add_mutually_exclusive_group(required=True)
+    what.add_argument(SUPPRESS_OPTION, metavar="FINDING_ID", help="accept this scan finding as a false positive")
+    what.add_argument(ANSWER_OPTION, metavar="QUESTION", help="answer a question: Q1 of the plan, or S1 of the setup")
+    decide.add_argument(REASON_OPTION, help="why it is acceptable (with --suppress)")
+    decide.add_argument("--text", help="the convention the answer sets, in one line (with --answer)")
+    decide.add_argument("--check", choices=[str(kind) for kind in CheckKind], help="how it is checked (with --answer)")
+    decide.add_argument("--rule", help="item-order for plan, a rule file in knowledge/semgrep/ for semgrep (with --answer)")
+    decide.add_argument("--overrides", help="the code of a lower-priority convention this one replaces (with --answer)")
+    decide.add_argument("--global", dest="to_store", action="store_true", help="also add it to your personal knowledge store (with --answer)")
 
     plan = commands.add_parser(Command.PLAN, help="check the plan of the active task")
     plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
@@ -176,11 +189,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
 
+    commands.add_parser(Command.CONVENTIONS, help="the conventions to work to: decisions, project and personal store, merged")
+
     project = commands.add_parser(Command.PROJECT, help="the project documents a scout wrote (.agentflow/project/)")
     project_commands = project.add_subparsers(dest="project_command", metavar="<project command>", required=True)
     confirm = project_commands.add_parser(ProjectCommand.CONFIRM, help="for a person: confirm conventions (PC-01 ... or --all)")
     confirm.add_argument("codes", nargs="*", metavar="CODE")
     confirm.add_argument("--all", action="store_true", dest="everything", help="confirm every convention")
+
+    knowledge = commands.add_parser(Command.KNOWLEDGE, help="your personal knowledge store (outside every repository)")
+    knowledge_commands = knowledge.add_subparsers(dest="knowledge_command", metavar="<knowledge command>", required=True)
+    k_init = knowledge_commands.add_parser(KnowledgeCommand.INIT, help="for a person: create the store's folders and files")
+    k_init.add_argument("--dir", type=Path, default=None, help="the store's folder (default: the one in the user config, else ~/knowledge)")
+    k_pull = knowledge_commands.add_parser(KnowledgeCommand.PULL, help="for a person: copy files of the store into .agentflow/knowledge/")
+    k_pull.add_argument("files", nargs="+", metavar="FILE", help="paths inside the store")
+    k_push = knowledge_commands.add_parser(KnowledgeCommand.PUSH, help="for a person: copy a lesson from the workspace into the store")
+    k_push.add_argument("file", type=Path)
+    k_push.add_argument("--as", dest="place", default=str(KnowledgePlace.LESSONS), choices=[str(p) for p in KnowledgePlace])
 
     mcp = commands.add_parser(Command.MCP, help="the MCP server that gives agents the agentflow tools")
     mcp_commands = mcp.add_subparsers(dest="mcp_command", metavar="<mcp command>", required=True)
@@ -479,8 +504,56 @@ def cmd_scan(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def _question_scope(opened: _Opened, question: str) -> tuple[str, str]:
+    """(scope, where it was asked): the active task when its plan asks it, ``project`` when the setup did."""
+    task = opened.state.active_task()
+    items = _plan_questions(opened)
+    if task is not None and question in items:
+        return task.id, f"the plan of {task.id}"
+    project = load_conventions(opened.paths.dir)
+    if project is not None and question in {q.code for q in project.questions}:
+        return DECISION_SCOPE_PROJECT, "project/conventions.md"
+    raise AgentflowError(
+        f"no question '{question}' in the active task's plan or in the project's open questions", ExitCode.INVALID_INPUT
+    )
+
+
+def _plan_questions(opened: _Opened) -> set[str]:
+    task = opened.state.active_task()
+    step = next((s for s in opened.workflow.steps if GateKind.PLAN_VALID in s.gates), None)
+    if task is None or step is None:
+        return set()
+    path = plan_report_path(opened.paths.dir, task.id, step.id)
+    return {q.code for q in parse_plan(path.read_text(encoding=ENCODING)).questions} if path.is_file() else set()
+
+
+def _decide_answer(opened: _Opened, args: argparse.Namespace) -> ExitCode:
+    if not args.text or not args.text.strip():
+        raise AgentflowError("an answer needs --text (the convention, in one line)", ExitCode.INVALID_INPUT)
+    if not args.check:
+        raise AgentflowError(f"an answer needs --check ({', '.join(CheckKind)})", ExitCode.INVALID_INPUT)
+    scope, where = _question_scope(opened, args.answer)
+    store = knowledge_dir()
+    if args.to_store and not store.is_dir():
+        raise AgentflowError(f"--global needs your knowledge store: run `agentflow knowledge init` first ({store})", ExitCode.INVALID_INPUT)
+    code = next_code(opened.paths.dir)
+    path = write_answer(
+        opened.paths.dir, scope, args.answer, code, args.text, CheckKind(args.check), args.rule, args.overrides, utc_now()
+    )
+    print(f"decision recorded: {path} ({code}, from {where})")
+    if args.to_store:
+        title = f"{args.answer} ({scope})"
+        kept = add_personal_convention(store, title, args.check, args.rule, args.text.strip(), f"answer to {args.answer} of {scope}")
+        print(f"added to your knowledge store: {kept}")
+    return ExitCode.OK
+
+
 def cmd_decide(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
+    if args.answer:
+        return _decide_answer(opened, args)
+    if not args.reason:
+        raise AgentflowError("a suppression needs a reason (--reason)", ExitCode.INVALID_INPUT)
     task = require_active_task(opened.state)
     known = {f.id: f for outcome in ScanStore(opened.paths.dir).load(task.id).values() for f in outcome.findings}
     finding = known.get(args.suppress)
@@ -532,6 +605,39 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     request = parse_request(sys.stdin.read())
     verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup(), GitWorkspaceLookup())
     print(json.dumps(verdict_to_dict(verdict), ensure_ascii=False))
+    return ExitCode.OK
+
+
+def cmd_knowledge(args: argparse.Namespace) -> ExitCode:
+    match args.knowledge_command:
+        case KnowledgeCommand.INIT:
+            store = args.dir or knowledge_dir()
+            created = init_store(store)
+            save_knowledge_dir(store)
+            print(f"knowledge store: {store}")
+            print(f"created: {', '.join(created)}" if created else "created: nothing, the store was complete")
+        case KnowledgeCommand.PULL:
+            paths = find_workspace(Path.cwd())
+            for path in pull_files(knowledge_dir(), paths.dir, args.files):
+                print(f"pulled: {path}")
+        case KnowledgeCommand.PUSH:
+            paths = find_workspace(Path.cwd())
+            print(f"pushed: {push_file(knowledge_dir(), paths.dir, args.file, args.place)}")
+    return ExitCode.OK
+
+
+def cmd_conventions(args: argparse.Namespace) -> ExitCode:
+    paths = find_workspace(Path.cwd())
+    items = WorkspaceServices(paths).conventions()
+    if not items:
+        print("no conventions yet (the setup skill writes the project's; a person may add their own)")
+    for item in items:
+        mark = "" if item.enforced else " [unconfirmed: a suggestion, not checked]"
+        rule = f" rule={item.rule}" if item.rule else ""
+        print(f"{item.code} ({item.source}, check={item.check}{rule}){mark}: {item.title}")
+        print(f"    {item.description}")
+    for problem in load_effective_conventions(paths.dir).problems:
+        _err(f"{WARNING_PREFIX}{problem}")
     return ExitCode.OK
 
 
@@ -590,6 +696,8 @@ HANDLERS: dict[str, Handler] = {
     Command.GUARD: cmd_guard,
     Command.MCP: cmd_mcp,
     Command.PROJECT: cmd_project,
+    Command.CONVENTIONS: cmd_conventions,
+    Command.KNOWLEDGE: cmd_knowledge,
 }
 
 

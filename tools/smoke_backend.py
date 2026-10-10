@@ -53,6 +53,8 @@ TASK_ID = "T-001"
 USAGE_ERROR_CODES = {"plan_invalid": 24, "gate_failed": 25, "scan_blocked": 27}
 MANDATORY_ASK = ("task approve", "task cancel", "decide")
 READY_TIMEOUT_SECONDS = 90
+IN_USE_MESSAGE = "being used by another process"
+AGY_PLUGINS = Path.home() / ".gemini" / "config" / "plugins"
 CLI_TIMEOUT_SECONDS = 600
 
 
@@ -321,8 +323,10 @@ def install_check(repo: Path, with_session: bool = True) -> None:
         events = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
         init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
         text = json.dumps(init)
-        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
+        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:setup", f"{CORE_NAME}:scout", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
             expect(needle in text, f"Claude Code loaded {needle}", text[:400])
+        servers = {server["name"]: server.get("status") for server in init.get("mcp_servers", [])}
+        expect(servers.get(f"plugin:{CORE_NAME}:agentflow") == "connected", "Claude Code connected dev-core's MCP server", str(servers))
         results = json.dumps([e for e in events if e.get("type") == "user"])
         expect("git push is blocked for agents" in results, "the dev-core hook blocked `git push` in a real session", results[:600])
 
@@ -331,14 +335,22 @@ def install_check(repo: Path, with_session: bool = True) -> None:
         cli("agy", "plugin", "uninstall", name)
     for name, path in ((CORE_NAME, CORE), (BACKEND_NAME, BACKEND)):
         done = cli("agy", "plugin", "install", str(path))
+        if done.returncode != 0 and IN_USE_MESSAGE in done.stdout + done.stderr:
+            # An open `agy` session keeps its MCP server inside the installed plugin folder, so the folder cannot be
+            # replaced. Copy the new files over it instead (what the install does, without deleting first).
+            print(f"WARNING: {name} is in use by an open Antigravity session; copying the new files over the installed folder")
+            shutil.copytree(path, AGY_PLUGINS / name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__"))
+            continue
         expect(done.returncode == 0, f"agy plugin install {path.name}", done.stdout + done.stderr)
     plugins = cli("agy", "plugin", "list").stdout
     for name in (CORE_NAME, BACKEND_NAME):
         expect(name in plugins, f"agy lists {name}", plugins)
     agents = cli("agy", "agents").stdout
-    for role in ("orchestrator", "planner", "implementer", "tester", "security", "reviewer", "db-engineer"):
+    for role in ("orchestrator", "planner", "implementer", "tester", "security", "reviewer", "scout", "db-engineer"):
         expect(role in agents, f"agy agents lists {role}", agents)
     expect("hooks" in plugins.lower(), "agy shows hooks for dev-core", plugins)
+    core_entry = plugins.split(f'"name": "{CORE_NAME}"')[1].split("}")[0]
+    expect("mcpServers" in core_entry and "skills" in core_entry, "agy shows the MCP server and skills for dev-core", core_entry)
 
 
 # --------------------------------------------------------------------- main

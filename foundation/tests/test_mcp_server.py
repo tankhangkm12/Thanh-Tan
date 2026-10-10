@@ -8,6 +8,7 @@ from mcp import Client
 from agentflow.cli import main
 from agentflow.constants import MCP_SERVER_NAME, READ_ONLY_TOOLS, ExitCode, ToolName
 from agentflow.mcp_server import CurrentProjectServices, build_server
+from agentflow.projectlocator import EnvironmentProjectLocator
 from agentflow.services import WorkspaceServices
 from agentflow.workspace import find_workspace
 
@@ -123,7 +124,7 @@ def test_scan_summary_without_results(server, repo):
 
 def test_the_server_finds_the_workspace_afresh_on_every_call(repo, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # outside any workspace
-    server = build_server(CurrentProjectServices())
+    server = build_server(CurrentProjectServices(EnvironmentProjectLocator(environ={"AGENTFLOW_HOME": str(tmp_path / "home")})))
     assert call(server, "status").is_error
     monkeypatch.chdir(repo)
     assert not call(server, "status").is_error

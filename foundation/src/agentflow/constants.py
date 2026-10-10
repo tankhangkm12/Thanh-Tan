@@ -42,6 +42,12 @@ GIT_TOPLEVEL_ARGS = ("rev-parse", "--show-toplevel")
 GIT_PATH_ARGS = ("rev-parse", "--git-path")
 GIT_EXCLUDE_PATH = "info/exclude"
 
+# Where a server that does not run in the project finds it, and where agentflow keeps per-user files.
+PROJECT_DIR_ENV = "AGENTFLOW_PROJECT_DIR"
+SHELL_PWD_ENV = "PWD"
+USER_DIR_ENV = "AGENTFLOW_HOME"
+USER_DIR_NAME = ".agentflow"
+ACTIVE_PROJECT_FILE = "active-project.txt"
 # When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
 HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15

@@ -8,7 +8,6 @@ cancelling, sealing, deciding, extensions, settings and the personal knowledge s
 import functools
 from collections.abc import Callable
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any
 
 from mcp.server import MCPServer
@@ -23,9 +22,9 @@ from agentflow.constants import (
     ToolName,
 )
 from agentflow.errors import AgentflowError
-from agentflow.interfaces import WorkspaceService
+from agentflow.interfaces import ProjectLocator, WorkspaceService
+from agentflow.projectlocator import EnvironmentProjectLocator
 from agentflow.services import WorkspaceServices
-from agentflow.workspace import find_workspace
 
 INSTRUCTIONS = (
     "agentflow keeps the state of a software task in .agentflow/. Use these tools instead of editing files there. "
@@ -35,16 +34,16 @@ INSTRUCTIONS = (
 
 
 class CurrentProjectServices:
-    """``WorkspaceService`` for the project around a directory, found again on every call.
+    """``WorkspaceService`` for the project the locator finds, looked up again on every call.
 
     A server outlives many commands (a workspace may even be created after it started), so nothing is cached.
     """
 
-    def __init__(self, directory: Callable[[], Path] = Path.cwd) -> None:
-        self._directory = directory
+    def __init__(self, locator: ProjectLocator | None = None) -> None:
+        self._locator = locator or EnvironmentProjectLocator()
 
     def _service(self) -> WorkspaceService:
-        return WorkspaceServices(find_workspace(self._directory()))
+        return WorkspaceServices(self._locator.find())
 
     def status(self):
         return self._service().status()
@@ -146,6 +145,6 @@ def build_server(service: WorkspaceService) -> MCPServer:
     return server
 
 
-def serve(directory: Callable[[], Path] = Path.cwd) -> None:
+def serve(locator: ProjectLocator | None = None) -> None:
     """Run the server on stdio until the client disconnects."""
-    build_server(CurrentProjectServices(directory)).run("stdio")
+    build_server(CurrentProjectServices(locator)).run("stdio")

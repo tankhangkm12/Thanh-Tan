@@ -8,6 +8,8 @@ from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from typing import TYPE_CHECKING
+
 from agentflow.constants import HookEvent, ProjectSection
 from agentflow.models import (
     CommandResult,
@@ -27,6 +29,10 @@ from agentflow.models import (
     StatusInfo,
     Workflow,
 )
+
+
+if TYPE_CHECKING:
+    from agentflow.workspace import WorkspacePaths
 
 
 @runtime_checkable
@@ -172,6 +178,15 @@ class GateRunner(Protocol):
     """Checks a step's gates; each returned string is a reason the step may not pass yet."""
 
     def problems(self, task: Any, step: Any) -> Sequence[str]: ...
+
+
+@runtime_checkable
+class ProjectLocator(Protocol):
+    """Finds the project's workspace for a process that may not be running inside the project."""
+
+    def find(self) -> "WorkspacePaths":
+        """The workspace, or ``AgentflowError`` (``NO_WORKSPACE``) saying where it looked."""
+        ...
 
 
 @runtime_checkable

@@ -25,6 +25,7 @@ from agentflow.errors import AgentflowError
 from agentflow.guard import evaluate, writes_into_workspace
 from agentflow.hook_adapters import ADAPTERS
 from agentflow.interfaces import BranchLookup, WorkspaceLookup
+from agentflow.projectlocator import remember_project
 from agentflow.models import HookInput, HookReply, State, Task, Workflow
 from agentflow.render import NONE_TEXT, describe_action, describe_step
 from agentflow.state import JsonStateStore
@@ -55,6 +56,9 @@ def handle_hook(
     paths = _workspace(hook_input.cwd)
     if paths is None:
         return ""
+    if cli is CliKind.ANTIGRAVITY:
+        # Its MCP servers start in the plugin directory and cannot see the project; leave them a pointer.
+        remember_project(paths.root)
     reply = _reply(event, cli, hook_input, paths, branches, workspaces or GitWorkspaceLookup())
     return adapter.render(event, reply)
 

@@ -72,6 +72,30 @@ def git_repo(tmp_path) -> Path:
     return repo
 
 
+def git(repo: Path, *args: str) -> str:
+    done = subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
+    return done.stdout.strip()
+
+
+# Local identity and no signing, so commits work whatever the machine's global git config says.
+_LOCAL_GIT_CONFIG = {"user.name": "Test", "user.email": "test@example.invalid", "commit.gpgsign": "false"}
+
+
+@pytest.fixture
+def gitflow_repo(tmp_path) -> Path:
+    """A repository with one commit on main, a develop branch, and develop checked out."""
+    repo = tmp_path / "project"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    for key, value in _LOCAL_GIT_CONFIG.items():
+        git(repo, "config", key, value)
+    (repo / "README.md").write_text("sample\n", encoding="utf-8")
+    git(repo, "add", "README.md")
+    git(repo, "commit", "-q", "-m", "initial")
+    git(repo, "switch", "-q", "-c", "develop")
+    return repo
+
+
 def write_workflow(path: Path, data: dict[str, Any]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")

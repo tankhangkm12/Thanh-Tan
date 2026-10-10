@@ -40,6 +40,8 @@ GIT_TOPLEVEL_ARGS = ("rev-parse", "--show-toplevel")
 GIT_PATH_ARGS = ("rev-parse", "--git-path")
 GIT_EXCLUDE_PATH = "info/exclude"
 
+# When this environment variable names a file, every hook call appends one JSON line to it (for diagnosing CLIs).
+HOOK_LOG_ENV = "AGENTFLOW_HOOK_LOG"
 TOOL_TIMEOUT_SECONDS = 15
 VERSION_FLAG = "--version"
 ENGINE_INFO_ARG = "info"
@@ -252,8 +254,11 @@ class ReplyKind(StrEnum):
 
 class ClaudeHookKey(StrEnum):
     CWD = "cwd"
+    TOOL_NAME = "tool_name"
     TOOL_INPUT = "tool_input"
     COMMAND = "command"
+    FILE_PATH = "file_path"
+    NOTEBOOK_PATH = "notebook_path"
     STOP_HOOK_ACTIVE = "stop_hook_active"
     HOOK_SPECIFIC_OUTPUT = "hookSpecificOutput"
     HOOK_EVENT_NAME = "hookEventName"
@@ -272,8 +277,10 @@ class ClaudeHookValue(StrEnum):
 class AntigravityHookKey(StrEnum):
     WORKSPACE_PATHS = "workspacePaths"
     TOOL_CALL = "toolCall"
+    NAME = "name"
     ARGS = "args"
     COMMAND_LINE = "CommandLine"
+    TARGET_FILE = "TargetFile"
     CWD = "Cwd"
     INVOCATION_NUM = "invocationNum"
     INJECT_STEPS = "injectSteps"
@@ -292,6 +299,10 @@ class AntigravityDecision(StrEnum):
 ANTIGRAVITY_FIRST_INVOCATION = 0
 # What a Antigravity PreToolUse hook prints when it has no objection. An empty string means "no output";
 # its handling by `agy` is checked by the install smoke test (see tools/).
+# Tools of each CLI that write a file. Claude Code: Write, Edit and NotebookEdit are documented (MultiEdit is
+# not any more, but costs nothing to cover). Antigravity: the file tools of its hooks reference.
+CLAUDE_WRITE_TOOLS = frozenset({"Write", "Edit", "MultiEdit", "NotebookEdit"})
+ANTIGRAVITY_WRITE_TOOLS = frozenset({"write_to_file", "replace_file_content", "multi_replace_file_content"})
 ANTIGRAVITY_PRE_TOOL_PASS_OUTPUT = ""
 EMPTY_JSON_OBJECT = "{}"
 
@@ -313,6 +324,7 @@ class GuardRule(StrEnum):
     DIRECT_COMMIT = "direct-commit"
     APPROVAL_TAG = "approval-tag"
     PERSON_ONLY = "person-only"
+    WORKSPACE_WRITE = "workspace-write"
 
 
 class GuardKey(StrEnum):

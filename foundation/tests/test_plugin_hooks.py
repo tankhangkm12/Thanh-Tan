@@ -50,11 +50,11 @@ def test_every_declared_hook_is_a_valid_agentflow_call(argvs, cli):
     assert seen == set(HookEvent)
 
 
-def test_claude_pre_tool_matcher_covers_both_shell_tools():
+def test_claude_pre_tool_matcher_covers_the_shell_and_file_tools():
     data = json.loads(CLAUDE_HOOKS.read_text(encoding="utf-8"))
-    assert data["hooks"]["PreToolUse"][0]["matcher"] == "Bash|PowerShell"
+    assert data["hooks"]["PreToolUse"][0]["matcher"] == "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit"
 
 
-def test_antigravity_pre_tool_matcher_is_run_command():
+def test_antigravity_pre_tool_matcher_covers_the_shell_and_file_tools():
     data = json.loads(ANTIGRAVITY_HOOKS.read_text(encoding="utf-8"))
-    assert data["agentflow"]["PreToolUse"][0]["matcher"] == "run_command"
+    assert data["agentflow"]["PreToolUse"][0]["matcher"] == "run_command|write_to_file|replace_file_content|multi_replace_file_content"

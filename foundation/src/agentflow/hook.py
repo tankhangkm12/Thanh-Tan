@@ -22,7 +22,7 @@ from agentflow.constants import (
 from agentflow.engine import next_action
 from agentflow.gates import plan_report_path
 from agentflow.errors import AgentflowError
-from agentflow.guard import evaluate
+from agentflow.guard import evaluate, writes_into_workspace
 from agentflow.hook_adapters import ADAPTERS
 from agentflow.interfaces import BranchLookup, WorkspaceLookup
 from agentflow.models import HookInput, HookReply, State, Task, Workflow
@@ -33,7 +33,7 @@ from agentflow.workspace import GitWorkspaceLookup, WorkspacePaths, find_workspa
 RULES_TEXT = (
     "Rules: change task state only through `agentflow task ...`; save step reports with "
     "`agentflow report --step <id>`; commit with `agentflow commit`; never edit files under .agentflow/ "
-    "by hand; never push."
+    "by hand (the file tools are blocked there too); never push."
 )
 NO_TASK_TEXT = "No active task. To begin, use the start skill (it runs `agentflow task new`)."
 STOP_REMINDER = (
@@ -99,9 +99,14 @@ def _reply(
 
 
 def _guard_reply(hook_input: HookInput, branches: BranchLookup, workspaces: WorkspaceLookup) -> HookReply:
-    if not hook_input.command or hook_input.cwd is None:
+    if hook_input.cwd is None:
         return HookReply()
-    verdict = evaluate(hook_input.command, hook_input.cwd, branches, workspaces)
+    if hook_input.write_target is not None:
+        verdict = writes_into_workspace(hook_input.write_target, hook_input.cwd)
+    elif hook_input.command:
+        verdict = evaluate(hook_input.command, hook_input.cwd, branches, workspaces)
+    else:
+        return HookReply()
     return HookReply(ReplyKind.DENY, verdict.reason or "") if verdict.denied else HookReply()
 
 

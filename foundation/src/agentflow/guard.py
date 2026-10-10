@@ -27,8 +27,9 @@ from agentflow.constants import (
     GuardRule,
 )
 from agentflow.errors import AgentflowError
-from agentflow.interfaces import BranchLookup, WorkspaceLookup
+from agentflow.interfaces import BranchLookup, WorkspaceLookup, WriteTargetPolicy
 from agentflow.models import GuardVerdict
+from agentflow.pathguard import WorkspaceWritePolicy
 
 # ------------------------------------------------------------ tokenizing
 
@@ -100,7 +101,38 @@ REASONS = {
     GuardRule.PERSON_ONLY: "`agentflow {command}` is for a person: ask them to run it themselves (in Claude Code: `! agentflow {command} ...`)",
 }
 
+REASONS[GuardRule.WORKSPACE_WRITE] = (
+    "files under .agentflow/ are written by agentflow only: use the `agentflow` commands "
+    "(or its MCP tools), never edit or write there by hand"
+)
+
 ALLOW = GuardVerdict(GuardDecision.ALLOW)
+
+# ------------------------------------------------------- writes into .agentflow/
+# Best effort: the commands people and models usually write files with. Scripts and interpreters (`python -c`,
+# `node -e`), aliases and variables are not followed; see docs/architecture.md.
+
+_REDIRECT_CHAR = ">"
+_FD_DUPLICATE_SUFFIX = "&"
+# Programs whose every path argument is changed (written, created, deleted or moved away).
+_CHANGES_ARGUMENTS = frozenset(
+    {
+        "tee", "touch", "truncate", "shred", "unlink", "mkdir", "md",
+        "rm", "del", "erase", "rd", "rmdir", "ri", "remove-item",
+        "mv", "move", "mi", "move-item", "ren", "rename", "rni", "rename-item",
+        "set-content", "sc", "add-content", "ac", "out-file", "clear-content", "clc", "new-item", "ni",
+    }
+)  # fmt: skip
+# Programs that only change their last argument (the destination).
+_COPIES = frozenset({"cp", "copy", "cpi", "copy-item", "xcopy", "robocopy"})
+_COPY_TARGET_OPTIONS = frozenset({"-t", "--target-directory", "-destination"})
+_SED = "sed"
+_IN_PLACE_PREFIXES = ("-i", "--in-place")
+_DD = "dd"
+_DD_OUTPUT = "of="
+_MKDIR_ALIASES = frozenset({"mkdir", "md"})
+_HEREDOC = re.compile(r"(?<!<)<<(-?)\s*(?:(['\"])(\w+)\2|(\w+))")
+_TABS = "\t"
 
 
 @dataclass
@@ -112,6 +144,7 @@ class _Context:
     workspaces: WorkspaceLookup | None = None
     # Branches the command line itself switched to, per repository directory (None = detached).
     switched: dict[Path, str | None] = field(default_factory=dict)
+    writes: WriteTargetPolicy = field(default_factory=WorkspaceWritePolicy)
 
     def in_workspace(self, directory: Path) -> bool:
         return self.workspaces is not None and self.workspaces.has_workspace(directory)
@@ -122,8 +155,26 @@ class _Context:
         return self.branches.current_branch(directory)
 
 
-def evaluate(command: str, cwd: Path, branches: BranchLookup, workspaces: WorkspaceLookup | None = None) -> GuardVerdict:
-    return _evaluate(command, _Context(Path(os.path.normpath(cwd)), branches, workspaces), depth=0)
+def evaluate(
+    command: str,
+    cwd: Path,
+    branches: BranchLookup,
+    workspaces: WorkspaceLookup | None = None,
+    writes: WriteTargetPolicy | None = None,
+) -> GuardVerdict:
+    start = Path(os.path.normpath(cwd))
+    context = _Context(start, branches, workspaces, writes=writes or WorkspaceWritePolicy())
+    verdict = _evaluate(command, context, depth=0)
+    if verdict.denied:
+        return verdict
+    return _evaluate_writes(_without_heredoc_bodies(command), start, context.writes, depth=0)
+
+
+def writes_into_workspace(target: Path | str, cwd: Path, writes: WriteTargetPolicy | None = None) -> GuardVerdict:
+    """Verdict for a file-writing tool (not a shell command) that is about to change ``target``."""
+    if (writes or WorkspaceWritePolicy()).is_protected(target, cwd):
+        return _deny(GuardRule.WORKSPACE_WRITE)
+    return ALLOW
 
 
 def _evaluate(command: str, context: _Context, depth: int) -> GuardVerdict:
@@ -198,6 +249,99 @@ def _evaluate_segment(tokens: list[str], context: _Context, depth: int) -> Guard
             if verdict.denied:
                 return verdict
     return ALLOW
+
+
+def _without_heredoc_bodies(command: str) -> str:
+    """``command`` with the text of here-documents removed: it is data for the command that reads it."""
+    lines = command.replace("\r\n", "\n").split("\n")
+    kept: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        kept.append(line)
+        index += 1
+        match = _HEREDOC.search(line)
+        if match is None:
+            continue
+        delimiter = match.group(3) or match.group(4)
+        strip_tabs = match.group(1) == "-"
+        while index < len(lines):
+            body = lines[index]
+            index += 1
+            if (body.lstrip(_TABS) if strip_tabs else body) == delimiter:
+                break
+    return "\n".join(kept)
+
+
+@dataclass
+class _Simple:
+    """One simple command: its words, and the files its redirections write to."""
+
+    words: list[str] = field(default_factory=list)
+    redirects: list[str] = field(default_factory=list)
+
+
+def _simple_commands(command: str) -> list[_Simple]:
+    commands: list[_Simple] = []
+    current = _Simple()
+    redirecting = False
+    for token in _tokens(command):
+        if token and all(char in _PUNCTUATION for char in token):
+            if _REDIRECT_CHAR in token and not token.endswith(_FD_DUPLICATE_SUFFIX):
+                redirecting = True
+                continue
+            redirecting = False
+            if current.words or current.redirects:
+                commands.append(current)
+            current = _Simple()
+        elif redirecting:
+            current.redirects.append(token)
+            redirecting = False
+        else:
+            current.words.append(token)
+    if current.words or current.redirects:
+        commands.append(current)
+    return commands
+
+
+def _evaluate_writes(command: str, cwd: Path, writes: WriteTargetPolicy, depth: int) -> GuardVerdict:
+    for simple in _simple_commands(command):
+        if simple.words and _program(simple.words[0]) in _CHANGE_DIRECTORY:
+            target = next((t for t in simple.words[1:] if not t.startswith(_SHORT_PREFIX) and t.lower() != _CMD_DRIVE_FLAG), None)
+            if target is not None:
+                cwd = _join(cwd, target)
+            continue
+        paths = [*simple.redirects, *_changed_paths(simple.words)]
+        if any(writes.is_protected(_bare(path), cwd) for path in paths):
+            return _deny(GuardRule.WORKSPACE_WRITE)
+        for index, token in enumerate(simple.words):
+            program = _program(token)
+            if depth < _MAX_NESTING and _runs_nested_command(program, simple.words, index):
+                nested = " ".join(simple.words[_nested_start(program, simple.words, index) :])
+                verdict = _evaluate_writes(_without_heredoc_bodies(nested), cwd, writes, depth + 1)
+                if verdict.denied:
+                    return verdict
+    return ALLOW
+
+
+def _changed_paths(words: list[str]) -> list[str]:
+    """Path arguments of ``words`` that the program would write, create, delete or move away."""
+    if not words:
+        return []
+    program, args = _program(words[0]), words[1:]
+    positional = [arg for arg in args if not arg.startswith(_SHORT_PREFIX)]
+    if program in _CHANGES_ARGUMENTS:
+        return positional
+    if program in _COPIES:
+        explicit = [
+            args[i + 1] for i in range(len(args) - 1) if args[i].lower() in _COPY_TARGET_OPTIONS
+        ] + [arg.split("=", 1)[1] for arg in args if arg.lower().startswith("--target-directory=")]
+        return explicit or positional[-1:]
+    if program == _SED and any(arg.startswith(_IN_PLACE_PREFIXES) for arg in args):
+        return positional
+    if program == _DD:
+        return [arg[len(_DD_OUTPUT) :] for arg in args if arg.startswith(_DD_OUTPUT)]
+    return []
 
 
 def _evaluate_agentflow(args: list[str], context: _Context) -> GuardVerdict:

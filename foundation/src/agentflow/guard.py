@@ -68,7 +68,9 @@ _TAG = "tag"
 _COMMIT = "commit"
 _UPDATE_REF = "update-ref"
 # Commands only a person runs (an agent would be granting itself decisions), as their leading words.
-_PERSON_ONLY = frozenset({("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal")})
+_PERSON_ONLY = frozenset(
+    {("decide",), ("ext", "add"), ("ext", "sync"), ("config", "set"), ("task", "seal"), ("project", "confirm")}
+)
 _SWITCH = "switch"
 _CHECKOUT = "checkout"
 # Subcommands that write commits onto the checked-out branch.

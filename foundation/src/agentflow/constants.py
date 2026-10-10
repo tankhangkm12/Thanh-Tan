@@ -305,11 +305,16 @@ class Command(StrEnum):
     GUARD = "guard"
     HOOK = "hook"
     MCP = "mcp"
+    PROJECT = "project"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"
     EXT = "ext"
     CONFIG = "config"
+
+
+class ProjectCommand(StrEnum):
+    CONFIRM = "confirm"
 
 
 class McpCommand(StrEnum):

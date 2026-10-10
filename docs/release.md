@@ -56,6 +56,7 @@ agy plugin validate families/software-dev/core
 agy plugin validate families/software-dev/backend
 uv run tools/smoke.py
 uv run tools/smoke_backend.py
+uv run tools/smoke_modes.py
 ```
 
 Quét secret (Docker đang chạy):

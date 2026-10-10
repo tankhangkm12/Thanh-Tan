@@ -176,11 +176,29 @@ def test_stop_reminder_only_while_a_step_is_in_progress(project, capsys):
     stop = {"cwd": str(project), "stop_hook_active": False}
     assert hook(HookEvent.STOP, CliKind.CLAUDE, stop) == ""  # no task
     main(["task", "new", "t"])
+    assert hook(HookEvent.STOP, CliKind.CLAUDE, stop) == ""  # step just began, nothing done yet
+    _save_report(project, "T-001", "confirm")
     message = json.loads(hook(HookEvent.STOP, CliKind.CLAUDE, stop))["systemMessage"]
     assert "T-001" in message and "agentflow task advance" in message
     assert hook(HookEvent.STOP, CliKind.CLAUDE, {**stop, "stop_hook_active": True}) == ""
     main(["task", "advance", "--result", "pass"])  # now awaiting approval
     assert hook(HookEvent.STOP, CliKind.CLAUDE, stop) == ""
+
+
+def _save_report(project, task_id, step):
+    path = project / ".agentflow" / "tasks" / task_id / "reports" / f"{step}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("done\n", encoding="utf-8")
+
+
+def test_stale_report_from_before_the_step_began_does_not_trigger_a_reminder(project):
+    import os
+
+    main(["task", "new", "t"])
+    _save_report(project, "T-001", "confirm")
+    old = (project / ".agentflow" / "tasks" / "T-001" / "reports" / "confirm.md")
+    os.utime(old, (0, 0))
+    assert hook(HookEvent.STOP, CliKind.CLAUDE, {"cwd": str(project), "stop_hook_active": False}) == ""
 
 
 def test_antigravity_stop_never_blocks(project):

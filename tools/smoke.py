@@ -8,8 +8,10 @@ Everything happens in a temporary directory; no other repository is touched. Nee
 
 import json
 import os
+import secrets
 import shutil
 import stat
+import string
 import subprocess
 import sys
 import tempfile
@@ -21,9 +23,9 @@ WORKFLOW = Path(__file__).resolve().parents[1] / "families" / "software-dev" / "
 MAIN, DEVELOP = "main", "develop"
 TASK_ID = "T-001"
 STEP_TIMEOUT = 900
-# A made-up GitHub-style token, assembled so this file itself never contains a complete secret pattern.
+# A made-up GitHub-style token; the random part is generated at run time.
 FAKE_TOKEN_PREFIX = "ghp" + "_"
-FAKE_TOKEN_BODY = "aB3dE7gH9jK2mN5pQ8sT1vW4yZ6bC0dF2gH4"
+FAKE_TOKEN_LENGTH = 36
 
 
 class Failure(Exception):
@@ -56,6 +58,11 @@ class Session:
         done = run([AGENTFLOW, *args], self.repo, stdin)
         expect((done.returncode == 0) is ok, f"agentflow {' '.join(args)} -> exit {done.returncode}", done.stdout + done.stderr)
         return done
+
+
+def fake_token_body() -> str:
+    """Random characters, so no token-looking string is ever stored in this repository."""
+    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(FAKE_TOKEN_LENGTH))
 
 
 def _make_writable_and_retry(function, path, _excinfo) -> None:
@@ -117,7 +124,7 @@ def main() -> int:
 
         secret_file = repo / "leak.txt"
         s.af("task", "new", "Leak check")
-        secret_file.write_text('token = "ghp_' + "".join("aB3dE7gH9jK2mN5pQ8sT1vW4yZ6bC0dF2gH4"[i] for i in range(36)) + '"\n', encoding=ENCODING)
+        secret_file.write_text(f'token = "{FAKE_TOKEN_PREFIX}{fake_token_body()}"\n', encoding=ENCODING)
         s.git("add", "leak.txt")
         before = s.git("rev-parse", "HEAD")
         s.af("commit", "should be blocked", ok=False)

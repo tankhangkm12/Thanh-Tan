@@ -13,6 +13,8 @@ from agentflow.constants import (
     SCHEMA_VERSION,
     ActionKind,
     ConfigKey,
+    GuardDecision,
+    GuardRule,
     HistoryEvent,
     StateKey,
     StepStatus,
@@ -243,3 +245,38 @@ class ToolCheck:
 class DoctorReport:
     checks: tuple[ToolCheck, ...]
     ok: bool
+
+
+# ------------------------------------------------------ commit/scan/guard
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """Outcome of a secret scan that actually ran; ``output`` is the scanner's redacted report."""
+
+    clean: bool
+    output: str
+
+
+@dataclass(frozen=True)
+class CommitResult:
+    sha: str
+    message: str
+
+
+@dataclass(frozen=True)
+class GuardVerdict:
+    decision: GuardDecision
+    rule: GuardRule | None = None
+    reason: str | None = None
+
+    @property
+    def denied(self) -> bool:
+        return self.decision is GuardDecision.DENY

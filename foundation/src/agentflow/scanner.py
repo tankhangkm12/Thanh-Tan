@@ -17,6 +17,7 @@ from agentflow.constants import (
     TOOL_TIMEOUT_SECONDS,
     ExitCode,
 )
+from agentflow.container import running_engine
 from agentflow.errors import AgentflowError
 from agentflow.interfaces import CommandRunner
 from agentflow.models import ScanResult
@@ -57,21 +58,7 @@ class ContainerGitleaksScanner:
         self.runner = runner
 
     def running_engine(self) -> str:
-        installed = [(tool, path) for tool in CONTAINER_TOOLS if (path := self.runner.which(tool)) is not None]
-        if not installed:
-            urls = ", ".join(INSTALL_URLS[tool] for tool in CONTAINER_TOOLS)
-            raise AgentflowError(
-                f"secret scanning needs Docker or Podman, and neither is installed ({urls})",
-                ExitCode.MISSING_REQUIREMENT,
-            )
-        for _tool, path in installed:
-            if self.runner.run([path, ENGINE_INFO_ARG], None, TOOL_TIMEOUT_SECONDS).returncode == 0:
-                return path
-        names = ", ".join(tool for tool, _path in installed)
-        raise AgentflowError(
-            f"{names} is installed but its engine is not running; start it and retry (nothing was committed)",
-            ExitCode.ENGINE_NOT_RUNNING,
-        )
+        return running_engine(self.runner)
 
     def scan_staged(self, repo: Path) -> ScanResult:
         result = self.runner.run(gitleaks_command(self.running_engine(), repo), repo, SCAN_TIMEOUT_SECONDS)

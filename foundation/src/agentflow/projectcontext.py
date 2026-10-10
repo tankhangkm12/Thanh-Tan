@@ -1,11 +1,14 @@
 """What the checks need to know about the project: valid roles and extra plan rules. Extensions add to it."""
 
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+from agentflow.constants import GateKind
 from agentflow.interfaces import PlanRule
 from agentflow.models import Workflow
+from agentflow.scan_types import ScanToolSpec
 
 
 @dataclass(frozen=True)
@@ -22,6 +25,10 @@ class ProjectContext:
     plan_rules: Sequence[PlanRule] = field(default_factory=tuple)
     # True when some rule looks at the paths an item changes, so every item must list them.
     require_files: bool = False
+    # Added by extensions: scan tools, gates (step id, kind) and a project-settings lookup.
+    scan_tools: tuple[ScanToolSpec, ...] = ()
+    extra_gates: tuple[tuple[str, GateKind], ...] = ()
+    lookup: Callable[[str], Any] = field(default=lambda key: None)
 
 
 def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectContext:

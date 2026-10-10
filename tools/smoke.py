@@ -123,8 +123,12 @@ def main() -> int:
         s.af("task", "advance", "--result", "fail")  # test fails -> back to implement, round 1
         status = s.af("status").stdout
         expect("step 'implement'" in status and "rework rounds: 1/3" in status, "fail goes back to implement", status)
-        for _ in range(3):  # implement, test, security
+        for _ in range(2):  # implement, test
             s.af("task", "advance", "--result", "pass")
+        s.af("task", "advance", "--result", "pass", ok=False)  # security: no scan results yet, the scans-clean gate refuses
+        scan = s.af("scan")  # Semgrep, Trivy, Gitleaks in containers
+        expect("semgrep: " in scan.stdout and "trivy: " in scan.stdout and "gitleaks: " in scan.stdout, "scan runs three tools", scan.stdout)
+        s.af("task", "advance", "--result", "pass")  # security
         s.af("task", "advance", "--result", "pass")  # review passes -> awaiting approval
         s.af("task", "approve")
         state = json.loads((repo / ".agentflow" / "state.json").read_text(encoding=ENCODING))
@@ -136,6 +140,24 @@ def main() -> int:
 
         s.af("task", "new", "Second task")
         s.af("task", "cancel")
+
+        # A finding that blocks: Semgrep ERROR in a changed file stops the security step.
+        s.af("task", "new", "Risky code")
+        s.af("task", "advance", "--result", "pass")
+        s.af("task", "approve")
+        s.af("report", "--step", "plan", stdin=PLAN.replace("greeting.txt", "risky.py"))
+        s.af("task", "advance", "--result", "pass")
+        s.af("task", "approve")
+        (repo / "risky.py").write_text("import subprocess\n\n\ndef run(cmd):\n    subprocess.call(cmd, shell=True)\n", encoding=ENCODING)
+        s.git("add", "risky.py")
+        s.af("commit", "add risky code", "--item", "C1")
+        s.af("task", "advance", "--result", "pass")  # implement
+        s.af("task", "advance", "--result", "pass")  # test
+        blocked = s.af("scan", ok=False)
+        expect("semgrep: blocked" in blocked.stdout, "Semgrep ERROR blocks the scan", blocked.stdout)
+        s.af("task", "advance", "--result", "pass", ok=False)
+        s.af("task", "cancel")
+        s.git("switch", "-q", DEVELOP)
 
         secret_file = repo / "leak.txt"
         s.af("task", "new", "Leak check")

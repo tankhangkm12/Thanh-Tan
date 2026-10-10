@@ -162,6 +162,10 @@ uv run tools/smoke.py
 
 Chạy `init → task → advance/approve → commit (Gitleaks thật) → guard → hook` trên một repo tạm, không đụng repo nào khác. Cần Docker đang chạy.
 
+### Scan bảo mật
+
+Bước `security` chạy `agentflow scan`: Semgrep (chỉ file task đã đổi), Trivy và Gitleaks, mỗi tool trong một container với image ghim phiên bản và repo mount chỉ đọc. Bước không qua được khi Semgrep có mức ERROR, Trivy có HIGH/CRITICAL **đã có bản vá**, hoặc Gitleaks có phát hiện. Docker/Podman không chạy là lỗi cứng. Lần đầu cần mạng (kéo image, tải DB Trivy, tải rule Semgrep vào cache của bạn; rule Semgrep không nằm trong repo vì giấy phép không cho phân phối lại). Báo nhầm chỉ bỏ qua được khi **bạn** chạy `agentflow decide --suppress <id> --reason "..."` (id in trong kết quả `agentflow scan`). Chi tiết: [docs/scan-notes.md](docs/scan-notes.md).
+
 ### Kế hoạch (plan) và xác nhận cuối task
 
 Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`. Mỗi mục có dạng:

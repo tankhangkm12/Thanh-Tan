@@ -110,9 +110,9 @@ def test_pre_tool_denies_push_for_both_clis(project):
     assert agy["decision"] == "deny" and "push" in agy["reason"]
 
 
-def test_pre_tool_denies_commit_on_develop_in_the_project(project):
+def test_pre_tool_denies_direct_commit_in_the_project(project):
     out = json.loads(hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_pre(project, "git commit -m x")))
-    assert "develop" in out["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "agentflow commit" in out["hookSpecificOutput"]["permissionDecisionReason"]
 
 
 def test_pre_tool_stays_silent_for_safe_commands(project):

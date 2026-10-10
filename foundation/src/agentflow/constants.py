@@ -299,6 +299,9 @@ class GuardRule(StrEnum):
     CLEAN_FORCE_DIRS = "clean-force-dirs"
     BRANCH_FORCE_DELETE = "branch-force-delete"
     TAG_DELETE = "tag-delete"
+    DIRECT_COMMIT = "direct-commit"
+    APPROVAL_TAG = "approval-tag"
+    PERSON_ONLY = "person-only"
 
 
 class GuardKey(StrEnum):
@@ -309,6 +312,13 @@ class GuardKey(StrEnum):
     DECISION = "decision"
     REASON = "reason"
     RULE = "rule"
+
+
+# Tags `agentflow task approve` creates; nobody else may create refs under this prefix.
+APPROVAL_TAG_PREFIX = "agentflow/"
+APPROVAL_TAG_SUFFIX = "approved"
+TAG_REF_PREFIX = "refs/tags/"
+AGENTFLOW_PROGRAM = "agentflow"
 
 
 class WorkflowKey(StrEnum):

@@ -143,6 +143,17 @@ def find_workspace(cwd: Path) -> WorkspacePaths:
     return paths
 
 
+class GitWorkspaceLookup:
+    """``WorkspaceLookup`` that asks git for the repository root; unknown or missing directories read as no workspace."""
+
+    def has_workspace(self, directory: Path) -> bool:
+        try:
+            find_workspace(directory)
+        except AgentflowError:
+            return False
+        return True
+
+
 def load_workspace_workflow(paths: WorkspacePaths) -> Workflow:
     """The workflow actually in use: the copy inside the workspace."""
     return load_workflow(paths.workflow_copy)

@@ -60,6 +60,7 @@ from agentflow.workspace import (
     init_workspace,
     load_config,
     load_workspace_workflow,
+    GitWorkspaceLookup,
 )
 
 CLI_OPTION = "--cli"
@@ -310,7 +311,7 @@ def cmd_commit(args: argparse.Namespace) -> ExitCode:
 
 def cmd_guard(args: argparse.Namespace) -> ExitCode:
     request = parse_request(sys.stdin.read())
-    verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup())
+    verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup(), GitWorkspaceLookup())
     print(json.dumps(verdict_to_dict(verdict), ensure_ascii=False))
     return ExitCode.OK
 

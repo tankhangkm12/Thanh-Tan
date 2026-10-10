@@ -170,3 +170,72 @@ def test_parse_request_rejects_bad_input(text):
     with pytest.raises(AgentflowError) as exc:
         parse_request(text)
     assert exc.value.code is ExitCode.INVALID_INPUT
+
+
+class FakeWorkspaces:
+    def __init__(self, *roots):
+        self.roots = {Path(root) for root in roots}
+
+    def has_workspace(self, directory):
+        return Path(directory) in self.roots
+
+
+class OnFeature:
+    def current_branch(self, directory):
+        return "feature/x"
+
+    def branch_exists(self, directory, name):
+        return True
+
+
+def in_project(command, cwd="/proj", roots=("/proj",)):
+    return evaluate(command, Path(cwd), OnFeature(), FakeWorkspaces(*roots))
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git commit -m x",
+        "git commit --amend --no-edit",
+        "git -c user.name=x commit -m y",
+        "git -C /proj commit -m x",
+        "bash -c 'git commit -m x'",
+        "git add . && git commit -m x",
+        "git status | git commit -F -",
+    ],
+)
+def test_direct_commit_is_denied_in_a_workspace(command):
+    verdict = in_project(command)
+    assert verdict.decision is GuardDecision.DENY and verdict.rule is GuardRule.DIRECT_COMMIT
+
+
+def test_direct_commit_is_allowed_without_a_workspace_and_agentflow_commit_always():
+    assert in_project("git commit -m x", roots=()).decision is GuardDecision.ALLOW
+    assert in_project("agentflow commit 'fix git commit'").decision is GuardDecision.ALLOW
+    assert in_project("git -C /elsewhere commit -m x").decision is GuardDecision.ALLOW
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["git tag agentflow/T-001/approved", "git tag -a agentflow/T-001/approved -m x", "git update-ref refs/tags/agentflow/T-001/approved HEAD"],
+)
+def test_forging_an_approval_tag_is_denied(command):
+    assert in_project(command, roots=()).rule is GuardRule.APPROVAL_TAG
+
+
+def test_ordinary_tags_are_fine():
+    assert in_project("git tag v1.0").decision is GuardDecision.ALLOW
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["agentflow decide --suppress x --reason y", "agentflow ext add e.yaml", "agentflow ext sync", "agentflow config set a.b c", "cd /proj && agentflow decide --suppress x"],
+)
+def test_person_only_commands_are_denied_in_a_workspace(command):
+    assert in_project(command).rule is GuardRule.PERSON_ONLY
+    assert in_project(command, roots=()).decision is GuardDecision.ALLOW
+
+
+def test_other_agentflow_commands_are_allowed():
+    for command in ("agentflow status", "agentflow task approve", "agentflow config get a.b", "agentflow ext list", "agentflow commit decide"):
+        assert in_project(command).decision is GuardDecision.ALLOW, command

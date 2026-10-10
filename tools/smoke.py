@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["mcp>=2.3,<3"]
+# ///
 """End-to-end smoke test of the installed `agentflow` on a throw-away git repository.
 
     uv run tools/smoke.py
@@ -17,62 +21,26 @@ import sys
 import tempfile
 from pathlib import Path
 
-ENCODING = "utf-8"
-AGENTFLOW = "agentflow"
+from smoke_support import (  # noqa: F401 - re-exported for the other smoke scripts
+    AGENTFLOW,
+    ENCODING,
+    FAKE_TOKEN_PREFIX,
+    STEP_TIMEOUT,
+    Failure,
+    Session,
+    _make_writable_and_retry,
+    expect,
+    fake_token_body,
+    run,
+)
+
 WORKFLOW = Path(__file__).resolve().parents[1] / "families" / "software-dev" / "core" / "workflow.yaml"
 MAIN, DEVELOP = "main", "develop"
 TASK_ID = "T-001"
-STEP_TIMEOUT = 900
 PLAN = (
     "### C1 - Add a greeting\n- role: implementer\n- files: greeting.txt\n"
     "- done-when: `test -f greeting.txt`\n- docs: không có — a one-line text file\n"
 )
-# A made-up GitHub-style token; the random part is generated at run time.
-FAKE_TOKEN_PREFIX = "ghp" + "_"
-FAKE_TOKEN_LENGTH = 36
-
-
-class Failure(Exception):
-    pass
-
-
-def run(args: list[str], cwd: Path, stdin: str | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args, cwd=cwd, input=stdin, capture_output=True, text=True, encoding=ENCODING, timeout=STEP_TIMEOUT, check=False
-    )
-
-
-def expect(condition: bool, what: str, detail: str = "") -> None:
-    print(f"{'ok  ' if condition else 'FAIL'} {what}")
-    if not condition:
-        raise Failure(f"{what}\n{detail}")
-
-
-class Session:
-    def __init__(self, repo: Path) -> None:
-        self.repo = repo
-
-    def git(self, *args: str) -> str:
-        done = run(["git", *args], self.repo)
-        if done.returncode != 0:
-            raise Failure(f"git {' '.join(args)} failed: {done.stderr}")
-        return done.stdout.strip()
-
-    def af(self, *args: str, stdin: str | None = None, ok: bool = True) -> subprocess.CompletedProcess[str]:
-        done = run([AGENTFLOW, *args], self.repo, stdin)
-        expect((done.returncode == 0) is ok, f"agentflow {' '.join(args)} -> exit {done.returncode}", done.stdout + done.stderr)
-        return done
-
-
-def fake_token_body() -> str:
-    """Random characters, so no token-looking string is ever stored in this repository."""
-    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(FAKE_TOKEN_LENGTH))
-
-
-def _make_writable_and_retry(function, path, _excinfo) -> None:
-    # git object files are read-only, which Windows refuses to delete.
-    os.chmod(path, stat.S_IWRITE)
-    function(path)
 
 
 def main() -> int:
@@ -84,6 +52,7 @@ def main() -> int:
     repo.mkdir()
     env = {"GIT_CEILING_DIRECTORIES": str(base)}
     os.environ.update(env)
+    os.environ["AGENTFLOW_HOME"] = str(base / "user-home")  # nothing here may touch the real ~/.agentflow
     try:
         s = Session(repo)
         s.git("init", "-q", "-b", MAIN)
@@ -192,6 +161,10 @@ def main() -> int:
         expect(json.loads(agy.stdout)["decision"] == "deny", "antigravity pre-tool hook denies push")
         summary = s.af("hook", "session-start", "--cli", "claude", stdin=json.dumps({"cwd": str(repo)}))
         expect("agentflow workspace found" in summary.stdout, "session-start hook prints the summary")
+
+        from conventions_smoke import conventions_flow
+
+        conventions_flow(s, base, repo)
 
         bare = base / "no-workspace"
         bare.mkdir()

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["mcp>=2.3,<3"]
+# ///
 """End-to-end smoke test of dev-core + dev-backend on a throw-away sample project.
 
     uv run tools/smoke_backend.py                  # the whole task flow (Docker needed)
@@ -25,6 +29,14 @@ import urllib.request
 from pathlib import Path
 
 import sample_backend as sample
+from conventions_smoke import (
+    REVIEW_REPORT,
+    SKIPPING_REPORT,
+    active_task,
+    agents_cannot_decide_or_write,
+    person_assets,
+    setup_through_mcp,
+)
 from smoke import AGENTFLOW, Failure, Session, _make_writable_and_retry, expect, run
 
 ENCODING = "utf-8"
@@ -36,11 +48,13 @@ EXTENSION = BACKEND / "extension.yaml"
 README = REPO / "README.md"
 MARKETPLACE = "thanh-tan-plugins"
 CORE_NAME, BACKEND_NAME = "dev-core", "dev-backend"
-CORE_VERSION, BACKEND_VERSION = "0.3.0", "0.1.0"
+CORE_VERSION, BACKEND_VERSION = "0.4.0", "0.2.0"
 TASK_ID = "T-001"
 USAGE_ERROR_CODES = {"plan_invalid": 24, "gate_failed": 25, "scan_blocked": 27}
 MANDATORY_ASK = ("task approve", "task cancel", "decide")
 READY_TIMEOUT_SECONDS = 90
+IN_USE_MESSAGE = "being used by another process"
+AGY_PLUGINS = Path.home() / ".gemini" / "config" / "plugins"
 CLI_TIMEOUT_SECONDS = 600
 
 
@@ -102,13 +116,23 @@ def missing_ask_rules(settings_path: Path) -> list[str]:
     return [command for command in MANDATORY_ASK if f"agentflow {command}" not in asked]
 
 
-def plan_text(migration_role: str, up: str, down_note: str) -> str:
+INTERFACE_AFTER_IMPLEMENTATION = (
+    f"\n### C3 - Declare the server interface\n- role: implementer\n- kind: interface\n- files: {sample.SERVER_FILE}\n"
+    "- done-when: `true`\n- docs: không có — a declaration\n"
+)
+QUESTION = (
+    "\n## Chưa có quy ước\n\n### Q1 - Plural or singular route names?\n- ask: No convention says how routes are named.\n"
+    "- options: /items, /item\n- needed-by: C2\n"
+)
+
+
+def plan_text(migration_role: str, up: str, down_note: str, extra: str = "") -> str:
     return (
-        f"### C1 - Create the items table\n- role: {migration_role}\n- files: {sample.UP_FILE}, {sample.DOWN_FILE}\n"
+        f"### C1 - Create the items table\n- role: {migration_role}\n- kind: other\n- files: {sample.UP_FILE}, {sample.DOWN_FILE}\n"
         f"- done-when: `{up}` then {down_note}, all succeed\n- docs: https://www.postgresql.org/docs/16/sql-createtable.html\n\n"
-        f"### C2 - Expose GET /items\n- role: implementer\n- files: {sample.SERVER_FILE}, {sample.SPEC_FILE}, {sample.CHECK_FILE}\n"
+        f"### C2 - Expose GET /items\n- role: implementer\n- kind: implement\n- files: {sample.SERVER_FILE}, {sample.SPEC_FILE}, {sample.CHECK_FILE}\n"
         "- done-when: `python tests/check_items.py` answers ok against the running service\n"
-        "- docs: https://spec.openapis.org/oas/v3.0.3\n"
+        "- docs: https://spec.openapis.org/oas/v3.0.3\n" + extra
     )
 
 
@@ -140,7 +164,13 @@ def task_flow(s: Session, project: str, port: int, until: str) -> None:
         s.af("config", "set", f"backend.{key}", value)
     s.af("config", "check")
 
+    # --- conventions: the scout writes them through MCP, the person confirms and answers
+    setup_through_mcp(repo)
+    store = person_assets(s, repo.parent, repo)
+    agents_cannot_decide_or_write(s, repo)
+
     s.af("task", "new", "List items", "--type", "feature")
+    task_id = active_task(repo)  # the probe task of the setup used T-001
     s.af("report", "--step", "confirm", stdin="# Confirmed\nAdd GET /items backed by an items table.\n")
     s.af("task", "advance", "--result", "pass")
     s.af("task", "approve")
@@ -157,6 +187,14 @@ def task_flow(s: Session, project: str, port: int, until: str) -> None:
     s.af("report", "--step", "plan", stdin=plan_text("dba", up, f"`{down}`"))
     expect("unknown role 'dba'" in af_code(s, 24, "plan", "check").stdout, "an unregistered role is refused")
     s.af("report", "--step", "plan", stdin=plan_text("db-engineer", up, f"`{down}` and `{up}` again"))
+    s.af("report", "--step", "plan", stdin=plan_text("db-engineer", up, f"`{down}`", INTERFACE_AFTER_IMPLEMENTATION))
+    refused = af_code(s, 24, "plan", "check")
+    expect("interface item C3" in refused.stdout, "an interface item after the implementation of the same file is refused", refused.stdout)
+    s.af("report", "--step", "plan", stdin=plan_text("db-engineer", up, f"`{down}`", QUESTION))
+    refused = af_code(s, 24, "plan", "check")
+    expect("Q1" in refused.stdout, "an unanswered question blocks the plan", refused.stdout)
+    af_code(s, 25, "task", "advance", "--result", "pass")
+    s.af("decide", "--answer", "Q1", "--text", "Routes use plural nouns.", "--check", "review")
     s.af("plan", "check")
     s.af("task", "advance", "--result", "pass")
     s.af("task", "approve")
@@ -201,21 +239,26 @@ def task_flow(s: Session, project: str, port: int, until: str) -> None:
 
     # --- security: Semgrep, Trivy, Gitleaks
     scan = s.af("scan")
-    for tool in ("semgrep", "trivy", "gitleaks"):
+    for tool in ("semgrep", "semgrep-conventions", "trivy", "gitleaks"):
         expect(f"{tool}: " in scan.stdout and f"{tool}: blocked" not in scan.stdout, f"{tool} ran and does not block", scan.stdout)
     s.af("report", "--step", "security", stdin="# Security\nNo blocking findings.\n")
     s.af("task", "advance", "--result", "pass")
 
     # --- review and approval: tag and summary
-    s.af("report", "--step", "review", stdin="# Review\nMatches the plan.\n")
+    s.af("report", "--step", "review", stdin=SKIPPING_REPORT)
+    af_code(s, 25, "task", "advance", "--result", "pass")  # the conventions are not answered
+    s.af("report", "--step", "review", stdin=REVIEW_REPORT.replace("DC-02: đạt\n", "DC-02: đạt\nDC-03: đạt\n").replace("DC-03: đạt\n", ""))
     s.af("task", "advance", "--result", "pass")
     s.af("task", "approve")
-    tag = f"agentflow/{TASK_ID}/approved"
+    expect((repo / ".agentflow" / "tasks" / task_id / "lessons" / "L1.md").is_file(), "the proposed lesson is a file a person can push")
+    s.af("knowledge", "push", str(repo / ".agentflow" / "tasks" / task_id / "lessons" / "L1.md"))
+    expect((store / "lessons" / "L1.md").is_file(), "a person pushed the lesson into their own store")
+    tag = f"agentflow/{task_id}/approved"
     expect(s.git("tag", "-l", tag) == tag and s.git("cat-file", "-t", tag) == "tag", "the approval tag exists and is annotated")
     message = s.git("tag", "-l", "--format=%(contents)", tag)
-    expect(TASK_ID in message and "List items" in message and "Approved by: Smoke" in message, "the tag message has task, title, approver", message)
+    expect(task_id in message and "List items" in message and "Approved by: Smoke" in message, "the tag message has task, title, approver", message)
     expect(s.git("rev-parse", f"{tag}^{{commit}}") == s.git("rev-parse", s.git("branch", "--show-current")), "the tag is on the branch tip")
-    summary = (repo / ".agentflow" / "tasks" / TASK_ID / "summary.md").read_text(encoding=ENCODING)
+    summary = (repo / ".agentflow" / "tasks" / task_id / "summary.md").read_text(encoding=ENCODING)
     for needle in ("### C1 - Create the items table", "### C2 - Expose GET /items", "create the items table", "squawk: clean", "schemathesis: clean", "semgrep:", "trivy:", "gitleaks:", "https://spec.openapis.org"):
         expect(needle in summary, f"summary.md has '{needle}'", summary)
 
@@ -280,8 +323,10 @@ def install_check(repo: Path, with_session: bool = True) -> None:
         events = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
         init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
         text = json.dumps(init)
-        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
+        for needle in (f"{CORE_NAME}:start", f"{CORE_NAME}:setup", f"{CORE_NAME}:scout", f"{CORE_NAME}:continue", f"{BACKEND_NAME}:db-migration", f"{BACKEND_NAME}:contract-test", f"{CORE_NAME}:planner", f"{BACKEND_NAME}:db-engineer"):
             expect(needle in text, f"Claude Code loaded {needle}", text[:400])
+        servers = {server["name"]: server.get("status") for server in init.get("mcp_servers", [])}
+        expect(servers.get(f"plugin:{CORE_NAME}:agentflow") == "connected", "Claude Code connected dev-core's MCP server", str(servers))
         results = json.dumps([e for e in events if e.get("type") == "user"])
         expect("git push is blocked for agents" in results, "the dev-core hook blocked `git push` in a real session", results[:600])
 
@@ -290,14 +335,22 @@ def install_check(repo: Path, with_session: bool = True) -> None:
         cli("agy", "plugin", "uninstall", name)
     for name, path in ((CORE_NAME, CORE), (BACKEND_NAME, BACKEND)):
         done = cli("agy", "plugin", "install", str(path))
+        if done.returncode != 0 and IN_USE_MESSAGE in done.stdout + done.stderr:
+            # An open `agy` session keeps its MCP server inside the installed plugin folder, so the folder cannot be
+            # replaced. Copy the new files over it instead (what the install does, without deleting first).
+            print(f"WARNING: {name} is in use by an open Antigravity session; copying the new files over the installed folder")
+            shutil.copytree(path, AGY_PLUGINS / name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__"))
+            continue
         expect(done.returncode == 0, f"agy plugin install {path.name}", done.stdout + done.stderr)
     plugins = cli("agy", "plugin", "list").stdout
     for name in (CORE_NAME, BACKEND_NAME):
         expect(name in plugins, f"agy lists {name}", plugins)
     agents = cli("agy", "agents").stdout
-    for role in ("orchestrator", "planner", "implementer", "tester", "security", "reviewer", "db-engineer"):
+    for role in ("orchestrator", "planner", "implementer", "tester", "security", "reviewer", "scout", "db-engineer"):
         expect(role in agents, f"agy agents lists {role}", agents)
     expect("hooks" in plugins.lower(), "agy shows hooks for dev-core", plugins)
+    core_entry = plugins.split(f'"name": "{CORE_NAME}"')[1].split("}")[0]
+    expect("mcpServers" in core_entry and "skills" in core_entry, "agy shows the MCP server and skills for dev-core", core_entry)
 
 
 # --------------------------------------------------------------------- main
@@ -315,6 +368,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     base = Path(tempfile.mkdtemp(prefix="agentflow-backend-smoke-"))
     os.environ["GIT_CEILING_DIRECTORIES"] = str(base)
+    os.environ["AGENTFLOW_HOME"] = str(base / "user-home")  # nothing here may touch the real ~/.agentflow
     port, project = free_port(), f"agentflow-smoke-{secrets.token_hex(3)}"
     os.environ["API_PORT"], os.environ["API_URL"] = str(port), f"http://localhost:{port}"
     repo: Path | None = None

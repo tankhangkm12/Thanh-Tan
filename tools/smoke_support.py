@@ -1,0 +1,61 @@
+"""What the smoke tests share: running commands, checking, and a session in a throw-away repository.
+
+Kept apart from smoke.py so that a script run as ``__main__`` and the helpers it imports use one ``Failure`` class.
+"""
+
+import os
+import secrets
+import stat
+import string
+import subprocess
+from pathlib import Path
+
+ENCODING = "utf-8"
+AGENTFLOW = "agentflow"
+STEP_TIMEOUT = 900
+# A made-up GitHub-style token; the random part is generated at run time.
+FAKE_TOKEN_PREFIX = "ghp" + "_"
+FAKE_TOKEN_LENGTH = 36
+
+
+class Failure(Exception):
+    pass
+
+
+def run(args: list[str], cwd: Path, stdin: str | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args, cwd=cwd, input=stdin, capture_output=True, text=True, encoding=ENCODING, timeout=STEP_TIMEOUT, check=False
+    )
+
+
+def expect(condition: bool, what: str, detail: str = "") -> None:
+    print(f"{'ok  ' if condition else 'FAIL'} {what}")
+    if not condition:
+        raise Failure(f"{what}\n{detail}")
+
+
+class Session:
+    def __init__(self, repo: Path) -> None:
+        self.repo = repo
+
+    def git(self, *args: str) -> str:
+        done = run(["git", *args], self.repo)
+        if done.returncode != 0:
+            raise Failure(f"git {' '.join(args)} failed: {done.stderr}")
+        return done.stdout.strip()
+
+    def af(self, *args: str, stdin: str | None = None, ok: bool = True) -> subprocess.CompletedProcess[str]:
+        done = run([AGENTFLOW, *args], self.repo, stdin)
+        expect((done.returncode == 0) is ok, f"agentflow {' '.join(args)} -> exit {done.returncode}", done.stdout + done.stderr)
+        return done
+
+
+def fake_token_body() -> str:
+    """Random characters, so no token-looking string is ever stored in this repository."""
+    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(FAKE_TOKEN_LENGTH))
+
+
+def _make_writable_and_retry(function, path, _excinfo) -> None:
+    # git object files are read-only, which Windows refuses to delete.
+    os.chmod(path, stat.S_IWRITE)
+    function(path)

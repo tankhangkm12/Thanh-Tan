@@ -9,6 +9,7 @@ from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
 
 from agentflow.constants import (
+    DEFAULT_PLAN_TIER,
     PLAN_ITEM_CODE_PATTERN,
     PLAN_NO_DOCS_PREFIX,
     PLAN_NO_FILES_PREFIX,
@@ -16,13 +17,14 @@ from agentflow.constants import (
     PLAN_QUESTIONS_HEADING,
     PlanField,
     PlanItemKind,
+    PlanTier,
 )
 from agentflow.interfaces import PlanRule, PlanWideRule, RoleRegistry
 
 _HEADING = re.compile(rf"^###\s+({PLAN_ITEM_CODE_PATTERN})\b\s*(?:[—–:-]+\s*)?(.*?)\s*$")
 _QUESTION_HEADING = re.compile(rf"^###\s+({PLAN_QUESTION_CODE_PATTERN})\b\s*(?:[—–:-]+\s*)?(.*?)\s*$")
 _SECTION_HEADING = re.compile(r"^##\s+(.*?)\s*$")
-_ITEM_FIELDS = {PlanField.ROLE, PlanField.FILES, PlanField.DONE_WHEN, PlanField.DOCS, PlanField.KIND}
+_ITEM_FIELDS = {PlanField.ROLE, PlanField.FILES, PlanField.DONE_WHEN, PlanField.DOCS, PlanField.KIND, PlanField.TIER, PlanField.LAYER}
 _QUESTION_FIELDS = {PlanField.ASK, PlanField.OPTIONS, PlanField.NEEDED_BY}
 _BAD_HEADING = re.compile(r"^###\s+(\S+)")
 _FIELD = re.compile(r"^\s*[-*]\s+([A-Za-z-]+)\s*:\s*(.*?)\s*$")
@@ -46,6 +48,14 @@ class PlanItem:
     docs: str | None = None
     # interface, implement or other (lower case); ``None`` when the item has no kind line.
     kind: str | None = None
+    # fast or deep (lower case) as written; ``None`` when the item has no tier line, which counts as deep.
+    tier: str | None = None
+    # One of the layers a ``layer-order`` convention declares (lower case); ``None`` when the item has no layer line.
+    layer: str | None = None
+
+    @property
+    def effective_tier(self) -> str:
+        return self.tier or DEFAULT_PLAN_TIER
 
     @property
     def docs_links(self) -> tuple[str, ...]:
@@ -149,6 +159,10 @@ def _store(current: dict[str, object], field: PlanField, value: str) -> None:
             current["docs"] = value
         case PlanField.KIND:
             current["kind"] = value.strip(_BACKTICKS).strip().lower()
+        case PlanField.TIER:
+            current["tier"] = value.strip(_BACKTICKS).strip().lower()
+        case PlanField.LAYER:
+            current["layer"] = value.strip(_BACKTICKS).strip().lower()
 
 
 def _parse_files(value: str) -> tuple[str, ...]:
@@ -230,6 +244,8 @@ def _item_problems(item: PlanItem, valid_roles: Iterable[str], require_files: bo
         found.append(PlanProblem(message, item.code))
     if item.kind is not None and item.kind not in {kind.value for kind in PlanItemKind}:
         found.append(PlanProblem(f"unknown kind '{item.kind}' (one of: {', '.join(PlanItemKind)})", item.code))
+    if item.tier is not None and item.tier not in {tier.value for tier in PlanTier}:
+        found.append(PlanProblem(f"unknown tier '{item.tier}' (one of: {', '.join(PlanTier)}; no tier counts as {DEFAULT_PLAN_TIER})", item.code))
     if require_files and item.files is None:
         found.append(PlanProblem(f"missing '{PlanField.FILES}' (list the paths this item changes, or '{PLAN_NO_FILES_PREFIX}')", item.code))
     return found

@@ -112,6 +112,7 @@ class ExitCode(IntEnum):
     REPORT_REFUSED = 30
     PROJECT_WRITE_REFUSED = 31
     KNOWLEDGE_NOT_FOUND = 32
+    CONVENTIONS_INVALID = 33
 
 
 class ToolName(StrEnum):
@@ -133,6 +134,49 @@ MCP_SERVER_NAME = "agentflow"
 READ_ONLY_TOOLS = frozenset(
     {ToolName.STATUS, ToolName.NEXT_STEP, ToolName.PLAN_CHECK, ToolName.SCAN_SUMMARY, ToolName.KNOWLEDGE_SEARCH, ToolName.KNOWLEDGE_READ}
 )
+
+
+class CheckKind(StrEnum):
+    """How a convention is checked. A closed set: a new kind needs code in agentflow."""
+
+    PLAN = "plan"
+    SEMGREP = "semgrep"
+    REVIEW = "review"
+
+
+class PlanRuleKind(StrEnum):
+    """The plan rules a ``check: plan`` convention can switch on."""
+
+    ITEM_ORDER = "item-order"
+
+
+class ConventionStatus(StrEnum):
+    UNCONFIRMED = "unconfirmed"
+    CONFIRMED = "confirmed"
+
+
+class ConventionPrefix(StrEnum):
+    """Code prefix per source: project conventions, decisions of a person, the personal knowledge store."""
+
+    PROJECT = "PC"
+    DECISION = "DC"
+    PERSONAL = "KC"
+
+
+class ConventionField(StrEnum):
+    CHECK = "check"
+    RULE = "rule"
+    STATUS = "status"
+    SOURCE = "source"
+    DESCRIPTION = "description"
+    OVERRIDES = "overrides"
+    DOCS = "docs"
+    CODE = "code"
+
+
+OPEN_QUESTIONS_HEADING = "## Câu hỏi mở"
+SETUP_QUESTION_PATTERN = r"S\d+"
+SEMGREP_RULE_SUFFIXES = (".yaml", ".yml")
 
 
 class ProjectSection(StrEnum):

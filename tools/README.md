@@ -5,9 +5,11 @@ Script build và bảo trì repo. Viết bằng Python, chạy qua uv (`uv run`)
 | Script | Việc làm |
 |---|---|
 | `build.py` | Sinh agent của Claude Code (`claude/agents/`) và Antigravity (`agents/`) từ `src/roles/` của plugin, cập nhật danh sách `agents` trong manifest. `--check` để kiểm. Xem [dev-core](../families/software-dev/core/README.md) |
-| `test_build.py` | Test của `build.py` và của dev-core (role, skill, tool, file sinh ra phải khớp nguồn) |
+| `test_build.py` | Test của `build.py` và của dev-core (role, skill, tool, file sinh ra phải khớp nguồn; quy tắc prompt: không nối lệnh, nói rõ agent không push/merge/PR; khối quy tắc permissions trong README) |
+| `test_backend.py` | Test của dev-backend: role `db-engineer`, 6 skill không giả định stack, agent sinh ra khớp nguồn |
 
 ```
 uv run tools/build.py --check
+uv run tools/build.py --plugin families/software-dev/backend --check
 uv run --with pyyaml --with pytest pytest tools
 ```

@@ -169,8 +169,10 @@ def test_tool_lists_in_real_agents_are_documented_names():
 
 PUSH_SENTENCE = "never push, merge or open a pull request"
 CHAINING = ("&&", ";", "|")
+BACKEND_PLUGIN = REPO / "families" / "software-dev" / "backend"
 SKILL_AND_ROLE_FILES = sorted(
-    [*(REAL_PLUGIN / "skills").glob("*/SKILL.md"), *(REAL_PLUGIN / build.ROLES_DIR).glob("*.md")]
+    [path for plugin in (REAL_PLUGIN, BACKEND_PLUGIN) for path in (plugin / "skills").glob("*/SKILL.md")]
+    + [path for plugin in (REAL_PLUGIN, BACKEND_PLUGIN) for path in (plugin / build.ROLES_DIR).glob("*.md")]
 )
 
 

@@ -72,6 +72,8 @@ COMMIT_PREFIX_SEPARATOR = ": "
 # Git trailer that ties a commit to a plan item.
 PLAN_ITEM_TRAILER = "Plan-Item"
 SUMMARY_FILE = "summary.md"
+LESSONS_DIR = "lessons"
+LESSONS_HEADING = "Bài học đề xuất"
 
 # Secret scanning with Gitleaks in a container. The image is pinned on purpose.
 GITLEAKS_IMAGE = "zricethezav/gitleaks:v8.24.0"

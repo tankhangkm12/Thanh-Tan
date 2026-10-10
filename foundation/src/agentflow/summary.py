@@ -2,6 +2,8 @@
 
 from collections.abc import Sequence
 
+from agentflow.constants import LESSONS_DIR, LESSONS_HEADING, MARKDOWN_SUFFIX, TASKS_DIR
+from agentflow.lessons import Lesson
 from agentflow.models import CommitInfo, Task
 from agentflow.plan import PlanItem
 
@@ -17,6 +19,7 @@ def build_summary(
     scan_lines: Sequence[str],
     approver: str,
     approved_at: str,
+    lessons: Sequence[Lesson] = (),
 ) -> str:
     lines = [
         f"# {task.id}: {task.title}",
@@ -43,7 +46,17 @@ def build_summary(
         lines += [f"### {NO_ITEM_GROUP}", "", *_commit_lines(leftover), ""]
     lines += ["## Scans", ""]
     lines += [f"- {line}" for line in scan_lines] or [NONE_LINE]
+    lines += ["", f"## {LESSONS_HEADING}", ""]
+    if lessons:
+        lines += [f"- {lesson.code}: {lesson.title} ({lesson_path_text(task.id, lesson.code)})" for lesson in lessons]
+        lines += ["", "Proposals only. A person decides what goes into the personal store: `agentflow knowledge push <file>`."]
+    else:
+        lines.append(NONE_LINE)
     return "\n".join(lines) + "\n"
+
+
+def lesson_path_text(task_id: str, code: str) -> str:
+    return f"{TASKS_DIR}/{task_id}/{LESSONS_DIR}/{code}{MARKDOWN_SUFFIX}"
 
 
 def _commit_lines(commits: Sequence[CommitInfo], indent: str = "") -> list[str]:

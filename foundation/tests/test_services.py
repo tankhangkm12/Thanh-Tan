@@ -158,3 +158,124 @@ def test_knowledge_read_stays_inside_the_knowledge_folder(service, knowledge, na
     with pytest.raises(AgentflowError) as exc:
         service.knowledge_read(name)
     assert exc.value.code in {ExitCode.KNOWLEDGE_NOT_FOUND, ExitCode.INVALID_INPUT}
+
+
+# --------------------------------------------------------- conventions document
+
+CONVENTIONS = """# Quy ước
+
+### PC-01 - Constants
+- check: review
+- status: unconfirmed
+- source: src/constants.py (suy ra từ code)
+- description: Fixed values live in constants or enums.
+
+### PC-02 - Interface first
+- check: plan
+- rule: item-order
+- source: docs/CONTRIBUTING.md:12
+- description: Interfaces come before their implementations.
+
+## Câu hỏi mở
+
+### S1 - pytest or unittest?
+- docs: docs/testing.md:5
+- code: Makefile:14
+"""
+
+
+def conventions_path(repo):
+    return repo / ".agentflow" / "project" / "conventions.md"
+
+
+def confirm_by_hand(repo, code):
+    """What a person does (or `agentflow project confirm`): flip the status of one convention in the file."""
+    path = conventions_path(repo)
+    text = path.read_text(encoding="utf-8")
+    start = text.index(f"### {code} -")
+    end = text.find("###", start + 3)
+    block = text[start : end if end != -1 else len(text)]
+    path.write_text(text.replace(block, block.replace("status: unconfirmed", "status: confirmed")), encoding="utf-8")
+
+
+def test_conventions_are_stored_in_their_canonical_form(service, repo):
+    info = service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    assert (info.conventions, info.open_questions, info.demoted) == (2, 1, ())
+    stored = conventions_path(repo).read_text(encoding="utf-8")
+    assert "### PC-02 - Interface first" in stored and "status: unconfirmed" in stored and "## Câu hỏi mở" in stored
+
+
+def test_conventions_with_problems_are_refused_and_nothing_is_written(service, repo):
+    message = refuses(
+        lambda: service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS.replace("- check: review", "- check: lint")),
+        ExitCode.CONVENTIONS_INVALID,
+    )
+    assert "PC-01" in message and "check" in message
+    assert not conventions_path(repo).exists()
+
+
+def test_an_agent_cannot_confirm_a_convention(service, repo):
+    forged = CONVENTIONS.replace("- status: unconfirmed", "- status: confirmed")
+    info = service.write_project(ProjectSection.CONVENTIONS, forged)
+    assert info.demoted == ("PC-01",) and "status: confirmed" not in conventions_path(repo).read_text(encoding="utf-8")
+
+
+def test_rewriting_a_confirmed_convention_unchanged_keeps_it_confirmed(service, repo):
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    confirm_by_hand(repo, "PC-01")
+    info = service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)  # the scout writes the same text again
+    assert info.demoted == ()
+    stored = conventions_path(repo).read_text(encoding="utf-8")
+    assert stored.index("status: confirmed") < stored.index("### PC-02")
+
+
+def test_changing_a_confirmed_convention_sets_it_back_to_unconfirmed(service, repo):
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    confirm_by_hand(repo, "PC-01")
+    changed = CONVENTIONS.replace("Fixed values live in constants or enums.", "Fixed values live in constants only.")
+    info = service.write_project(ProjectSection.CONVENTIONS, changed)
+    assert info.demoted == ("PC-01",)
+    reread = conventions_path(repo).read_text(encoding="utf-8")
+    assert "status: confirmed" not in reread and "constants only" in reread
+    # ...even when the agent copies `status: confirmed` along with its edit.
+    confirm_by_hand(repo, "PC-01")
+    again = changed.replace("constants only", "constants and enums").replace("- status: unconfirmed", "- status: confirmed", 1)
+    assert service.write_project(ProjectSection.CONVENTIONS, again).demoted == ("PC-01",)
+
+
+@pytest.mark.parametrize("field", ["check", "rule", "source", "title"])
+def test_every_part_of_a_confirmed_convention_counts_as_content(service, repo, field):
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    confirm_by_hand(repo, "PC-02")
+    edits = {
+        "check": ("- check: plan", "- check: review"),
+        "rule": ("- rule: item-order", "- rule: item-order\n- overrides: KC-01"),
+        "source": ("docs/CONTRIBUTING.md:12", "docs/CONTRIBUTING.md:99"),
+        "title": ("Interface first", "Interfaces first"),
+    }
+    old, new = edits[field]
+    text = CONVENTIONS.replace(old, new)
+    if field == "check":
+        text = text.replace("- rule: item-order\n", "")
+    assert service.write_project(ProjectSection.CONVENTIONS, text).demoted == ("PC-02",)
+
+
+def test_a_confirmed_convention_cannot_be_deleted_by_an_agent(service, repo):
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    confirm_by_hand(repo, "PC-02")
+    before = conventions_path(repo).read_text(encoding="utf-8")
+    without = CONVENTIONS.split("### PC-02")[0] + "## Câu hỏi mở\n\n### S1 - pytest or unittest?\n- docs: a\n- code: b\n"
+    message = refuses(lambda: service.write_project(ProjectSection.CONVENTIONS, without), ExitCode.PROJECT_WRITE_REFUSED)
+    assert "PC-02" in message and "person" in message
+    assert conventions_path(repo).read_text(encoding="utf-8") == before
+
+
+def test_an_unconfirmed_convention_may_be_deleted_and_added(service, repo):
+    service.write_project(ProjectSection.CONVENTIONS, CONVENTIONS)
+    only_second = CONVENTIONS.replace(CONVENTIONS.split("### PC-02")[0].split("# Quy ước\n")[1], "\n")
+    info = service.write_project(ProjectSection.CONVENTIONS, only_second)
+    assert info.conventions == 1 and "PC-01" not in conventions_path(repo).read_text(encoding="utf-8")
+
+
+def test_other_sections_are_not_parsed_as_conventions(service):
+    assert service.write_project(ProjectSection.ARCHITECTURE, "### not a convention\njust text").conventions == 0

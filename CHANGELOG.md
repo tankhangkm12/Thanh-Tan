@@ -17,6 +17,8 @@ Repo chứa nhiều thành phần có số phiên bản riêng: `agentflow` (fou
 - `summary.md` ghi tier và layer của từng mục.
 - Chế độ nhẹ: `agentflow task new --size small|normal` (mặc định `normal`). Mục `sizes` trong `workflow.yaml` mô tả cỡ (bước bỏ duyệt, số mục kế hoạch tối đa, tool scan theo bước); `small` của dev-core bỏ duyệt `plan` (vẫn kiểm `plan check`), tối đa 3 mục, bước `security` chỉ chạy Gitleaks và Semgrep. Size nằm trong `state.json`, `STATE.md`, `status` và `summary.md`. Skill `start` và prompt planner biết cỡ nhỏ.
 
+- Cấp tool theo dự án cho role: `agentflow role grant|revoke|list|sync` (việc của người). Claude Code: sinh `.claude/agents/project-<agent>.md` cục bộ (loại khỏi git qua `.git/info/exclude`) mang thêm tool MCP đã cấp, không sửa plugin; Antigravity chỉ ghi nhận. Role chỉ đọc (`read_only_roles` trong `workflow.yaml`) chỉ nhận tool đọc, đúng tên. `plan assign --cli` trả tên agent cấp dự án khi có. Hook chặn agent ghi vào `project-*.md`.
+
 ### Changed
 
 - Agent `dev-core:implementer` được thay bằng `dev-core:implementer-fast` và `dev-core:implementer-deep` (role trong kế hoạch vẫn là `implementer`).

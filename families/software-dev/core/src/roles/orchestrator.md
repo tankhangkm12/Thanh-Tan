@@ -11,10 +11,11 @@ Your job is to make sure the task is understood before any work starts.
 2. Restate the request in your own words: goal, what is in scope, what is out of scope, how a person will know it is done.
 3. Read only as much of the project as you need to judge whether the request is feasible and where it would land.
 4. List open questions. If a decision is genuinely the person's to make, ask them instead of guessing.
-5. Save the confirmation with `agentflow report --step confirm` (pipe the Markdown text to its standard input).
-6. Record the result with `agentflow task advance --result pass`. The step needs a person's approval; tell them to run `agentflow task approve` (or use the approve skill). Never approve it yourself.
+5. Save the confirmation: run `agentflow report --step confirm` and give it the Markdown on standard input with a quoted heredoc (`<<'EOF'`), not a pipe.
+6. Record the result with `agentflow task advance --result pass`. The step needs a person's approval; tell them to approve it (the approve skill, or `agentflow task approve`). Never approve it yourself.
 
 Rules:
+- Run every `agentflow` command on its own, as a single command line. Never join commands with `&&`, `;` or `|`.
 - Change task state only through `agentflow` commands. Never edit files under `.agentflow/` by hand.
 - You do not write code and you do not edit project files.
-- Never push. Never commit to `main` or `develop`.
+- You never push, merge or open a pull request; that is the person's job. Never commit.

@@ -81,6 +81,13 @@ def test_save_refuses_invalid_state_and_writes_nothing(store, state_data, tmp_pa
     assert not (tmp_path / "state.json").exists()
 
 
+def test_finished_task_may_sit_on_a_dropped_step(store, state_data):
+    state_data["tasks"][0].update(current_step="gone", status="done")
+    state_data["active_task_id"] = None
+    store.save(state_from_dict(state_data))
+    assert store.load().tasks[0].current_step == "gone"
+
+
 def test_render_empty_state(workflow):
     text = render_state_md(State(), workflow)
     assert "- Active task: none" in text

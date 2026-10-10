@@ -8,6 +8,7 @@ from pathlib import Path
 
 from agentflow.constants import (
     ENCODING,
+    IN_FLIGHT_TASK_STATUSES,
     STATE_FILE,
     STATE_MD_FILE,
     STATE_SCHEMA_FILE,
@@ -73,16 +74,28 @@ class JsonStateStore:
 
 
 def state_problems(state: State, workflow: Workflow) -> list[str]:
-    """Rules JSON Schema cannot express: unique ids, a real active task, known steps."""
+    """Rules JSON Schema cannot express: unique ids, a real active task, known steps.
+
+    Only in-flight tasks must sit on a step the workflow defines; finished tasks may
+    refer to steps a later workflow version dropped.
+    """
     problems = [f"duplicate task id '{task_id}'" for task_id, n in Counter(t.id for t in state.tasks).items() if n > 1]
     if state.active_task_id is not None and state.active_task() is None:
         problems.append(f"active_task_id '{state.active_task_id}' matches no task")
     problems += [
         f"task {task.id}: step '{task.current_step}' is not in workflow '{workflow.family}'"
-        for task in state.tasks
-        if workflow.get_step(task.current_step) is None
+        for task in unknown_step_tasks(state, workflow)
     ]
     return problems
+
+
+def unknown_step_tasks(state: State, workflow: Workflow) -> list[Task]:
+    """In-flight tasks whose current step the workflow does not define."""
+    return [
+        task
+        for task in state.tasks
+        if task.status in IN_FLIGHT_TASK_STATUSES and workflow.get_step(task.current_step) is None
+    ]
 
 
 def render_state_md(state: State, workflow: Workflow) -> str:
@@ -98,9 +111,9 @@ def render_state_md(state: State, workflow: Workflow) -> str:
     ]
     if task is not None:
         step = workflow.get_step(task.current_step)
-        assert step is not None
+        step_text = describe_step(step) if step else f"step '{task.current_step}'"
         lines += [
-            f"- Current step: {describe_step(step)}, {task.step_status}",
+            f"- Current step: {step_text}, {task.step_status}",
             f"- Loop round: {task.loop_round}",
             f"- Branch: {task.branch or NONE_TEXT}",
         ]

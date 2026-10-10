@@ -101,6 +101,7 @@ class ExitCode(IntEnum):
     SCAN_BLOCKED = 27
     EXTENSION_INVALID = 28
     SETTINGS_INVALID = 29
+    REPORT_REFUSED = 30
 
 
 class TaskType(StrEnum):

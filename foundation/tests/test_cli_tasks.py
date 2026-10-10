@@ -93,12 +93,13 @@ def test_cancel_and_no_active_task(ws, capsys):
 def test_report_reads_stdin(ws, capsys, monkeypatch):
     run(capsys, "task", "new", "t")
     monkeypatch.setattr("sys.stdin", io.StringIO("# Check\nfine"))
-    code, out, _ = run(capsys, "report", "--step", "check")
+    code, out, _ = run(capsys, "report", "--step", "confirm")
     assert code == ExitCode.OK and "report saved:" in out
-    report = ws / ".agentflow" / "tasks" / "T-001" / "reports" / "check.md"
+    report = ws / ".agentflow" / "tasks" / "T-001" / "reports" / "confirm.md"
     assert report.read_text(encoding="utf-8") == "# Check\nfine\n"
     monkeypatch.setattr("sys.stdin", io.StringIO("x"))
     assert run(capsys, "report", "--step", "ghost")[0] == ExitCode.UNKNOWN_STEP
+    assert run(capsys, "report", "--step", "check")[0] == ExitCode.REPORT_REFUSED
 
 
 class FakeScanner:

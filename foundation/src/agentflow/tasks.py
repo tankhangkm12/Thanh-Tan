@@ -180,10 +180,26 @@ def write_override_decision(
 
 
 def write_report(workspace_dir: Path, workflow: Workflow, task: Task, step_id: str, content: str) -> Path:
-    """Store a step's report at ``tasks/<task id>/reports/<step id>.md``, replacing an earlier one."""
+    """Store a step's report at ``tasks/<task id>/reports/<step id>.md``, replacing an earlier one.
+
+    Only the current step of an open task can be reported on, and only while it is in progress: once a step
+    has passed (or waits for approval) its report is what the person approved and stays as it is.
+    """
     if workflow.get_step(step_id) is None:
         known = ", ".join(step.id for step in workflow.steps)
         raise AgentflowError(f"unknown step '{step_id}' (steps: {known})", ExitCode.UNKNOWN_STEP)
+    if task.status is not TaskStatus.OPEN:
+        raise AgentflowError(f"{task.id} is {task.status}: no report can be written", ExitCode.REPORT_REFUSED)
+    if step_id != task.current_step:
+        raise AgentflowError(
+            f"a report can only be written for the current step '{task.current_step}', not '{step_id}'",
+            ExitCode.REPORT_REFUSED,
+        )
+    if task.step_status is not StepStatus.IN_PROGRESS:
+        raise AgentflowError(
+            f"step '{step_id}' is {task.step_status}: its report is final and cannot be overwritten",
+            ExitCode.REPORT_REFUSED,
+        )
     if not content.strip():
         raise AgentflowError("the report is empty", ExitCode.INVALID_INPUT)
     path = workspace_dir / TASKS_DIR / task.id / REPORTS_DIR / f"{step_id}{MARKDOWN_SUFFIX}"

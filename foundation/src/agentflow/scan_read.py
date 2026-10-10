@@ -11,6 +11,7 @@ from agentflow.scan_types import ResultSpec, ScanFinding
 FLATTEN = "[]"
 PATH_SEPARATOR = "."
 UNKNOWN = "unknown"
+EXCERPT_LINES = 40
 
 
 def _walk(data: Any, path: str) -> Iterator[Any]:
@@ -46,6 +47,13 @@ def _field(item: Any, path: str | None) -> str:
     return str(node)
 
 
+def _excerpt(tool: str, output: str) -> str:
+    """The end of the tool's own output (where tools print their verdict), so the finding explains itself."""
+    lines = [line for line in output.strip().splitlines() if line.strip()]
+    tail = "\n".join(lines[-EXCERPT_LINES:])
+    return f"{tool} failed:\n{tail}" if tail else f"{tool} failed"
+
+
 def parse_findings(tool: str, spec: ResultSpec, output: str) -> tuple[ScanFinding, ...]:
     """Findings in JSON ``output``; unreadable output is a hard error, never "no findings"."""
     try:
@@ -75,7 +83,7 @@ def read_result(tool: str, spec: ResultSpec, returncode: int, output: str) -> tu
         if returncode == 0:
             return ScanStatus.CLEAN, ()
         if returncode in spec.fail_exit_codes:
-            finding = ScanFinding(f"{tool}:exit-{returncode}:", f"exit-{returncode}", UNKNOWN, "", f"{tool} failed", True)
+            finding = ScanFinding(f"{tool}:exit-{returncode}:", f"exit-{returncode}", UNKNOWN, "", _excerpt(tool, output), True)
             return ScanStatus.BLOCKED, (finding,)
         raise AgentflowError(f"{tool} could not run properly (exit {returncode}):\n{output.strip()}", ExitCode.SCAN_FAILED)
     if returncode not in spec.ok_exit_codes:

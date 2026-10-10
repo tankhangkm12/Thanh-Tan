@@ -1,6 +1,7 @@
 """Command-line entry point for agentflow."""
 
 import argparse
+import json
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -13,22 +14,39 @@ from agentflow.constants import (
     EXCLUDE_ENTRY,
     IN_FLIGHT_TASK_STATUSES,
     PACKAGE_NAME,
+    STEP_RESULTS,
     VERSION_FLAG,
     WORKSPACE_DIR,
     Command,
     DriftStatus,
     ExitCode,
     SyncOutcome,
+    TaskCommand,
+    TaskEvent,
+    TaskType,
     ToolStatus,
     WorkflowCommand,
 )
+from agentflow.commit import commit_staged
 from agentflow.doctor import SystemToolProbe, run_doctor
 from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
+from agentflow.git import GitBranchLookup, SubprocessGit
+from agentflow.guard import evaluate, parse_request, verdict_to_dict
 from agentflow.models import State, ToolCheck, Workflow
 from agentflow.render import NONE_TEXT, describe_action, describe_step
-from agentflow.state import JsonStateStore
+from agentflow.runner import SubprocessRunner
+from agentflow.scanner import ContainerGitleaksScanner
+from agentflow.state import JsonStateStore, utc_now
 from agentflow.sync import sync_workflow, workflow_drift
+from agentflow.tasks import (
+    advance_task,
+    approve_task,
+    cancel_task,
+    new_task,
+    require_active_task,
+    write_report,
+)
 from agentflow.workspace import (
     WorkspacePaths,
     find_workspace,
@@ -37,6 +55,11 @@ from agentflow.workspace import (
     load_workspace_workflow,
 )
 
+TYPE_OPTION = "--type"
+RESULT_OPTION = "--result"
+REASON_OPTION = "--reason"
+STEP_OPTION = "--step"
+SHORT_SHA_LENGTH = 9
 WORKFLOW_OPTION = "--workflow"
 FORCE_OPTION = "--force"
 ERROR_PREFIX = "error: "
@@ -63,6 +86,25 @@ def build_parser() -> argparse.ArgumentParser:
     workflow_commands = workflow.add_subparsers(dest="workflow_command", metavar="<workflow command>", required=True)
     sync = workflow_commands.add_parser(WorkflowCommand.SYNC, help="replace the copy with the checked source")
     sync.add_argument(FORCE_OPTION, action="store_true", help="sync even while tasks are mid-workflow")
+
+    task = commands.add_parser(Command.TASK, help="start, advance, approve or cancel a task")
+    task_commands = task.add_subparsers(dest="task_command", metavar="<task command>", required=True)
+    new = task_commands.add_parser(TaskCommand.NEW, help="create the task's gitflow branch and record the task")
+    new.add_argument("title", help="what the task is about")
+    new.add_argument(TYPE_OPTION, type=TaskType, choices=list(TaskType), default=TaskType.FEATURE)
+    advance = task_commands.add_parser(TaskCommand.ADVANCE, help="record that the current step passed or failed")
+    advance.add_argument(RESULT_OPTION, required=True, type=TaskEvent, choices=list(STEP_RESULTS))
+    approve = task_commands.add_parser(TaskCommand.APPROVE, help="approve the step, or resume a blocked task")
+    approve.add_argument(REASON_OPTION, help="why a blocked task is resumed (kept in decisions/)")
+    task_commands.add_parser(TaskCommand.CANCEL, help="cancel the active task")
+
+    report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
+    report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
+
+    commit = commands.add_parser(Command.COMMIT, help="scan staged changes for secrets, then commit with the task prefix")
+    commit.add_argument("message", help="commit message, without the task prefix")
+
+    commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
     return parser
 
 
@@ -147,7 +189,8 @@ def cmd_status(args: argparse.Namespace) -> ExitCode:
         step = workflow.get_step(task.current_step)
         step_text = describe_step(step) if step else task.current_step
         print(f"current step: {step_text}, {task.step_status}")
-        print(f"task status: {task.status}; loop round: {task.loop_round}; branch: {task.branch or NONE_TEXT}")
+        rounds = f"{task.loop_round}/{workflow.max_rounds}"
+        print(f"task status: {task.status}; rework rounds: {rounds}; branch: {task.branch or NONE_TEXT}")
     others = [t for t in state.tasks if t.status in IN_FLIGHT_TASK_STATUSES and t is not task]
     if others:
         print("other open tasks: " + ", ".join(f"{t.id} ({t.current_step}, {t.status})" for t in others))
@@ -174,12 +217,67 @@ def cmd_workflow(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def _store(opened: _Opened) -> JsonStateStore:
+    return JsonStateStore(opened.paths.dir, opened.workflow)
+
+
+def cmd_task(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    store = _store(opened)
+    match args.task_command:
+        case TaskCommand.NEW:
+            task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now)
+            print(f"{task.id} created on branch {task.branch}")
+        case TaskCommand.ADVANCE:
+            task = advance_task(store, opened.workflow, args.result, utc_now)
+            print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
+        case TaskCommand.APPROVE:
+            result = approve_task(store, opened.workflow, opened.paths.dir, utc_now, args.reason)
+            task = result.task
+            print(f"{task.id}: step '{task.current_step}' is now {task.step_status} (task {task.status})")
+            if result.decision_file is not None:
+                print(f"decision recorded: {result.decision_file}")
+        case TaskCommand.CANCEL:
+            task = cancel_task(store, opened.workflow, utc_now)
+            print(f"{task.id} cancelled")
+    state = store.load()
+    print(f"next: {describe_action(next_action(opened.workflow, state.active_task()))}")
+    return ExitCode.OK
+
+
+def cmd_report(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    task = require_active_task(opened.state)
+    path = write_report(opened.paths.dir, opened.workflow, task, args.step, sys.stdin.read())
+    print(f"report saved: {path}")
+    return ExitCode.OK
+
+
+def cmd_commit(args: argparse.Namespace) -> ExitCode:
+    opened = _open_workspace()
+    scanner = ContainerGitleaksScanner(SubprocessRunner())
+    result = commit_staged(_store(opened), SubprocessGit(opened.paths.root), scanner, args.message)
+    print(f"committed {result.sha[:SHORT_SHA_LENGTH]}: {result.message}")
+    return ExitCode.OK
+
+
+def cmd_guard(args: argparse.Namespace) -> ExitCode:
+    request = parse_request(sys.stdin.read())
+    verdict = evaluate(request.command, request.cwd or Path.cwd(), GitBranchLookup())
+    print(json.dumps(verdict_to_dict(verdict), ensure_ascii=False))
+    return ExitCode.OK
+
+
 HANDLERS: dict[str, Handler] = {
     Command.DOCTOR: cmd_doctor,
     Command.INIT: cmd_init,
     Command.STATUS: cmd_status,
     Command.NEXT: cmd_next,
     Command.WORKFLOW: cmd_workflow,
+    Command.TASK: cmd_task,
+    Command.REPORT: cmd_report,
+    Command.COMMIT: cmd_commit,
+    Command.GUARD: cmd_guard,
 }
 
 

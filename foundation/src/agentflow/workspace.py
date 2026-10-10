@@ -1,6 +1,5 @@
 """The per-project workspace: ``<git root>/.agentflow/``, kept out of git via ``.git/info/exclude``."""
 
-import subprocess
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -12,7 +11,6 @@ from agentflow.constants import (
     ENCODING,
     EXCLUDE_ENTRY,
     GIT_EXCLUDE_PATH,
-    GIT_EXECUTABLE,
     GIT_PATH_ARGS,
     GIT_TOPLEVEL_ARGS,
     GITKEEP_FILE,
@@ -25,6 +23,7 @@ from agentflow.constants import (
 )
 from agentflow.errors import AgentflowError
 from agentflow.fsutil import file_sha256, write_bytes_atomic, write_text_atomic
+from agentflow.git import run_git
 from agentflow.models import (
     State,
     Workflow,
@@ -81,17 +80,8 @@ class InitResult:
 # --------------------------------------------------------------------- git
 
 
-def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    try:
-        return subprocess.run(
-            [GIT_EXECUTABLE, *args], cwd=cwd, capture_output=True, text=True, encoding=ENCODING, check=False
-        )
-    except FileNotFoundError as exc:
-        raise AgentflowError("git is not installed or not on PATH", ExitCode.MISSING_REQUIREMENT) from exc
-
-
 def git_toplevel(cwd: Path) -> Path:
-    result = _git(cwd, *GIT_TOPLEVEL_ARGS)
+    result = run_git(cwd, *GIT_TOPLEVEL_ARGS)
     if result.returncode != 0:
         raise AgentflowError(f"not inside a git repository: {cwd}", ExitCode.NOT_GIT_REPO)
     return Path(result.stdout.strip())
@@ -99,7 +89,7 @@ def git_toplevel(cwd: Path) -> Path:
 
 def git_exclude_file(root: Path) -> Path:
     """The repository's ``info/exclude`` (resolved by git, so worktrees work too)."""
-    result = _git(root, *GIT_PATH_ARGS, GIT_EXCLUDE_PATH)
+    result = run_git(root, *GIT_PATH_ARGS, GIT_EXCLUDE_PATH)
     if result.returncode != 0:
         raise AgentflowError(f"cannot locate git exclude file: {result.stderr.strip()}", ExitCode.NOT_GIT_REPO)
     path = Path(result.stdout.strip())

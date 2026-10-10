@@ -13,9 +13,10 @@ from agentflow.constants import (
     SCHEMA_VERSION,
     ActionKind,
     ConfigKey,
+    GuardDecision,
+    GuardRule,
     HistoryEvent,
     StateKey,
-    StepKind,
     StepStatus,
     TaskStatus,
     Tool,
@@ -27,66 +28,52 @@ from agentflow.constants import (
 
 
 @dataclass(frozen=True)
-class LoopSpec:
-    back_to: str
-    max_rounds: int
-
-
-@dataclass(frozen=True)
 class Step:
     id: str
     name: str
     role: str
-    kind: StepKind = StepKind.STEP
     requires_approval: bool = False
+    # An earlier step to go back to when this step fails.
     on_fail: str | None = None
-    loop: LoopSpec | None = None
 
 
 @dataclass(frozen=True)
 class Workflow:
     schema_version: int
     family: str
+    # How many times one task may go back through ``on_fail`` before it is blocked.
+    max_rounds: int
     steps: tuple[Step, ...]
 
     def get_step(self, step_id: str) -> Step | None:
         return next((step for step in self.steps if step.id == step_id), None)
 
-    def main_steps(self) -> tuple[Step, ...]:
-        """Steps on the normal path, in order; loop steps are only entered via ``on_fail``."""
-        return tuple(step for step in self.steps if step.kind is StepKind.STEP)
-
     def first_step(self) -> Step:
-        return self.main_steps()[0]
+        return self.steps[0]
 
     def step_after(self, step_id: str) -> Step | None:
-        """The main step that follows ``step_id``, or ``None`` when it is the last one."""
-        main = self.main_steps()
-        ids = [step.id for step in main]
+        """The step that follows ``step_id``, or ``None`` when it is the last one."""
+        ids = [step.id for step in self.steps]
         position = ids.index(step_id)
-        return main[position + 1] if position + 1 < len(main) else None
+        return self.steps[position + 1] if position + 1 < len(self.steps) else None
 
 
 def workflow_from_dict(data: Mapping[str, Any]) -> Workflow:
     return Workflow(
         schema_version=data[WorkflowKey.SCHEMA_VERSION],
         family=data[WorkflowKey.FAMILY],
+        max_rounds=data[WorkflowKey.MAX_ROUNDS],
         steps=tuple(_step_from_dict(item) for item in data[WorkflowKey.STEPS]),
     )
 
 
 def _step_from_dict(data: Mapping[str, Any]) -> Step:
-    loop = data.get(WorkflowKey.LOOP)
     return Step(
         id=data[WorkflowKey.ID],
         name=data[WorkflowKey.NAME],
         role=data[WorkflowKey.ROLE],
-        kind=StepKind(data.get(WorkflowKey.KIND, StepKind.STEP)),
         requires_approval=data.get(WorkflowKey.REQUIRES_APPROVAL, False),
         on_fail=data.get(WorkflowKey.ON_FAIL),
-        loop=None
-        if loop is None
-        else LoopSpec(back_to=loop[WorkflowKey.BACK_TO], max_rounds=loop[WorkflowKey.MAX_ROUNDS]),
     )
 
 
@@ -232,6 +219,7 @@ class NextAction:
     kind: ActionKind
     step: Step | None = None
     loop_round: int | None = None
+    max_rounds: int | None = None
 
 
 @dataclass(frozen=True)
@@ -257,3 +245,38 @@ class ToolCheck:
 class DoctorReport:
     checks: tuple[ToolCheck, ...]
     ok: bool
+
+
+# ------------------------------------------------------ commit/scan/guard
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """Outcome of a secret scan that actually ran; ``output`` is the scanner's redacted report."""
+
+    clean: bool
+    output: str
+
+
+@dataclass(frozen=True)
+class CommitResult:
+    sha: str
+    message: str
+
+
+@dataclass(frozen=True)
+class GuardVerdict:
+    decision: GuardDecision
+    rule: GuardRule | None = None
+    reason: str | None = None
+
+    @property
+    def denied(self) -> bool:
+        return self.decision is GuardDecision.DENY

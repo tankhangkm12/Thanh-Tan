@@ -58,7 +58,16 @@
         "at": { "type": "string", "format": "date-time" },
         "step": { "$ref": "#/$defs/step_id" },
         "event": {
-          "enum": ["started", "passed", "failed", "approved", "looped"]
+          "enum": [
+            "started",
+            "passed",
+            "failed",
+            "approved",
+            "blocked",
+            "resumed",
+            "cancelled",
+            "done"
+          ]
         }
       }
     }

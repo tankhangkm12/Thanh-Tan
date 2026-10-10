@@ -1,0 +1,194 @@
+"""Task lifecycle on a real workspace: state.json through a ``StateStore``, branches through a ``GitClient``."""
+
+import re
+import unicodedata
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from pathlib import Path
+
+from agentflow.constants import (
+    BRANCH_SEPARATOR,
+    DECISIONS_DIR,
+    IN_FLIGHT_TASK_STATUSES,
+    MARKDOWN_SUFFIX,
+    REPORTS_DIR,
+    SLUG_FALLBACK,
+    SLUG_MAX_LENGTH,
+    TASK_BASE_BRANCH,
+    TASK_ID_DIGITS,
+    TASK_ID_PREFIX,
+    TASKS_DIR,
+    ExitCode,
+    TaskEvent,
+    TaskStatus,
+    TaskType,
+)
+from agentflow.engine import resume_target, start_task, transition
+from agentflow.errors import AgentflowError
+from agentflow.fsutil import write_text_atomic
+from agentflow.interfaces import GitClient, StateStore
+from agentflow.models import State, Task, Workflow
+from agentflow.render import NONE_TEXT, describe_step
+
+Clock = Callable[[], str]
+
+_SLUG_SEPARATOR = "-"
+_NOT_SLUG_CHARS = re.compile(r"[^a-z0-9]+")
+# NFKD does not decompose the Vietnamese letter đ, so map it by hand.
+_UNDECOMPOSABLE = str.maketrans({"đ": "d", "Đ": "D"})
+_TIMESTAMP_UNSAFE = re.compile(r"[^0-9A-Za-z]")
+_CRLF = "\r\n"
+_LF = "\n"
+OVERRIDE_FILE_SUFFIX = "-override"
+NO_REASON_TEXT = "not given"
+
+
+@dataclass(frozen=True)
+class ApproveResult:
+    task: Task
+    # Written when the approval overrode a blocked task.
+    decision_file: Path | None = None
+
+
+# ------------------------------------------------------------------ naming
+
+
+def slugify(title: str) -> str:
+    """ASCII, lower-case, dash-separated, at most ``SLUG_MAX_LENGTH`` characters, cut at a word boundary."""
+    decomposed = unicodedata.normalize("NFKD", title.translate(_UNDECOMPOSABLE))
+    ascii_text = "".join(char for char in decomposed if not unicodedata.combining(char)).lower()
+    slug = _NOT_SLUG_CHARS.sub(_SLUG_SEPARATOR, ascii_text).strip(_SLUG_SEPARATOR)
+    if len(slug) > SLUG_MAX_LENGTH:
+        cut = slug[:SLUG_MAX_LENGTH]
+        if slug[SLUG_MAX_LENGTH] != _SLUG_SEPARATOR and _SLUG_SEPARATOR in cut:
+            cut = cut.rsplit(_SLUG_SEPARATOR, 1)[0]
+        slug = cut.strip(_SLUG_SEPARATOR)
+    return slug or SLUG_FALLBACK
+
+
+def next_task_id(state: State) -> str:
+    numbers = [int(task.id.removeprefix(TASK_ID_PREFIX)) for task in state.tasks]
+    return f"{TASK_ID_PREFIX}{max(numbers, default=0) + 1:0{TASK_ID_DIGITS}d}"
+
+
+def branch_name(task_type: TaskType, task_id: str, title: str) -> str:
+    return f"{task_type}{BRANCH_SEPARATOR}{task_id}{_SLUG_SEPARATOR}{slugify(title)}"
+
+
+# --------------------------------------------------------------- lifecycle
+
+
+def new_task(
+    store: StateStore, workflow: Workflow, git: GitClient, title: str, task_type: TaskType, clock: Clock
+) -> Task:
+    """Create the task's gitflow branch from its base, switch to it, and record the task as active."""
+    title = title.strip()
+    if not title:
+        raise AgentflowError("the task title is empty", ExitCode.INVALID_INPUT)
+    state = store.load()
+    in_flight = [task for task in state.tasks if task.status in IN_FLIGHT_TASK_STATUSES]
+    if in_flight:
+        listing = ", ".join(f"{task.id} ({task.status})" for task in in_flight)
+        raise AgentflowError(
+            f"finish or cancel the current task first: {listing}", ExitCode.TASK_CONFLICT
+        )
+    if not git.is_clean():
+        raise AgentflowError(
+            "the working tree has uncommitted or untracked changes; commit, stash or remove them first",
+            ExitCode.DIRTY_WORKING_TREE,
+        )
+    base = TASK_BASE_BRANCH[task_type]
+    if not git.branch_exists(base):
+        raise AgentflowError(
+            f"base branch '{base}' for a {task_type} task does not exist locally", ExitCode.BRANCH_PROBLEM
+        )
+    task_id = next_task_id(state)
+    branch = branch_name(task_type, task_id, title)
+    if git.branch_exists(branch):
+        raise AgentflowError(f"branch '{branch}' already exists", ExitCode.BRANCH_PROBLEM)
+
+    git.create_branch(branch, base)
+    task = start_task(workflow, task_id, title, branch, clock())
+    store.save(replace(state, active_task_id=task.id, tasks=(*state.tasks, task)))
+    return task
+
+
+def advance_task(store: StateStore, workflow: Workflow, result: TaskEvent, clock: Clock) -> Task:
+    """Record that the active task's current step passed or failed."""
+    return _apply(store, workflow, result, clock)[1]
+
+
+def cancel_task(store: StateStore, workflow: Workflow, clock: Clock) -> Task:
+    return _apply(store, workflow, TaskEvent.CANCEL, clock)[1]
+
+
+def approve_task(
+    store: StateStore, workflow: Workflow, workspace_dir: Path, clock: Clock, reason: str | None = None
+) -> ApproveResult:
+    """Approve the step awaiting approval, or override a blocked task (recorded in ``decisions/``)."""
+    before, after = _apply(store, workflow, TaskEvent.APPROVE, clock)
+    if before.status is not TaskStatus.BLOCKED:
+        return ApproveResult(after)
+    return ApproveResult(after, write_override_decision(workspace_dir, workflow, before, after, reason))
+
+
+def write_override_decision(
+    workspace_dir: Path, workflow: Workflow, blocked: Task, resumed: Task, reason: str | None
+) -> Path:
+    at = resumed.history[-1].at
+    path = (
+        workspace_dir
+        / DECISIONS_DIR
+        / f"{blocked.id}{_SLUG_SEPARATOR}{_TIMESTAMP_UNSAFE.sub('', at)}{OVERRIDE_FILE_SUFFIX}{MARKDOWN_SUFFIX}"
+    )
+    blocked_step = workflow.get_step(blocked.current_step)
+    assert blocked_step is not None
+    lines = [
+        f"# {blocked.id}: blocked task resumed by a person",
+        "",
+        f"- Task: {blocked.id} {blocked.title}",
+        f"- Branch: {blocked.branch or NONE_TEXT}",
+        f"- Blocked at: {describe_step(blocked_step)}, after {blocked.loop_round}/{workflow.max_rounds} rework rounds",
+        f"- Resumed at: step '{resume_target(blocked_step)}', rework rounds reset to 0",
+        f"- Time: {at}",
+        f"- Reason: {reason.strip() if reason and reason.strip() else NO_REASON_TEXT}",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_text_atomic(path, "\n".join(lines) + "\n")
+    return path
+
+
+def write_report(workspace_dir: Path, workflow: Workflow, task: Task, step_id: str, content: str) -> Path:
+    """Store a step's report at ``tasks/<task id>/reports/<step id>.md``, replacing an earlier one."""
+    if workflow.get_step(step_id) is None:
+        known = ", ".join(step.id for step in workflow.steps)
+        raise AgentflowError(f"unknown step '{step_id}' (steps: {known})", ExitCode.UNKNOWN_STEP)
+    if not content.strip():
+        raise AgentflowError("the report is empty", ExitCode.INVALID_INPUT)
+    path = workspace_dir / TASKS_DIR / task.id / REPORTS_DIR / f"{step_id}{MARKDOWN_SUFFIX}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = content.replace(_CRLF, _LF)
+    write_text_atomic(path, text if text.endswith(_LF) else text + _LF)
+    return path
+
+
+def require_active_task(state: State) -> Task:
+    task = state.active_task()
+    if task is None:
+        raise AgentflowError(
+            "no active task (start one with `agentflow task new`)", ExitCode.NO_ACTIVE_TASK
+        )
+    return task
+
+
+# ----------------------------------------------------------------- helpers
+
+
+def _apply(store: StateStore, workflow: Workflow, event: TaskEvent, clock: Clock) -> tuple[Task, Task]:
+    state = store.load()
+    before = require_active_task(state)
+    after = transition(workflow, before, event, clock())
+    tasks = tuple(after if task.id == before.id else task for task in state.tasks)
+    active = after.id if after.status in IN_FLIGHT_TASK_STATUSES else None
+    store.save(replace(state, active_task_id=active, tasks=tasks))
+    return before, after

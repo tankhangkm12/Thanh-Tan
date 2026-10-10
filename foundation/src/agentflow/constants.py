@@ -15,7 +15,12 @@ STATE_FILE = "state.json"
 STATE_MD_FILE = "STATE.md"
 CONFIG_FILE = "config.yaml"
 WORKFLOW_COPY_FILE = "workflow.yaml"
-WORKSPACE_SUBDIRS = ("decisions", "tasks", "project", "knowledge")
+DECISIONS_DIR = "decisions"
+TASKS_DIR = "tasks"
+WORKSPACE_SUBDIRS = (DECISIONS_DIR, TASKS_DIR, "project", "knowledge")
+# Per-task files: <workspace>/tasks/<task id>/reports/<step id>.md
+REPORTS_DIR = "reports"
+MARKDOWN_SUFFIX = ".md"
 GITKEEP_FILE = ".gitkeep"
 EXCLUDE_ENTRY = f"{WORKSPACE_DIR}/"
 TMP_SUFFIX = ".tmp"
@@ -36,6 +41,26 @@ TOOL_TIMEOUT_SECONDS = 15
 VERSION_FLAG = "--version"
 ENGINE_INFO_ARG = "info"
 
+# Gitflow: where each task type branches from.
+MAIN_BRANCH = "main"
+DEVELOP_BRANCH = "develop"
+PROTECTED_BRANCHES = frozenset({MAIN_BRANCH, DEVELOP_BRANCH})
+BRANCH_SEPARATOR = "/"
+
+# Task ids look like T-001; branch slugs come from the task title.
+TASK_ID_PREFIX = "T-"
+TASK_ID_DIGITS = 3
+SLUG_MAX_LENGTH = 40
+SLUG_FALLBACK = "task"
+COMMIT_PREFIX_SEPARATOR = ": "
+
+# Secret scanning with Gitleaks in a container. The image is pinned on purpose.
+GITLEAKS_IMAGE = "zricethezav/gitleaks:v8.24.0"
+SCAN_TIMEOUT_SECONDS = 900
+# Exit code Gitleaks is told to use for "leaks found", so it differs from its own errors.
+GITLEAKS_LEAKS_EXIT_CODE = 99
+CONTAINER_REPO_DIR = "/repo"
+
 
 class ExitCode(IntEnum):
     OK = 0
@@ -50,11 +75,42 @@ class ExitCode(IntEnum):
     WORKFLOW_NOT_FOUND = 9
     SYNC_BLOCKED = 10
     INVALID_CONFIG = 11
+    TASK_CONFLICT = 12
+    NO_ACTIVE_TASK = 13
+    INVALID_TRANSITION = 14
+    DIRTY_WORKING_TREE = 15
+    BRANCH_PROBLEM = 16
+    NOTHING_STAGED = 17
+    SECRETS_FOUND = 18
+    ENGINE_NOT_RUNNING = 19
+    SCAN_FAILED = 20
+    GIT_FAILED = 21
+    INVALID_INPUT = 22
+    UNKNOWN_STEP = 23
 
 
-class StepKind(StrEnum):
-    STEP = "step"
-    LOOP = "loop"
+class TaskType(StrEnum):
+    FEATURE = "feature"
+    BUGFIX = "bugfix"
+    HOTFIX = "hotfix"
+
+
+TASK_BASE_BRANCH = {
+    TaskType.FEATURE: DEVELOP_BRANCH,
+    TaskType.BUGFIX: DEVELOP_BRANCH,
+    TaskType.HOTFIX: MAIN_BRANCH,
+}
+
+
+class TaskEvent(StrEnum):
+    PASS = "pass"
+    FAIL = "fail"
+    APPROVE = "approve"
+    CANCEL = "cancel"
+
+
+# What `task advance --result` accepts.
+STEP_RESULTS = (TaskEvent.PASS, TaskEvent.FAIL)
 
 
 class TaskStatus(StrEnum):
@@ -80,17 +136,18 @@ class HistoryEvent(StrEnum):
     PASSED = "passed"
     FAILED = "failed"
     APPROVED = "approved"
-    LOOPED = "looped"
+    BLOCKED = "blocked"
+    # A person approved a blocked task, overriding the block.
+    RESUMED = "resumed"
+    CANCELLED = "cancelled"
+    DONE = "done"
 
 
 class ActionKind(StrEnum):
     START_TASK = "start_task"
     CONTINUE = "continue"
     AWAIT_APPROVAL = "await_approval"
-    ADVANCE = "advance"
-    LOOP = "loop"
     BLOCKED = "blocked"
-    DONE = "done"
 
 
 class DriftStatus(StrEnum):
@@ -135,25 +192,59 @@ class Command(StrEnum):
     STATUS = "status"
     NEXT = "next"
     WORKFLOW = "workflow"
+    TASK = "task"
+    REPORT = "report"
+    COMMIT = "commit"
+    GUARD = "guard"
 
 
 class WorkflowCommand(StrEnum):
     SYNC = "sync"
 
 
+class TaskCommand(StrEnum):
+    NEW = "new"
+    ADVANCE = "advance"
+    APPROVE = "approve"
+    CANCEL = "cancel"
+
+
+class GuardDecision(StrEnum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+class GuardRule(StrEnum):
+    """Why `agentflow guard` denied a shell command."""
+
+    PUSH = "push"
+    PROTECTED_BRANCH = "protected-branch"
+    RESET_HARD = "reset-hard"
+    CLEAN_FORCE_DIRS = "clean-force-dirs"
+    BRANCH_FORCE_DELETE = "branch-force-delete"
+    TAG_DELETE = "tag-delete"
+
+
+class GuardKey(StrEnum):
+    """Keys of the JSON that `agentflow guard` reads and writes."""
+
+    COMMAND = "command"
+    CWD = "cwd"
+    DECISION = "decision"
+    REASON = "reason"
+    RULE = "rule"
+
+
 class WorkflowKey(StrEnum):
     SCHEMA_VERSION = "schema_version"
     FAMILY = "family"
+    MAX_ROUNDS = "max_rounds"
     STEPS = "steps"
     ID = "id"
     NAME = "name"
     ROLE = "role"
-    KIND = "kind"
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
-    LOOP = "loop"
-    BACK_TO = "back_to"
-    MAX_ROUNDS = "max_rounds"
 
 
 class StateKey(StrEnum):

@@ -132,7 +132,7 @@ def test_main_exit_codes(plugin, capsys):
 
 def test_real_roles_follow_the_edit_rules():
     roles = {role.name: role for role in build.load_roles(REAL_PLUGIN)}
-    assert set(roles) == {"orchestrator", "planner", "implementer", "tester", "security", "reviewer"}
+    assert set(roles) == {"orchestrator", "planner", "implementer", "tester", "security", "reviewer", "scout"}
     editors = {name for name, role in roles.items() if build.Capability.EDIT in role.capabilities}
     assert editors == {"implementer", "tester"}
 
@@ -145,13 +145,13 @@ def test_real_generated_agents_are_all_declared_in_the_manifest():
     manifest = json.loads((REAL_PLUGIN / build.CLAUDE_MANIFEST).read_text(encoding="utf-8"))
     declared = {Path(item).name for item in manifest["agents"]}
     on_disk = {path.name for path in (REAL_PLUGIN / build.CLAUDE_AGENTS_DIR).glob("*.md")}
-    assert declared == on_disk and len(declared) == 6
+    assert declared == on_disk and len(declared) == 7
     assert all(item.startswith("./") for item in manifest["agents"])
 
 
 def test_real_skills_use_only_portable_frontmatter():
     skills = {path.parent.name: path for path in (REAL_PLUGIN / "skills").glob("*/SKILL.md")}
-    assert set(skills) == {"start", "continue", "status", "approve"}
+    assert set(skills) == {"start", "continue", "status", "approve", "setup"}
     for name, path in skills.items():
         data = frontmatter(path)
         assert set(data) == {"name", "description"} and data["name"] == name

@@ -4,7 +4,7 @@ A plugin family talks to agentflow only through a workflow file that a
 ``WorkflowSource`` loads; agentflow never imports family code.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -116,3 +116,17 @@ class BranchLookup(Protocol):
         ...
 
     def branch_exists(self, directory: Path, name: str) -> bool: ...
+
+
+@runtime_checkable
+class RoleRegistry(Protocol):
+    """The roles a plan item may be given: the workflow's own plus those extensions register."""
+
+    def roles(self) -> Collection[str]: ...
+
+
+@runtime_checkable
+class PlanRule(Protocol):
+    """An extra check on one plan item (supplied by an extension); returns problem messages."""
+
+    def problems(self, item: Any) -> Sequence[str]: ...

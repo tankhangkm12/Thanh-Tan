@@ -87,6 +87,12 @@ class ExitCode(IntEnum):
     GIT_FAILED = 21
     INVALID_INPUT = 22
     UNKNOWN_STEP = 23
+    PLAN_INVALID = 24
+    GATE_FAILED = 25
+    TASK_NOT_SEALED = 26
+    SCAN_BLOCKED = 27
+    EXTENSION_INVALID = 28
+    SETTINGS_INVALID = 29
 
 
 class TaskType(StrEnum):
@@ -340,3 +346,19 @@ class ConfigKey(StrEnum):
     FAMILY = "family"
     SOURCE_PATH = "source_path"
     SHA256 = "sha256"
+
+
+# ----------------------------------------------------------------- plan
+
+class PlanField(StrEnum):
+    """Field names of a plan item (a bullet under its ``### C<n>`` heading)."""
+
+    ROLE = "role"
+    FILES = "files"
+    DONE_WHEN = "done-when"
+    DOCS = "docs"
+
+
+PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
+PLAN_NO_DOCS_PREFIX = "không có"
+PLAN_NO_FILES_PREFIX = "không có"

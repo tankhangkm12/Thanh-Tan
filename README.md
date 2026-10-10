@@ -46,10 +46,21 @@ Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhậ
 
 ### agentflow
 
-Sau khi có logic thật, `agentflow` sẽ được cài global bằng `uv tool install` từ thư mục `foundation/`. Phát triển cục bộ:
+`agentflow` sẽ được cài global bằng `uv tool install` từ thư mục `foundation/`. Hiện chạy qua uv:
 
 ```
 cd foundation
-uv run agentflow --version
+uv run agentflow doctor
 uv run pytest
 ```
+
+Dùng trong một dự án (thư mục gốc là repo git):
+
+```
+agentflow init --workflow <đường-dẫn>/families/software-dev/core/workflow.yaml
+agentflow status
+agentflow next
+agentflow workflow sync      # khi workflow gốc của nhóm thay đổi
+```
+
+Workspace `.agentflow/` chỉ nằm ở local (ghi vào `.git/info/exclude`). Chi tiết: [docs/architecture.md](docs/architecture.md#workspace-của-dự-án).

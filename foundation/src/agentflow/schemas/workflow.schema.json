@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agentflow workflow",
+  "description": "Workflow a plugin family declares for agentflow. Main steps run in list order; loop steps are entered only through on_fail.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "family", "steps"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "family": { "$ref": "#/$defs/identifier" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/identifier" },
+        "kind": { "enum": ["step", "loop"], "default": "step" },
+        "requires_approval": { "type": "boolean", "default": false },
+        "on_fail": { "$ref": "#/$defs/identifier" },
+        "loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["back_to", "max_rounds"],
+          "properties": {
+            "back_to": { "$ref": "#/$defs/identifier" },
+            "max_rounds": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "if": {
+        "required": ["kind"],
+        "properties": { "kind": { "const": "loop" } }
+      },
+      "then": {
+        "required": ["loop"],
+        "not": { "required": ["on_fail"] }
+      },
+      "else": {
+        "not": { "required": ["loop"] }
+      }
+    }
+  }
+}

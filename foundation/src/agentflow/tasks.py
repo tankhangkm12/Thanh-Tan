@@ -81,12 +81,13 @@ def branch_name(task_type: TaskType, task_id: str, title: str) -> str:
 
 
 def new_task(
-    store: StateStore, workflow: Workflow, git: GitClient, title: str, task_type: TaskType, clock: Clock
+    store: StateStore, workflow: Workflow, git: GitClient, title: str, task_type: TaskType, clock: Clock, size: str | None = None
 ) -> Task:
     """Create the task's gitflow branch from its base, switch to it, and record the task as active."""
     title = title.strip()
     if not title:
         raise AgentflowError("the task title is empty", ExitCode.INVALID_INPUT)
+    size = resolve_size(workflow, size)
     state = store.load()
     in_flight = [task for task in state.tasks if task.status in IN_FLIGHT_TASK_STATUSES]
     if in_flight:
@@ -111,9 +112,22 @@ def new_task(
         raise AgentflowError(f"branch '{branch}' already exists", ExitCode.BRANCH_PROBLEM)
 
     git.create_branch(branch, base)
-    task = start_task(workflow, task_id, title, branch, clock())
+    task = start_task(workflow, task_id, title, branch, clock(), size)
     store.save(replace(state, active_task_id=task.id, tasks=(*state.tasks, task)))
     return task
+
+
+def resolve_size(workflow: Workflow, size: str | None) -> str | None:
+    """The size a new task gets: the one asked for, else the workflow's default; ``None`` when the workflow has no sizes."""
+    if not workflow.sizes:
+        if size is not None:
+            raise AgentflowError(f"this workflow has no task sizes, so --size {size} cannot be used", ExitCode.INVALID_INPUT)
+        return None
+    chosen = size or workflow.default_size
+    if workflow.size_profile(chosen) is None:
+        known = ", ".join(profile.id for profile in workflow.sizes)
+        raise AgentflowError(f"unknown size '{chosen}' (this workflow has: {known})", ExitCode.INVALID_INPUT)
+    return chosen
 
 
 def advance_task(

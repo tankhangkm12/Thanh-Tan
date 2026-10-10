@@ -42,7 +42,7 @@ def next_action(workflow: Workflow, task: Task | None) -> NextAction:
     )
 
 
-def start_task(workflow: Workflow, task_id: str, title: str, branch: str | None, at: str) -> Task:
+def start_task(workflow: Workflow, task_id: str, title: str, branch: str | None, at: str, size: str | None = None) -> Task:
     first = workflow.first_step()
     return Task(
         id=task_id,
@@ -52,6 +52,7 @@ def start_task(workflow: Workflow, task_id: str, title: str, branch: str | None,
         step_status=StepStatus.IN_PROGRESS,
         branch=branch,
         history=(HistoryEntry(at, first.id, HistoryEvent.STARTED),),
+        size=size,
     )
 
 
@@ -64,7 +65,7 @@ def transition(workflow: Workflow, task: Task, event: TaskEvent, at: str) -> Tas
         case TaskEvent.PASS:
             _require_working(task, step, {StepStatus.IN_PROGRESS})
             passed = _log(task, at, step.id, HistoryEvent.PASSED)
-            if step.requires_approval:
+            if needs_approval(workflow, task, step):
                 return replace(passed, step_status=StepStatus.AWAITING_APPROVAL)
             return _move_on(workflow, passed, step, at)
         case TaskEvent.APPROVE:
@@ -79,6 +80,12 @@ def transition(workflow: Workflow, task: Task, event: TaskEvent, at: str) -> Tas
             assert task.status in IN_FLIGHT_TASK_STATUSES
             return replace(_log(task, at, step.id, HistoryEvent.CANCELLED), status=TaskStatus.CANCELLED)
     raise AssertionError(event)  # unreachable: TaskEvent is exhaustive
+
+
+def needs_approval(workflow: Workflow, task: Task, step: Step) -> bool:
+    """Whether a person has to approve ``step``: the workflow says so, unless the task's size drops that approval."""
+    profile = workflow.size_profile(task.size)
+    return step.requires_approval and not (profile is not None and step.id in profile.skip_approval)
 
 
 def resume_target(step: Step) -> str:

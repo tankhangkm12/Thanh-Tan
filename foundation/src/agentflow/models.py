@@ -17,6 +17,7 @@ from agentflow.constants import (
     GateKind,
     GuardDecision,
     GuardRule,
+    SizeKey,
     HistoryEvent,
     ReplyKind,
     StateKey,
@@ -42,6 +43,18 @@ class Step:
 
 
 @dataclass(frozen=True)
+class SizeProfile:
+    """A task size: how a task of this size differs from the full workflow."""
+
+    id: str
+    # Steps that need no approval for this size.
+    skip_approval: tuple[str, ...] = ()
+    max_plan_items: int | None = None
+    # Step id -> ids of the scan tools that step runs; a step not listed runs them all.
+    scans: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class Workflow:
     schema_version: int
     family: str
@@ -50,6 +63,11 @@ class Workflow:
     steps: tuple[Step, ...]
     # Roles with one agent per plan-item tier; every other role has a single agent.
     tiered_roles: tuple[str, ...] = ()
+    sizes: tuple[SizeProfile, ...] = ()
+    default_size: str | None = None
+
+    def size_profile(self, size: str | None) -> SizeProfile | None:
+        return next((profile for profile in self.sizes if profile.id == size), None) if size else None
 
     def get_step(self, step_id: str) -> Step | None:
         return next((step for step in self.steps if step.id == step_id), None)
@@ -71,6 +89,17 @@ def workflow_from_dict(data: Mapping[str, Any]) -> Workflow:
         max_rounds=data[WorkflowKey.MAX_ROUNDS],
         steps=tuple(_step_from_dict(item) for item in data[WorkflowKey.STEPS]),
         tiered_roles=tuple(data.get(WorkflowKey.TIERED_ROLES, ())),
+        sizes=tuple(_size_from_dict(name, item) for name, item in data.get(WorkflowKey.SIZES, {}).get(SizeKey.PROFILES, {}).items()),
+        default_size=data.get(WorkflowKey.SIZES, {}).get(SizeKey.DEFAULT),
+    )
+
+
+def _size_from_dict(name: str, data: Mapping[str, Any]) -> SizeProfile:
+    return SizeProfile(
+        id=name,
+        skip_approval=tuple(data.get(SizeKey.SKIP_APPROVAL, ())),
+        max_plan_items=data.get(SizeKey.MAX_PLAN_ITEMS),
+        scans={step: tuple(tools) for step, tools in data.get(SizeKey.SCANS, {}).items()},
     )
 
 
@@ -105,6 +134,8 @@ class Task:
     loop_round: int = 0
     branch: str | None = None
     history: tuple[HistoryEntry, ...] = ()
+    # The workflow size the task was started with; ``None`` when the workflow has no sizes.
+    size: str | None = None
 
 
 @dataclass(frozen=True)
@@ -141,6 +172,7 @@ def _task_from_dict(data: Mapping[str, Any]) -> Task:
         step_status=StepStatus(data[StateKey.STEP_STATUS]),
         loop_round=data[StateKey.LOOP_ROUND],
         branch=data[StateKey.BRANCH],
+        size=data.get(StateKey.SIZE),
         history=tuple(
             HistoryEntry(
                 at=entry[StateKey.AT],
@@ -162,7 +194,7 @@ def state_to_dict(state: State) -> dict[str, Any]:
 
 
 def _task_to_dict(task: Task) -> dict[str, Any]:
-    return {
+    data = {
         StateKey.ID: task.id,
         StateKey.TITLE: task.title,
         StateKey.STATUS: task.status,
@@ -175,6 +207,9 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
             for entry in task.history
         ],
     }
+    if task.size is not None:
+        data[StateKey.SIZE] = task.size
+    return data
 
 
 # ------------------------------------------------------------------ config
@@ -340,6 +375,7 @@ class TaskInfo:
     step_status: str
     loop_round: int
     max_rounds: int
+    size: str | None = None
 
 
 @dataclass(frozen=True)

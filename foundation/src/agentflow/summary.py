@@ -25,6 +25,7 @@ def build_summary(
         f"# {task.id}: {task.title}",
         "",
         f"- Branch: {task.branch}",
+        *([f"- Size: {task.size}"] if task.size else []),
         f"- Approved by: {approver}",
         f"- Approved at: {approved_at}",
         "",

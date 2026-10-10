@@ -47,6 +47,8 @@ def reference_problems(workflow: Workflow) -> list[str]:
     step_roles = {step.role for step in workflow.steps}
     problems += [f"tiered role '{role}' is not the role of any step" for role in workflow.tiered_roles if role not in step_roles]
 
+    problems += _size_problems(workflow)
+
     position = {step.id: index for index, step in enumerate(workflow.steps)}
     for index, step in enumerate(workflow.steps):
         if step.on_fail is None:
@@ -55,6 +57,25 @@ def reference_problems(workflow: Workflow) -> list[str]:
             problems.append(f"step '{step.id}': on_fail '{step.on_fail}' does not exist")
         elif position[step.on_fail] >= index:
             problems.append(f"step '{step.id}': on_fail '{step.on_fail}' must be an earlier step")
+    return problems
+
+
+def _size_problems(workflow: Workflow) -> list[str]:
+    if not workflow.sizes:
+        return []
+    problems: list[str] = []
+    ids = {profile.id for profile in workflow.sizes}
+    if workflow.default_size not in ids:
+        problems.append(f"sizes: default '{workflow.default_size}' is not one of the profiles ({', '.join(sorted(ids))})")
+    approval = {step.id for step in workflow.steps if step.requires_approval}
+    steps = {step.id for step in workflow.steps}
+    for profile in workflow.sizes:
+        for step_id in profile.skip_approval:
+            if step_id not in approval:
+                problems.append(f"size '{profile.id}': skip_approval '{step_id}' is not a step that needs approval")
+        for step_id in profile.scans:
+            if step_id not in steps:
+                problems.append(f"size '{profile.id}': scans names step '{step_id}', which does not exist")
     return problems
 
 

@@ -3,7 +3,7 @@
 The workflow supplies the base; registered extensions add to it.
 """
 
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from pathlib import Path
@@ -12,11 +12,11 @@ from typing import Any
 from agentflow.constants import CheckKind, GateKind, PlanRuleKind
 from agentflow.conventions import Convention
 from agentflow.convention_sources import load_effective_conventions, semgrep_rule_files
-from agentflow.plan_rules import ItemOrderRule, LayerOrderRule
+from agentflow.plan_rules import ItemOrderRule, LayerOrderRule, MaxPlanItemsRule
 from agentflow.ext_rules import ExtensionRules
 from agentflow.extensions import load_registered
 from agentflow.interfaces import PlanRule, PlanWideRule
-from agentflow.models import Workflow
+from agentflow.models import Task, Workflow
 from agentflow.scan_types import ScanToolSpec
 from agentflow.settings import get_value
 from agentflow.workspace import WorkspacePaths, load_config
@@ -46,6 +46,8 @@ class ProjectContext:
     custom_semgrep_problems: tuple[str, ...] = ()
     lookup: Callable[[str], Any] = field(default=lambda key: None)
     rules: ExtensionRules | None = None
+    # Step id -> the scan tools it runs for the task's size; a step not listed runs all of its tools.
+    scan_filter: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 _PLAN_RULES = frozenset({PlanRuleKind.ITEM_ORDER, PlanRuleKind.LAYER_ORDER})
@@ -57,17 +59,20 @@ def _plan_rule(convention: Convention) -> PlanWideRule:
     return ItemOrderRule(convention.code)
 
 
-def load_project_context(workspace_dir: Path, workflow: Workflow) -> ProjectContext:
+def load_project_context(workspace_dir: Path, workflow: Workflow, task: Task | None = None) -> ProjectContext:
     paths = WorkspacePaths(workspace_dir.parent)
     roles = {step.role for step in workflow.steps}
     registered = load_registered(paths)
     effective = load_effective_conventions(workspace_dir)
-    wide = tuple(_plan_rule(item.convention) for item in effective.checked_by(CheckKind.PLAN) if item.convention.rule in _PLAN_RULES)
+    profile = workflow.size_profile(task.size) if task is not None else None
+    limit = (MaxPlanItemsRule(profile.max_plan_items, profile.id),) if profile is not None and profile.max_plan_items else ()
+    wide = limit + tuple(_plan_rule(item.convention) for item in effective.checked_by(CheckKind.PLAN) if item.convention.rule in _PLAN_RULES)
     custom, custom_problems = semgrep_rule_files(workspace_dir, effective)
     from_conventions = {
         "plan_wide_rules": wide,
         "custom_semgrep": tuple(custom),
         "custom_semgrep_problems": tuple(custom_problems),
+        "scan_filter": dict(profile.scans) if profile is not None else {},
     }
     if not registered:
         return ProjectContext(RoleSet(frozenset(roles)), **from_conventions)

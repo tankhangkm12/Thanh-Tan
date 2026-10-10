@@ -42,6 +42,7 @@ Mỗi nhóm khai báo quy trình của mình trong một file `workflow.yaml` đ
 | `steps[].id`, `name`, `role` | Mã bước, tên hiển thị, role phụ trách (foundation chỉ coi role là chuỗi) |
 | `steps[].requires_approval` | Bước cần người duyệt (mặc định `false`) |
 | `tiered_roles` | Role có một agent cho mỗi tier của mục kế hoạch (`<role>-fast`, `<role>-deep`); role khác chỉ có một agent. Tùy chọn; mỗi role phải là role của một bước |
+| `sizes` | Cỡ task, tùy chọn: `default` và `profiles.<tên>`. Mỗi profile có thể có `skip_approval` (các bước không cần duyệt với cỡ này; phải là bước vốn cần duyệt), `max_plan_items` (số mục tối đa của kế hoạch) và `scans` (bước → id các tool scan được chạy; bước không liệt kê chạy hết). Foundation chỉ đọc các tham số này, không biết cỡ nào ứng với nghiệp vụ gì |
 | `max_rounds` | Số lần một task được quay lại làm lại (cả workflow) |
 | `steps[].on_fail` | Bước đứng trước mà task quay về khi bước này fail |
 | `steps[].gates` | Gate bước phải qua trước khi `task advance --result pass` được nhận: `plan-valid` (kế hoạch qua `plan check`, kể cả quy ước `item-order` và mọi câu hỏi "Chưa có quy ước" đã được trả lời), `scans-clean` (kết quả scan không còn mục chặn), `conventions-reviewed` (báo cáo review có một dòng cho từng quy ước `check: review`) |
@@ -89,7 +90,9 @@ Plugin con khai báo một file `extension.yaml` (ví dụ `families/software-de
 - Khi bản gốc đổi (sha khác), `status`/`next`/`init` cảnh báo và gợi ý `agentflow workflow sync`. Khi bản gốc không còn, agentflow dùng bản chép và cảnh báo.
 - `workflow sync` kiểm bản gốc theo schema trước, rồi mới thay bản chép. Có task đang `open`/`blocked` thì từ chối, trừ khi có `--force`; kể cả với `--force`, sync vẫn bị từ chối nếu workflow mới bỏ mất bước mà một task đang đứng.
 
-Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/`done`/`cancelled`), `current_step`, `step_status` (`in_progress`/`awaiting_approval`/`passed`/`failed`), `loop_round`, `branch` (chuỗi hoặc `null`) và `history`.
+**Cỡ task.** `--size` chọn một profile của `sizes` trong workflow (thiếu thì lấy `default`; workflow không có `sizes` thì không nhận `--size`). Cỡ được ghi vào task (`size` trong `state.json`, `STATE.md`, `status`, `summary.md`) và có ba tác dụng: bước nằm trong `skip_approval` pass là đi tiếp luôn (gate vẫn chạy, nên `plan-valid` vẫn kiểm kế hoạch); kế hoạch dài hơn `max_plan_items` bị `plan check` từ chối; `agentflow scan` và gate `scans-clean` chỉ xét các tool nằm trong `scans` của bước đó. Với `software-dev`: `small` bỏ duyệt `plan`, tối đa 3 mục, bước `security` chạy `gitleaks`, `semgrep` và `semgrep-conventions`.
+
+Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/`done`/`cancelled`), `current_step`, `step_status` (`in_progress`/`awaiting_approval`/`passed`/`failed`), `loop_round`, `branch` (chuỗi hoặc `null`), `size` (tùy chọn, chỉ có khi workflow có `sizes`) và `history`.
 
 ## Lệnh agentflow
 
@@ -100,7 +103,7 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow status` | Task đang mở, bước hiện tại, việc tiếp theo | Chưa có workspace, state hỏng |
 | `agentflow next` | Bước tiếp theo, dạng `<loại>: <mô tả>` | Như `status` |
 | `agentflow workflow sync [--force]` | Thay bản chép workflow bằng bản gốc đã kiểm | Bản gốc lỗi hoặc mất, khác nhóm, có task đang chạy |
-| `agentflow task new "<tiêu đề>" --type feature\|bugfix\|hotfix` | Tạo nhánh gitflow `<type>/T-001-<slug>` và ghi task | Cây làm việc chưa sạch, đã có task mở, thiếu nhánh gốc |
+| `agentflow task new "<tiêu đề>" --type feature\|bugfix\|hotfix [--size <cỡ>]` | Tạo nhánh gitflow `<type>/T-001-<slug>` và ghi task | Cây làm việc chưa sạch, đã có task mở, thiếu nhánh gốc |
 | `agentflow task advance --result pass\|fail` | Ghi kết quả bước hiện tại | Không có task, bước không ở trạng thái cho phép |
 | `agentflow task approve [--reason ...]` | Duyệt bước đang chờ; với task `blocked` là người cho làm tiếp (ghi `decisions/`) | Như trên |
 | `agentflow task cancel` | Hủy task đang mở | Không có task đang mở |

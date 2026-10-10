@@ -136,6 +136,8 @@ def render_state_md(state: State, workflow: Workflow) -> str:
             f"- Rework rounds: {task.loop_round}/{workflow.max_rounds}",
             f"- Branch: {task.branch or NONE_TEXT}",
         ]
+        if task.size:
+            lines.append(f"- Size: {task.size}")
     lines += [f"- Next: {describe_action(next_action(workflow, task))}", "", "## Tasks", ""]
     if not state.tasks:
         lines.append("No tasks yet.")

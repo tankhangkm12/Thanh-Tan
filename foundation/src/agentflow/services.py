@@ -76,7 +76,7 @@ class WorkspaceServices:
         if task is not None:
             info = TaskInfo(
                 task.id, task.title, task.branch, str(task.status), task.current_step, str(task.step_status),
-                task.loop_round, workflow.max_rounds,
+                task.loop_round, workflow.max_rounds, task.size,
             )  # fmt: skip
         return StatusInfo(str(self.paths.dir), workflow.family, info, describe_action(next_action(workflow, task)))
 
@@ -96,7 +96,7 @@ class WorkspaceServices:
         path = plan_report_path(self.paths.dir, task.id, step.id)
         if not path.is_file():
             raise AgentflowError(f"no plan report yet: {path}", ExitCode.PLAN_INVALID)
-        project = load_project_context(self.paths.dir, workflow)
+        project = load_project_context(self.paths.dir, workflow, task)
         problems = plan_problems(path.read_text(encoding=ENCODING), project, answered_questions(self.paths.dir, task.id))
         return PlanCheckInfo(not problems, tuple(problems))
 

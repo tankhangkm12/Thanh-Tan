@@ -196,6 +196,7 @@ class Command(StrEnum):
     REPORT = "report"
     COMMIT = "commit"
     GUARD = "guard"
+    HOOK = "hook"
 
 
 class WorkflowCommand(StrEnum):
@@ -207,6 +208,74 @@ class TaskCommand(StrEnum):
     ADVANCE = "advance"
     APPROVE = "approve"
     CANCEL = "cancel"
+
+
+class HookEvent(StrEnum):
+    """What a hook is for; each CLI maps its own event names onto these."""
+
+    SESSION_START = "session-start"
+    PRE_TOOL = "pre-tool"
+    STOP = "stop"
+
+
+class CliKind(StrEnum):
+    CLAUDE = "claude"
+    ANTIGRAVITY = "antigravity"
+
+
+class ReplyKind(StrEnum):
+    """What the hook logic wants to tell the CLI; adapters turn it into each CLI's format."""
+
+    NONE = "none"
+    DENY = "deny"
+    CONTEXT = "context"
+    REMINDER = "reminder"
+
+
+class ClaudeHookKey(StrEnum):
+    CWD = "cwd"
+    TOOL_INPUT = "tool_input"
+    COMMAND = "command"
+    STOP_HOOK_ACTIVE = "stop_hook_active"
+    HOOK_SPECIFIC_OUTPUT = "hookSpecificOutput"
+    HOOK_EVENT_NAME = "hookEventName"
+    PERMISSION_DECISION = "permissionDecision"
+    PERMISSION_DECISION_REASON = "permissionDecisionReason"
+    ADDITIONAL_CONTEXT = "additionalContext"
+    SYSTEM_MESSAGE = "systemMessage"
+
+
+class ClaudeHookValue(StrEnum):
+    PRE_TOOL_USE = "PreToolUse"
+    SESSION_START = "SessionStart"
+    DENY = "deny"
+
+
+class AntigravityHookKey(StrEnum):
+    WORKSPACE_PATHS = "workspacePaths"
+    TOOL_CALL = "toolCall"
+    ARGS = "args"
+    COMMAND_LINE = "CommandLine"
+    CWD = "Cwd"
+    INVOCATION_NUM = "invocationNum"
+    INJECT_STEPS = "injectSteps"
+    EPHEMERAL_MESSAGE = "ephemeralMessage"
+    DECISION = "decision"
+    REASON = "reason"
+
+
+class AntigravityDecision(StrEnum):
+    DENY = "deny"
+    # Any value but "continue" lets the agent stop.
+    ALLOW_STOP = "allow"
+
+
+# Antigravity numbers model invocations from 0; only the first one gets the session summary.
+ANTIGRAVITY_FIRST_INVOCATION = 0
+# What a Antigravity PreToolUse hook prints when it has no objection. An empty string means "no output";
+# its handling by `agy` is checked by the install smoke test (see tools/).
+ANTIGRAVITY_PRE_TOOL_PASS_OUTPUT = ""
+EMPTY_JSON_OBJECT = "{}"
 
 
 class GuardDecision(StrEnum):

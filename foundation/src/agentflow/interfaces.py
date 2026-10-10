@@ -4,11 +4,20 @@ A plugin family talks to agentflow only through a workflow file that a
 ``WorkflowSource`` loads; agentflow never imports family code.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-from agentflow.models import CommandResult, ProbeResult, ScanResult, State, Workflow
+from agentflow.constants import HookEvent
+from agentflow.models import (
+    CommandResult,
+    HookInput,
+    HookReply,
+    ProbeResult,
+    ScanResult,
+    State,
+    Workflow,
+)
 
 
 @runtime_checkable
@@ -85,6 +94,17 @@ class SecretScanner(Protocol):
     """Scans staged changes for secrets. Raises ``AgentflowError`` when the scan cannot run."""
 
     def scan_staged(self, repo: Path) -> ScanResult: ...
+
+
+@runtime_checkable
+class HookAdapter(Protocol):
+    """Translates between one CLI's hook payloads and agentflow's CLI-neutral hook model."""
+
+    def read(self, event: HookEvent, payload: Mapping[str, Any]) -> HookInput: ...
+
+    def render(self, event: HookEvent, reply: HookReply) -> str:
+        """The text to print on stdout for ``reply``; empty when the CLI wants no output."""
+        ...
 
 
 @runtime_checkable

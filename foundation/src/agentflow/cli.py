@@ -17,9 +17,11 @@ from agentflow.constants import (
     STEP_RESULTS,
     VERSION_FLAG,
     WORKSPACE_DIR,
+    CliKind,
     Command,
     DriftStatus,
     ExitCode,
+    HookEvent,
     SyncOutcome,
     TaskCommand,
     TaskEvent,
@@ -33,6 +35,7 @@ from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
 from agentflow.git import GitBranchLookup, SubprocessGit
 from agentflow.guard import evaluate, parse_request, verdict_to_dict
+from agentflow.hook import handle_hook
 from agentflow.models import State, ToolCheck, Workflow
 from agentflow.render import NONE_TEXT, describe_action, describe_step
 from agentflow.runner import SubprocessRunner
@@ -55,6 +58,7 @@ from agentflow.workspace import (
     load_workspace_workflow,
 )
 
+CLI_OPTION = "--cli"
 TYPE_OPTION = "--type"
 RESULT_OPTION = "--result"
 REASON_OPTION = "--reason"
@@ -105,6 +109,10 @@ def build_parser() -> argparse.ArgumentParser:
     commit.add_argument("message", help="commit message, without the task prefix")
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
+
+    hook = commands.add_parser(Command.HOOK, help="answer a Claude Code or Antigravity hook (JSON on stdin)")
+    hook.add_argument("event", type=HookEvent, choices=list(HookEvent))
+    hook.add_argument(CLI_OPTION, required=True, type=CliKind, choices=list(CliKind))
     return parser
 
 
@@ -268,7 +276,20 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_hook(args: argparse.Namespace) -> ExitCode:
+    # Hooks must not break the agent: report problems on stderr but always exit 0.
+    try:
+        output = handle_hook(args.event, args.cli, sys.stdin.read(), GitBranchLookup())
+    except Exception as exc:  # noqa: BLE001 - a crashing hook would otherwise surface as a tool error
+        _err(f"{WARNING_PREFIX}agentflow hook failed: {exc}")
+        return ExitCode.OK
+    if output:
+        print(output)
+    return ExitCode.OK
+
+
 HANDLERS: dict[str, Handler] = {
+    Command.HOOK: cmd_hook,
     Command.DOCTOR: cmd_doctor,
     Command.INIT: cmd_init,
     Command.STATUS: cmd_status,

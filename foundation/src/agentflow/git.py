@@ -14,11 +14,15 @@ SWITCH_CREATE_ARGS = ("switch", "--quiet", "--create")
 STAGED_QUIET_ARGS = ("diff", "--cached", "--quiet")
 COMMIT_ARGS = ("commit", "--quiet", "--message")
 HEADS_REF_PREFIX = "refs/heads/"
+# Return code reported for a directory that does not exist (git itself uses 128 for fatal errors).
+NO_DIRECTORY = 128
 # `git diff --quiet` exits 1 when there are differences.
 DIFF_HAS_CHANGES = 1
 
 
 def run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    if not cwd.is_dir():
+        return subprocess.CompletedProcess([GIT_EXECUTABLE, *args], NO_DIRECTORY, "", f"not a directory: {cwd}")
     try:
         return subprocess.run(
             [GIT_EXECUTABLE, *args],

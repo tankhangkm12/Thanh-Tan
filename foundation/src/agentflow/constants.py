@@ -508,6 +508,17 @@ class WorkflowKey(StrEnum):
     ON_FAIL = "on_fail"
     GATES = "gates"
     TIERED_ROLES = "tiered_roles"
+    SIZES = "sizes"
+
+
+class SizeKey(StrEnum):
+    """Keys of the ``sizes`` section of a workflow: named profiles that make a task lighter or heavier."""
+
+    DEFAULT = "default"
+    PROFILES = "profiles"
+    SKIP_APPROVAL = "skip_approval"
+    MAX_PLAN_ITEMS = "max_plan_items"
+    SCANS = "scans"
 
 
 class GateKind(StrEnum):
@@ -547,6 +558,7 @@ class StateKey(StrEnum):
     STEP_STATUS = "step_status"
     LOOP_ROUND = "loop_round"
     BRANCH = "branch"
+    SIZE = "size"
     HISTORY = "history"
     AT = "at"
     STEP = "step"

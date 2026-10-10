@@ -93,6 +93,7 @@ from agentflow.workspace import (
 
 CLI_OPTION = "--cli"
 TYPE_OPTION = "--type"
+SIZE_OPTION = "--size"
 RESULT_OPTION = "--result"
 REASON_OPTION = "--reason"
 STEP_OPTION = "--step"
@@ -135,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     new = task_commands.add_parser(TaskCommand.NEW, help="create the task's gitflow branch and record the task")
     new.add_argument("title", help="what the task is about")
     new.add_argument(TYPE_OPTION, type=TaskType, choices=list(TaskType), default=TaskType.FEATURE)
+    new.add_argument(SIZE_OPTION, help="task size, one of the sizes the workflow defines (default: the workflow's default size)")
     advance = task_commands.add_parser(TaskCommand.ADVANCE, help="record that the current step passed or failed")
     advance.add_argument(RESULT_OPTION, required=True, type=TaskEvent, choices=list(STEP_RESULTS))
     approve = task_commands.add_parser(TaskCommand.APPROVE, help="approve the step, or resume a blocked task")
@@ -304,6 +306,8 @@ def cmd_status(args: argparse.Namespace) -> ExitCode:
         print(f"current step: {step_text}, {task.step_status}")
         rounds = f"{task.loop_round}/{workflow.max_rounds}"
         print(f"task status: {task.status}; rework rounds: {rounds}; branch: {task.branch or NONE_TEXT}")
+        if task.size:
+            print(f"size: {task.size}")
     others = [t for t in state.tasks if t.status in IN_FLIGHT_TASK_STATUSES and t is not task]
     if others:
         print("other open tasks: " + ", ".join(f"{t.id} ({t.current_step}, {t.status})" for t in others))
@@ -339,8 +343,9 @@ def cmd_task(args: argparse.Namespace) -> ExitCode:
     store = _store(opened)
     match args.task_command:
         case TaskCommand.NEW:
-            task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now)
-            print(f"{task.id} created on branch {task.branch}")
+            task = new_task(store, opened.workflow, SubprocessGit(opened.paths.root), args.title, args.type, utc_now, args.size)
+            size_note = f" (size {task.size})" if task.size else ""
+            print(f"{task.id} created on branch {task.branch}{size_note}")
             unconfirmed = unconfirmed_conventions(opened.paths.dir)
             if unconfirmed:
                 _err(
@@ -387,7 +392,7 @@ def _plan_items(opened: _Opened) -> dict[str, PlanItem] | None:
 
 
 def _gates(opened: _Opened) -> WorkspaceGates:
-    project = load_project_context(opened.paths.dir, opened.workflow)
+    project = load_project_context(opened.paths.dir, opened.workflow, opened.state.active_task())
     git = SubprocessGit(opened.paths.root)
     context = GateContext(opened.paths.dir, opened.workflow, project, git.head_or_empty)
     return WorkspaceGates(context, lambda step: [kind for step_id, kind in project.extra_gates if step_id == step.id])
@@ -464,7 +469,7 @@ def cmd_config(args: argparse.Namespace) -> ExitCode:
 def cmd_scan(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     task = require_active_task(opened.state)
-    project = load_project_context(opened.paths.dir, opened.workflow)
+    project = load_project_context(opened.paths.dir, opened.workflow, task)
     specs = all_tools(opened.workflow, project) if args.all else tools_for_step(task.current_step, opened.workflow, project)
     if not specs:
         print(f"no scans are configured for step '{task.current_step}'")
@@ -586,7 +591,7 @@ def cmd_plan(args: argparse.Namespace) -> ExitCode:
     opened = _open_workspace()
     if args.plan_command == PlanCommand.ASSIGN:
         return _plan_assign(opened)
-    project = load_project_context(opened.paths.dir, opened.workflow)
+    project = load_project_context(opened.paths.dir, opened.workflow, opened.state.active_task())
     if args.file is not None:
         problems = plan_problems(args.file.read_text(encoding=ENCODING), project)
     else:

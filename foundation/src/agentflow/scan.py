@@ -41,12 +41,23 @@ def tools_for_step(step_id: str, workflow: Workflow, project: ProjectContext) ->
     """Built-in tools belong to the step the workflow itself gates; extension tools name their own step."""
     own = any(step.id == step_id and GateKind.SCANS_CLEAN in step.gates for step in workflow.steps)
     tools = (list(BUILTIN_TOOLS) + _convention_tools(project)) if own else []
-    return tools + [tool for tool in project.scan_tools if tool.step == step_id]
+    return _limited(step_id, tools + [tool for tool in project.scan_tools if tool.step == step_id], project)
 
 
 def all_tools(workflow: Workflow, project: ProjectContext) -> list[ScanToolSpec]:
     has_own = any(GateKind.SCANS_CLEAN in step.gates for step in workflow.steps)
-    return ((list(BUILTIN_TOOLS) + _convention_tools(project)) if has_own else []) + list(project.scan_tools)
+    tools = ((list(BUILTIN_TOOLS) + _convention_tools(project)) if has_own else []) + list(project.scan_tools)
+    return [tool for tool in tools if tool in _limited(tool.step or _own_step(workflow), [tool], project)]
+
+
+def _own_step(workflow: Workflow) -> str | None:
+    return next((step.id for step in workflow.steps if GateKind.SCANS_CLEAN in step.gates), None)
+
+
+def _limited(step_id: str | None, tools: list[ScanToolSpec], project: ProjectContext) -> list[ScanToolSpec]:
+    """The tools a task's size lets ``step_id`` run (all of them when its size says nothing about that step)."""
+    allowed = project.scan_filter.get(step_id) if step_id else None
+    return tools if allowed is None else [tool for tool in tools if tool.id in allowed]
 
 
 def _convention_tools(project: ProjectContext) -> list[ScanToolSpec]:

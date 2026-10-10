@@ -15,6 +15,21 @@
       "description": "Roles that have one agent per plan-item tier (<role>-fast, <role>-deep). Other roles have a single agent.",
       "items": { "$ref": "#/$defs/identifier" }
     },
+    "sizes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "profiles"],
+      "description": "Named task sizes. `agentflow task new --size <name>` picks one; the default applies when none is given. A profile can drop the approval of some steps, cap the number of plan items and limit which scan tools a step runs.",
+      "properties": {
+        "default": { "$ref": "#/$defs/identifier" },
+        "profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/identifier" },
+          "additionalProperties": { "$ref": "#/$defs/size_profile" }
+        }
+      }
+    },
     "steps": {
       "type": "array",
       "minItems": 1,
@@ -22,6 +37,29 @@
     }
   },
   "$defs": {
+    "size_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skip_approval": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Steps that need no approval for tasks of this size (the step's gates still apply).",
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "max_plan_items": { "type": "integer", "minimum": 1 },
+        "scans": {
+          "type": "object",
+          "description": "Step id -> the scan tools (by id) that step runs for tasks of this size. Steps not listed run all their tools.",
+          "propertyNames": { "$ref": "#/$defs/identifier" },
+          "additionalProperties": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "identifier": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"

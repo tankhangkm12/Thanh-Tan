@@ -35,6 +35,19 @@ class ItemOrderRule:
         return found
 
 
+class MaxPlanItemsRule:
+    """A small task keeps its plan small: at most ``limit`` items."""
+
+    def __init__(self, limit: int, size: str) -> None:
+        self.limit = limit
+        self.size = size
+
+    def problems(self, items: Sequence[Any]) -> list[tuple[str | None, str]]:
+        if len(items) <= self.limit:
+            return []
+        return [(None, f"the plan has {len(items)} items; a {self.size} task allows at most {self.limit}: split the work into another task, or start this one as a larger size")]
+
+
 class LayerOrderRule:
     """Layers in order: an item of a later layer may not stand before an item of an earlier layer.
 

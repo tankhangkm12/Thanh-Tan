@@ -8,6 +8,18 @@ family: software-dev
 max_rounds: 3
 # Roles with one agent per plan-item tier (`tier: fast|deep`): implementer-fast and implementer-deep.
 tiered_roles: [implementer]
+# Task sizes (`agentflow task new "<title>" --size small|normal`). A small task skips the approval of the plan (the plan
+# check still runs, and the plan has at most 3 items; confirm and review still need a person) and its security step runs
+# Gitleaks and Semgrep only (also Semgrep with the project's own convention rules).
+sizes:
+  default: normal
+  profiles:
+    normal: {}
+    small:
+      skip_approval: [plan]
+      max_plan_items: 3
+      scans:
+        security: [gitleaks, semgrep, semgrep-conventions]
 steps:
   - id: confirm
     name: Xác nhận task

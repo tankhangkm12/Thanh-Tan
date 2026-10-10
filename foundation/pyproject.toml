@@ -1,0 +1,16 @@
+[project]
+name = "agentflow"
+version = "0.1.0"
+description = "Shared, domain-agnostic engine for the plugin families in this repo"
+authors = [
+    { name = "tankhangkm12" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+agentflow = "agentflow:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"

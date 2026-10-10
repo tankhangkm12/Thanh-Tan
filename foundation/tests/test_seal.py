@@ -169,3 +169,19 @@ def test_a_last_step_without_approval_is_sealed_when_it_passes(gitflow_repo, tmp
     finish_task(gitflow_repo, monkeypatch)
     drive_to_the_end(gitflow_repo, monkeypatch)
     assert git(gitflow_repo, "tag", "-l", approval_tag("T-001")) == approval_tag("T-001")
+
+
+def test_summary_lists_each_items_tier_and_layer():
+    from agentflow.models import Task
+    from agentflow.plan import parse_plan
+    from agentflow.summary import build_summary
+    from agentflow.constants import StepStatus, TaskStatus
+
+    plan = parse_plan(
+        "### C1 - a\n- role: implementer\n- tier: fast\n- layer: api\n- done-when: ok\n- docs: không có — x\n"
+        "### C2 - b\n- role: implementer\n- done-when: ok\n- docs: không có — x\n"
+    )
+    task = Task("T-001", "t", TaskStatus.DONE, "review", StepStatus.PASSED, branch="feature/t")
+    text = build_summary(task, plan.items, [], [], "me", "now")
+    assert "- Tier: fast\n- Layer: api" in text
+    assert "- Tier: deep\n- Done when: ok" in text

@@ -182,6 +182,13 @@ class PlanWideRule(Protocol):
 
 
 @runtime_checkable
+class AgentNames(Protocol):
+    """Names the agent that takes a plan item: the role's own, or the variant for the item's tier."""
+
+    def agent_for(self, role: str, tier: str) -> str: ...
+
+
+@runtime_checkable
 class GateRunner(Protocol):
     """Checks a step's gates; each returned string is a reason the step may not pass yet."""
 

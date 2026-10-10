@@ -81,3 +81,39 @@ def test_docs_problem_variants():
     assert docs_problem("không có - lý do") is None
     assert docs_problem("") is not None
     assert docs_problem(None) is not None
+
+
+# ------------------------------------------------------------------ tier and layer
+
+
+def _tiered(tier_line, layer_line=""):
+    return f"### C1 - x\n- role: implementer\n{tier_line}{layer_line}- done-when: ok\n- docs: không có — internal\n"
+
+
+def test_an_item_carries_its_tier_and_layer():
+    from agentflow.plan import parse_plan
+
+    item = parse_plan(_tiered("- tier: FAST\n", "- layer: `Domain`\n")).items[0]
+    assert (item.tier, item.layer) == ("fast", "domain")
+
+
+def test_a_missing_tier_counts_as_deep():
+    from agentflow.constants import PlanTier
+    from agentflow.plan import parse_plan
+
+    item = parse_plan(_tiered("")).items[0]
+    assert item.tier is None and item.effective_tier == PlanTier.DEEP
+
+
+def test_plan_check_refuses_an_unknown_tier_and_accepts_the_known_ones():
+    from agentflow.plan import check_plan, parse_plan
+
+    class Roles:
+        def roles(self):
+            return {"implementer"}
+
+    def found(text):
+        return [str(p) for p in check_plan(parse_plan(text), Roles())]
+
+    assert found(_tiered("- tier: fast\n")) == [] and found(_tiered("- tier: deep\n")) == [] and found(_tiered("")) == []
+    assert any("C1" in p and "tier 'turbo'" in p for p in found(_tiered("- tier: turbo\n")))

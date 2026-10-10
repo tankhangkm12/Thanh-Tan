@@ -145,3 +145,39 @@ def test_a_setup_question_is_answered_for_the_project(ws, capsys):
     capsys.readouterr()
     main(["conventions"])
     assert "Use pytest." in capsys.readouterr().out
+
+
+TWO_LAYERS_PLAN = """### C1 - Domain
+- role: builder
+- layer: domain
+- done-when: `pytest`
+- docs: không có — internal change
+
+### C2 - Interface
+- role: builder
+- layer: interface
+- done-when: `pytest`
+- docs: không có — internal change
+
+## Chưa có quy ước
+
+### Q1 - Thứ tự lớp?
+- ask: Chưa có quy ước về thứ tự lớp.
+"""
+
+
+def test_an_answer_can_switch_on_the_layer_order_rule(ws, monkeypatch, capsys):
+    at_plan_step(monkeypatch, capsys, TWO_LAYERS_PLAN)
+    assert main(["decide", "--answer", "Q1", "--text", "Lower layers first.", "--check", "plan", "--rule", "layer-order", "--layers", "interface, domain"]) == ExitCode.OK
+    capsys.readouterr()
+    assert main(["plan", "check"]) == ExitCode.PLAN_INVALID
+    assert "C2" in capsys.readouterr().out
+    swapped = TWO_LAYERS_PLAN.replace("layer: domain", "layer: X").replace("layer: interface", "layer: domain").replace("layer: X", "layer: interface")
+    say(monkeypatch, "report", "--step", "build", text=swapped)
+    capsys.readouterr()
+    assert main(["plan", "check"]) == ExitCode.OK
+
+
+def test_a_layer_order_answer_without_layers_is_refused(ws, monkeypatch, capsys):
+    at_plan_step(monkeypatch, capsys, TWO_LAYERS_PLAN)
+    assert main(["decide", "--answer", "Q1", "--text", "x", "--check", "plan", "--rule", "layer-order"]) == ExitCode.CONVENTIONS_INVALID

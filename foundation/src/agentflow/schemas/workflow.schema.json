@@ -9,6 +9,12 @@
     "schema_version": { "const": 1 },
     "family": { "$ref": "#/$defs/identifier" },
     "max_rounds": { "type": "integer", "minimum": 1 },
+    "tiered_roles": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Roles that have one agent per plan-item tier (<role>-fast, <role>-deep). Other roles have a single agent.",
+      "items": { "$ref": "#/$defs/identifier" }
+    },
     "steps": {
       "type": "array",
       "minItems": 1,

@@ -13,6 +13,7 @@ from agentflow.constants import (
     OPEN_QUESTIONS_HEADING,
     SEMGREP_RULE_SUFFIXES,
     SETUP_QUESTION_PATTERN,
+    LIST_SEPARATOR,
     CheckKind,
     ConventionField,
     ConventionPrefix,
@@ -40,10 +41,28 @@ class Convention:
     source: str | None = None
     description: str | None = None
     overrides: str | None = None
+    # Parameters of a ``layer-order`` plan rule, as written (comma separated): the layers from first to last, and
+    # the path globs that limit the rule (none: it covers the whole plan).
+    layers: str | None = None
+    scope: str | None = None
+
+    @property
+    def layer_names(self) -> tuple[str, ...]:
+        return split_list(self.layers)
+
+    @property
+    def scope_globs(self) -> tuple[str, ...]:
+        return split_list(self.scope, lower=False)
 
     def same_content(self, other: "Convention") -> bool:
         """Equal in everything but the status (what a person confirmed is the content, not the flag)."""
         return replace(self, status=other.status) == other
+
+
+def split_list(value: str | None, lower: bool = True) -> tuple[str, ...]:
+    """The items of a comma separated field, trimmed (layer names also lower-cased); empty ones dropped."""
+    parts = ((part.strip().strip("`").strip()) for part in (value or "").split(LIST_SEPARATOR))
+    return tuple((part.lower() if lower else part) for part in parts if part)
 
 
 @dataclass(frozen=True)
@@ -152,6 +171,8 @@ def _convention(fields: dict[str, str], problems: list[str]) -> Convention:
         source=fields.get(ConventionField.SOURCE) or None,
         description=fields.get(ConventionField.DESCRIPTION) or None,
         overrides=fields.get(ConventionField.OVERRIDES) or None,
+        layers=fields.get(ConventionField.LAYERS) or None,
+        scope=fields.get(ConventionField.SCOPE) or None,
     )
 
 
@@ -188,6 +209,7 @@ def _item_problems(item: Convention) -> list[str]:
         case CheckKind.PLAN:
             if item.rule not in {kind.value for kind in PlanRuleKind}:
                 found.append(f"{item.code}: a plan convention needs 'rule' to be one of: {', '.join(PlanRuleKind)}")
+            found += _layer_problems(item)
         case CheckKind.SEMGREP:
             if not item.rule:
                 found.append(f"{item.code}: a semgrep convention needs 'rule: <file>.yaml' (a rule file a person put in knowledge/semgrep/)")
@@ -196,6 +218,24 @@ def _item_problems(item: Convention) -> list[str]:
         case CheckKind.REVIEW:
             if item.rule:
                 found.append(f"{item.code}: a review convention has no 'rule'")
+    return found
+
+
+def _layer_problems(item: Convention) -> list[str]:
+    """``layers`` (and the optional ``scope``) belong to the ``layer-order`` rule, and it cannot work without layers."""
+    found: list[str] = []
+    if item.rule != PlanRuleKind.LAYER_ORDER:
+        for key, value in ((ConventionField.LAYERS, item.layers), (ConventionField.SCOPE, item.scope)):
+            if value:
+                found.append(f"{item.code}: '{key}' belongs to rule {PlanRuleKind.LAYER_ORDER}, not {item.rule}")
+        return found
+    layers = item.layer_names
+    if len(layers) < 2:
+        found.append(f"{item.code}: rule {PlanRuleKind.LAYER_ORDER} needs 'layers: a, b, c' (at least two layers, first to last)")
+    elif len(set(layers)) != len(layers):
+        found.append(f"{item.code}: 'layers: {item.layers}' names a layer twice")
+    if item.scope is not None and not item.scope_globs:
+        found.append(f"{item.code}: 'scope' is empty (give path globs, or leave it out to cover the whole plan)")
     return found
 
 
@@ -213,6 +253,8 @@ def render_conventions(doc: ConventionDoc) -> str:
             (ConventionField.SOURCE, item.source),
             (ConventionField.DESCRIPTION, item.description),
             (ConventionField.OVERRIDES, item.overrides),
+            (ConventionField.LAYERS, item.layers),
+            (ConventionField.SCOPE, item.scope),
         ):
             if value:
                 lines.append(f"- {key}: {value}")

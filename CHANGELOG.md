@@ -11,8 +11,14 @@ Repo chứa nhiều thành phần có số phiên bản riêng: `agentflow` (fou
 - Tài liệu release gitflow cho người làm tay: [docs/release.md](docs/release.md).
 - `CHANGELOG.md`.
 
+- Tier theo mục kế hoạch: `tier: fast|deep` (thiếu là deep), `plan check` kiểm giá trị, `agentflow plan assign` cho biết agent nào nhận mục nào, `tiered_roles` trong `workflow.yaml`.
+- `dev-core`: hai agent `implementer-fast` (Claude Code `sonnet`/`low`, Antigravity `flash`) và `implementer-deep` (`opus`/`medium`, `pro`) sinh từ `variants` trong nguồn role; `db-engineer` là một agent ở mức mạnh nhất. `tools/build.py` kiểm model/effort theo tài liệu từng CLI. Skill `continue` giao từng mục cho đúng agent.
+- Luật plan `layer-order`: quy ước `layers:` (thứ tự các lớp) và `scope:` (tùy chọn) do dự án khai báo; mặc định kiểm trên toàn bộ kế hoạch. `agentflow decide --layers --scope`.
+- `summary.md` ghi tier và layer của từng mục.
+
 ### Changed
 
+- Agent `dev-core:implementer` được thay bằng `dev-core:implementer-fast` và `dev-core:implementer-deep` (role trong kế hoạch vẫn là `implementer`).
 - README liệt kê đủ 7 role của `dev-core` (thêm `scout`).
 - `families/software-dev/README.md`: mục gate bằng tool mô tả Semgrep, Trivy, Gitleaks, Squawk, Schemathesis và các gate của plan/review.
 - `docs/architecture.md`: thêm lệnh `agentflow hook`, danh sách lệnh chỉ người được chạy trong guard đầy đủ.

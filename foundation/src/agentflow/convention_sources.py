@@ -101,6 +101,8 @@ def _read_answer(path: Path) -> Convention | str:
         source=f"decision {path.name}",
         description=body or None,
         overrides=str(header["overrides"]) if header.get("overrides") else None,
+        layers=str(header["layers"]) if header.get("layers") else None,
+        scope=str(header["layer_scope"]) if header.get("layer_scope") else None,
     )
     problems = validate_conventions(ConventionDoc((convention,), prefix=ConventionPrefix.DECISION))
     return "; ".join(problems) if problems else convention
@@ -161,6 +163,8 @@ def write_answer(
     rule: str | None,
     overrides: str | None,
     at: str,
+    layers: str | None = None,
+    layer_scope: str | None = None,
 ) -> Path:
     """Record a person's answer to a question as a convention. One answer per question."""
     path = workspace_dir / DECISIONS_DIR / answer_file_name(scope, question)
@@ -170,7 +174,7 @@ def write_answer(
         raise AgentflowError("an answer needs text (--text)", ExitCode.INVALID_INPUT)
     header = {
         "kind": DECISION_ANSWER_KIND, "scope": scope, "question": question, "code": code, "check": str(check),
-        "rule": rule, "overrides": overrides, "decided_at": at,
+        "rule": rule, "overrides": overrides, "layers": layers, "layer_scope": layer_scope, "decided_at": at,
     }  # fmt: skip
     header = {key: value for key, value in header.items() if value is not None}
     body = f"{FRONTMATTER_FENCE}\n{yaml.safe_dump(header, sort_keys=False, allow_unicode=True)}{FRONTMATTER_FENCE}\n{text.strip()}\n"

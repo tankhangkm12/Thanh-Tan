@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
+from agentflow.assign import WorkflowAgentNames, assignment_lines
 from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
 from agentflow.constants import KnowledgeCommand, KnowledgePlace, McpCommand, ProjectCommand
@@ -172,6 +173,8 @@ def build_parser() -> argparse.ArgumentParser:
     decide.add_argument("--text", help="the convention the answer sets, in one line (with --answer)")
     decide.add_argument("--check", choices=[str(kind) for kind in CheckKind], help="how it is checked (with --answer)")
     decide.add_argument("--rule", help="item-order for plan, a rule file in knowledge/semgrep/ for semgrep (with --answer)")
+    decide.add_argument("--layers", help="layer-order: the layers from first to last, comma separated (with --answer)")
+    decide.add_argument("--scope", help="layer-order: path globs that limit the rule, comma separated; none means the whole plan (with --answer)")
     decide.add_argument("--overrides", help="the code of a lower-priority convention this one replaces (with --answer)")
     decide.add_argument("--global", dest="to_store", action="store_true", help="also add it to your personal knowledge store (with --answer)")
 
@@ -179,6 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_commands = plan.add_subparsers(dest="plan_command", metavar="<plan command>", required=True)
     check = plan_commands.add_parser(PlanCommand.CHECK, help="every item needs a code, a valid role, done-when and docs")
     check.add_argument(FILE_OPTION, type=Path, help="check this Markdown file instead of the task's plan report")
+    plan_commands.add_parser(PlanCommand.ASSIGN, help="which agent takes each plan item: its role, and its tier where the role has tiers")
 
     report = commands.add_parser(Command.REPORT, help="store a step report read from stdin")
     report.add_argument(STEP_OPTION, required=True, help="step id the report belongs to")
@@ -538,12 +542,13 @@ def _decide_answer(opened: _Opened, args: argparse.Namespace) -> ExitCode:
         raise AgentflowError(f"--global needs your knowledge store: run `agentflow knowledge init` first ({store})", ExitCode.INVALID_INPUT)
     code = next_code(opened.paths.dir)
     path = write_answer(
-        opened.paths.dir, scope, args.answer, code, args.text, CheckKind(args.check), args.rule, args.overrides, utc_now()
+        opened.paths.dir, scope, args.answer, code, args.text, CheckKind(args.check), args.rule, args.overrides, utc_now(),
+        args.layers, args.scope,
     )
     print(f"decision recorded: {path} ({code}, from {where})")
     if args.to_store:
         title = f"{args.answer} ({scope})"
-        kept = add_personal_convention(store, title, args.check, args.rule, args.text.strip(), f"answer to {args.answer} of {scope}")
+        kept = add_personal_convention(store, title, args.check, args.rule, args.text.strip(), f"answer to {args.answer} of {scope}", args.layers, args.scope)
         print(f"added to your knowledge store: {kept}")
     return ExitCode.OK
 
@@ -567,9 +572,20 @@ def cmd_decide(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def _plan_assign(opened: _Opened) -> ExitCode:
+    items = _plan_items(opened)
+    if items is None:
+        raise AgentflowError("no plan report yet: nothing to assign", ExitCode.PLAN_INVALID)
+    names = WorkflowAgentNames(opened.workflow.tiered_roles)
+    for line in assignment_lines(list(items.values()), names):
+        print(line)
+    return ExitCode.OK
+
+
 def cmd_plan(args: argparse.Namespace) -> ExitCode:
-    # argparse requires a plan subcommand, and check is the only one so far.
     opened = _open_workspace()
+    if args.plan_command == PlanCommand.ASSIGN:
+        return _plan_assign(opened)
     project = load_project_context(opened.paths.dir, opened.workflow)
     if args.file is not None:
         problems = plan_problems(args.file.read_text(encoding=ENCODING), project)

@@ -36,7 +36,10 @@ def build_summary(
         by_item.setdefault(commit.item, []).append(commit)
     for item in items:
         lines += [f"### {item.code} - {item.title}", ""]
-        lines += [f"- Role: {item.role or '?'}", f"- Done when: {item.done_when or '?'}"]
+        lines += [f"- Role: {item.role or '?'}", f"- Tier: {item.effective_tier}"]
+        if item.layer:
+            lines.append(f"- Layer: {item.layer}")
+        lines.append(f"- Done when: {item.done_when or '?'}")
         links = item.docs_links
         lines.append(f"- Docs: {', '.join(links) if links else (item.docs or 'none')}")
         lines += ["- Commits:", *_commit_lines(by_item.pop(item.code, []), indent="  ")]

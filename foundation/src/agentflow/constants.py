@@ -162,6 +162,7 @@ class PlanRuleKind(StrEnum):
     """The plan rules a ``check: plan`` convention can switch on."""
 
     ITEM_ORDER = "item-order"
+    LAYER_ORDER = "layer-order"
 
 
 class ConventionStatus(StrEnum):
@@ -184,6 +185,9 @@ class ConventionField(StrEnum):
     SOURCE = "source"
     DESCRIPTION = "description"
     OVERRIDES = "overrides"
+    # Parameters of a ``layer-order`` plan rule: the layers from first to last, and the paths it is limited to.
+    LAYERS = "layers"
+    SCOPE = "scope"
     DOCS = "docs"
     CODE = "code"
 
@@ -503,6 +507,7 @@ class WorkflowKey(StrEnum):
     REQUIRES_APPROVAL = "requires_approval"
     ON_FAIL = "on_fail"
     GATES = "gates"
+    TIERED_ROLES = "tiered_roles"
 
 
 class GateKind(StrEnum):
@@ -515,6 +520,7 @@ class GateKind(StrEnum):
 
 class PlanCommand(StrEnum):
     CHECK = "check"
+    ASSIGN = "assign"
 
 
 class ExtCommand(StrEnum):
@@ -568,6 +574,8 @@ class PlanField(StrEnum):
     DONE_WHEN = "done-when"
     DOCS = "docs"
     KIND = "kind"
+    TIER = "tier"
+    LAYER = "layer"
     # Fields of a question under "Chưa có quy ước".
     ASK = "ask"
     OPTIONS = "options"
@@ -581,6 +589,18 @@ class PlanItemKind(StrEnum):
     IMPLEMENT = "implement"
     OTHER = "other"
 
+
+class PlanTier(StrEnum):
+    """How much model an item needs: ``fast`` for routine work, ``deep`` for the hard parts. A missing tier means deep."""
+
+    FAST = "fast"
+    DEEP = "deep"
+
+
+DEFAULT_PLAN_TIER = PlanTier.DEEP
+# An agent of a tiered role is named <role>-<tier>.
+AGENT_NAME_SEPARATOR = "-"
+LIST_SEPARATOR = ","
 
 PLAN_ITEM_CODE_PATTERN = r"C[0-9]+"
 PLAN_QUESTION_CODE_PATTERN = r"Q[0-9]+"

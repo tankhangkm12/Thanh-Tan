@@ -14,6 +14,7 @@ from agentflow.constants import (
     ENCODING,
     GITKEEP_FILE,
     KNOWLEDGE_DIR,
+    ConventionField,
     ConventionPrefix,
     ExitCode,
     KnowledgePlace,
@@ -94,7 +95,10 @@ def push_file(store: Path, workspace_dir: Path, file: Path, place: str) -> Path:
     return target
 
 
-def add_personal_convention(store: Path, title: str, check: str, rule: str | None, description: str, source: str) -> str:
+def add_personal_convention(
+    store: Path, title: str, check: str, rule: str | None, description: str, source: str,
+    layers: str | None = None, scope: str | None = None,
+) -> str:  # fmt: skip
     """Append a convention to the store's ``conventions.md`` and return its code (KC-NN)."""
     root = _require_store(store)
     path = root / CONVENTIONS_FILE
@@ -104,6 +108,7 @@ def add_personal_convention(store: Path, title: str, check: str, rule: str | Non
     lines = [f"### {code} - {title}", f"- check: {check}"]
     if rule:
         lines.append(f"- rule: {rule}")
+    lines += [f"- {key}: {value}" for key, value in ((ConventionField.LAYERS, layers), (ConventionField.SCOPE, scope)) if value]
     lines += [f"- source: {source}", f"- description: {description}"]
     separator = "" if existing.endswith("\n\n") else ("\n" if existing.endswith("\n") else "\n\n")
     path.write_text(existing + separator + "\n".join(lines) + "\n\n", encoding=ENCODING)

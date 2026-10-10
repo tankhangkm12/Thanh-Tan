@@ -48,6 +48,8 @@ class Workflow:
     # How many times one task may go back through ``on_fail`` before it is blocked.
     max_rounds: int
     steps: tuple[Step, ...]
+    # Roles with one agent per plan-item tier; every other role has a single agent.
+    tiered_roles: tuple[str, ...] = ()
 
     def get_step(self, step_id: str) -> Step | None:
         return next((step for step in self.steps if step.id == step_id), None)
@@ -68,6 +70,7 @@ def workflow_from_dict(data: Mapping[str, Any]) -> Workflow:
         family=data[WorkflowKey.FAMILY],
         max_rounds=data[WorkflowKey.MAX_ROUNDS],
         steps=tuple(_step_from_dict(item) for item in data[WorkflowKey.STEPS]),
+        tiered_roles=tuple(data.get(WorkflowKey.TIERED_ROLES, ())),
     )
 
 

@@ -6,7 +6,8 @@
     "name": "tankhangkm12"
   },
   "agents": [
-    "./claude/agents/implementer.md",
+    "./claude/agents/implementer-deep.md",
+    "./claude/agents/implementer-fast.md",
     "./claude/agents/orchestrator.md",
     "./claude/agents/planner.md",
     "./claude/agents/reviewer.md",

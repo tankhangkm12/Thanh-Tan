@@ -44,23 +44,40 @@ agy plugin install <đường-dẫn-tới-repo>/families/software-dev/core
 
 Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
 
-### agentflow
+### agentflow (bắt buộc cho hook và các lệnh của dev-core)
 
-`agentflow` sẽ được cài global bằng `uv tool install` từ thư mục `foundation/`. Hiện chạy qua uv:
+Hook của `dev-core` gọi lệnh `agentflow`, nên phải cài nó vào PATH. Cần `uv` và `git`; cần thêm Docker (hoặc Podman) đang chạy cho bước quét secret khi commit.
+
+Từ bản clone local (chạy lại đúng lệnh này sau mỗi lần `git pull`):
 
 ```
-cd foundation
-uv run agentflow doctor
-uv run pytest
+uv tool install --force --reinstall "<đường-dẫn-repo>/foundation"
+agentflow --version
+agentflow doctor
 ```
 
-Dùng trong một dự án (thư mục gốc là repo git):
+Hoặc thẳng từ GitHub, không cần clone:
+
+```
+uv tool install --force "git+https://github.com/tankhangkm12/Thanh-Tan-#subdirectory=foundation"
+```
+
+Nếu terminal không nhận lệnh `agentflow`, chạy `uv tool update-shell` rồi mở lại terminal. Gỡ: `uv tool uninstall agentflow`.
+
+Hook chỉ hoạt động trong dự án đã có `.agentflow/`; ở dự án khác chúng không làm gì.
+
+Dùng trong một dự án (thư mục gốc là repo git, đã có nhánh `main` và `develop`):
 
 ```
 agentflow init --workflow <đường-dẫn>/families/software-dev/core/workflow.yaml
+agentflow task new "Tiêu đề" --type feature     # tạo nhánh feature/T-001-...
 agentflow status
-agentflow next
-agentflow workflow sync      # khi workflow gốc của nhóm thay đổi
+agentflow task advance --result pass            # xong bước; bước cần duyệt thì tiếp theo là:
+agentflow task approve
+agentflow commit "nội dung"                     # quét secret rồi commit với tiền tố T-001:
+agentflow workflow sync                         # khi workflow gốc của nhóm thay đổi
 ```
+
+Phát triển cục bộ: `cd foundation; uv run pytest; uv run --python 3.12 pytest`.
 
 Workspace `.agentflow/` chỉ nằm ở local (ghi vào `.git/info/exclude`). Chi tiết: [docs/architecture.md](docs/architecture.md#workspace-của-dự-án).

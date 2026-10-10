@@ -186,6 +186,16 @@ uv run tools/smoke_backend.py                    # dev-core + dev-backend trên 
 uv run tools/smoke_backend.py --only-install-check   # cài lại hai plugin vào Claude Code và Antigravity rồi kiểm tra
 ```
 
+### Quy ước và kho kiến thức
+
+Lần đầu trên một dự án có sẵn: gọi skill `setup` (xem hướng dẫn dùng thử ở cuối). Scout đọc tài liệu bạn chỉ và code, rồi viết `.agentflow/project/{profile,architecture,sources,conventions}.md`; mọi quy ước ban đầu là `unconfirmed`. Bạn đọc, trả lời câu hỏi mở (`S1`...) và xác nhận bằng `agentflow project confirm PC-01 PC-02` (hoặc `--all`). `agentflow task new` cảnh báo khi còn quy ước chưa xác nhận.
+
+Mỗi quy ước có `check:` là `plan` (hiện có `item-order`: mục `kind: interface` đứng trước mục `kind: implement` đụng cùng file), `semgrep` (rule do **bạn** viết, để trong `.agentflow/knowledge/semgrep/`, chạy cùng scan ở bước security) hoặc `review` (reviewer ghi `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng` cho từng mã). Ưu tiên: `decisions/` > `project/conventions.md` > `knowledge/conventions.md`. Xem bằng `agentflow conventions`.
+
+Khi dự án chưa có quy ước cho một điều planner cần quyết, plan có mục `## Chưa có quy ước` và bị chặn tới khi bạn trả lời: `agentflow decide --answer Q1 --text "Tên bảng số ít" --check review` (thêm `--global` để ghi cả vào kho cá nhân của bạn).
+
+Kho kiến thức cá nhân nằm ngoài mọi repo (mặc định `~/knowledge`, đường dẫn ở `~/.agentflow/user.yaml`): `agentflow knowledge init` tạo khung; `agentflow knowledge pull lessons/x.md semgrep/rule.yaml` chép file bạn chọn vào `.agentflow/knowledge/` cho agent đọc; sau task, `agentflow knowledge push .agentflow/tasks/T-001/lessons/L1.md` đưa một bài học về kho. Agent không bao giờ ghi vào kho.
+
 ### Scan bảo mật
 
 Bước `security` chạy `agentflow scan`: Semgrep (chỉ file task đã đổi), Trivy và Gitleaks, mỗi tool trong một container với image ghim phiên bản và repo mount chỉ đọc. Bước không qua được khi Semgrep có mức ERROR, Trivy có HIGH/CRITICAL **đã có bản vá**, hoặc Gitleaks có phát hiện. Docker/Podman không chạy là lỗi cứng. Lần đầu cần mạng (kéo image, tải DB Trivy, tải rule Semgrep vào cache của bạn; rule Semgrep không nằm trong repo vì giấy phép không cho phân phối lại). Báo nhầm chỉ bỏ qua được khi **bạn** chạy `agentflow decide --suppress <id> --reason "..."` (id in trong kết quả `agentflow scan`). Chi tiết: [docs/scan-notes.md](docs/scan-notes.md).
@@ -197,6 +207,7 @@ Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`.
 ```
 ### C1 - Tiêu đề ngắn
 - role: implementer
+- kind: implement      # interface | implement | other (bắt buộc khi có quy ước item-order)
 - files: src/a.py, tests/test_a.py
 - done-when: `uv run pytest tests/test_a.py`
 - docs: https://... (hoặc: không có — <lý do>)

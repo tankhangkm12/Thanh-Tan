@@ -62,3 +62,12 @@ def test_the_continue_skill_hands_each_item_to_the_agent_plan_assign_names():
     text = (CORE / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
     for needle in ("agentflow plan assign", "implementer-fast", "implementer-deep", "no tier", "plugins add roles of their own"):
         assert needle in text, needle
+
+
+def test_the_start_skill_offers_the_small_size_and_the_planner_keeps_a_small_plan_small():
+    start = (CORE / "skills" / "start" / "SKILL.md").read_text(encoding="utf-8")
+    assert "--size small" in start and "at most 3 plan items" in start and "when in doubt use `normal`" in start
+    planner = role("planner")
+    assert "size: small" in planner and "at most 3 items" in planner
+    continue_skill = (CORE / "skills" / "continue" / "SKILL.md").read_text(encoding="utf-8")
+    assert "size: small" in continue_skill and "needs no approval" in continue_skill

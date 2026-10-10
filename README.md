@@ -222,6 +222,16 @@ Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`.
 - docs: https://... (hoặc: không có — <lý do>)
 ```
 
+### Chế độ nhẹ (task nhỏ)
+
+`agentflow task new "<tiêu đề>" --size small` (mặc định `normal`) dành cho thay đổi nhỏ, rõ ràng. Task `small`:
+
+- **bỏ duyệt ở bước plan**, nhưng `agentflow plan check` vẫn chạy và chặn như thường; kế hoạch tối đa **3 mục**;
+- vẫn cần bạn duyệt ở bước `confirm` và `review`;
+- bước `security` chỉ chạy **Gitleaks và Semgrep** (kể cả Semgrep với rule của chính bạn khi có quy ước `check: semgrep`); Trivy không chạy. Scan của các bước khác do plugin con thêm (Squawk, Schemathesis ở bước `test` của dev-backend) vẫn chạy.
+
+Size được ghi vào `state.json` (trường `size`), `STATE.md`, `agentflow status` và `summary.md`. Kế hoạch dài hơn 3 mục thì chia thành task khác hoặc bắt đầu lại bằng `normal`. Nghiệp vụ nằm trong `workflow.yaml` của dev-core (mục `sizes`), không nằm trong foundation: xem [architecture.md](docs/architecture.md#foundation--nhóm-hợp-đồng-workflow).
+
 ### Tier và thứ tự lớp
 
 **Tier.** Mỗi mục kế hoạch có thể ghi `tier: fast` hoặc `tier: deep`; thiếu thì là `deep`. Planner đề xuất, bạn sửa trực tiếp trong báo cáo plan khi duyệt (hoặc nhờ planner sửa), và `agentflow plan check` từ chối giá trị khác. Skill `continue` chạy `agentflow plan assign` (in `mã role tier agent` cho từng mục) rồi giao mục `fast` cho `implementer-fast`, mục `deep` cho `implementer-deep`; role không chia tier (như `db-engineer` của dev-backend) luôn dùng một agent duy nhất, và agent đó đặt ở mức mạnh nhất.

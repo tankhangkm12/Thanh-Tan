@@ -15,6 +15,7 @@ Repo chứa nhiều thành phần có số phiên bản riêng: `agentflow` (fou
 - `dev-core`: hai agent `implementer-fast` (Claude Code `sonnet`/`low`, Antigravity `flash`) và `implementer-deep` (`opus`/`medium`, `pro`) sinh từ `variants` trong nguồn role; `db-engineer` là một agent ở mức mạnh nhất. `tools/build.py` kiểm model/effort theo tài liệu từng CLI. Skill `continue` giao từng mục cho đúng agent.
 - Luật plan `layer-order`: quy ước `layers:` (thứ tự các lớp) và `scope:` (tùy chọn) do dự án khai báo; mặc định kiểm trên toàn bộ kế hoạch. `agentflow decide --layers --scope`.
 - `summary.md` ghi tier và layer của từng mục.
+- Chế độ nhẹ: `agentflow task new --size small|normal` (mặc định `normal`). Mục `sizes` trong `workflow.yaml` mô tả cỡ (bước bỏ duyệt, số mục kế hoạch tối đa, tool scan theo bước); `small` của dev-core bỏ duyệt `plan` (vẫn kiểm `plan check`), tối đa 3 mục, bước `security` chỉ chạy Gitleaks và Semgrep. Size nằm trong `state.json`, `STATE.md`, `status` và `summary.md`. Skill `start` và prompt planner biết cỡ nhỏ.
 
 ### Changed
 

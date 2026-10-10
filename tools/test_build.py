@@ -257,7 +257,7 @@ def test_readme_asks_for_the_commands_that_carry_a_persons_authority():
 # ------------------------------------------------------------- agentflow MCP tools
 
 MCP_PREFIX = "mcp__plugin_dev-core_agentflow__"
-WORKSPACE_TOOL_NAMES = ["status", "next_step", "plan_check", "report_write", "scan_summary", "knowledge_search", "knowledge_read"]
+WORKSPACE_TOOL_NAMES = ["status", "next_step", "plan_check", "report_write", "scan_summary", "conventions", "knowledge_search", "knowledge_read"]
 
 
 def test_workspace_capability_adds_the_mcp_tools_for_claude_only(plugin):

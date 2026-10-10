@@ -141,6 +141,7 @@ Dán vào `.claude/settings.json` của dự án (hoặc `~/.claude/settings.jso
       "mcp__plugin_dev-core_agentflow__report_write",
       "mcp__plugin_dev-core_agentflow__project_write",
       "mcp__plugin_dev-core_agentflow__scan_summary",
+      "mcp__plugin_dev-core_agentflow__conventions",
       "mcp__plugin_dev-core_agentflow__knowledge_search",
       "mcp__plugin_dev-core_agentflow__knowledge_read",
       "PowerShell(agentflow status *)",

@@ -125,6 +125,7 @@ class ToolName(StrEnum):
     REPORT_WRITE = "report_write"
     PROJECT_WRITE = "project_write"
     SCAN_SUMMARY = "scan_summary"
+    CONVENTIONS = "conventions"
     KNOWLEDGE_SEARCH = "knowledge_search"
     KNOWLEDGE_READ = "knowledge_read"
 
@@ -132,7 +133,15 @@ class ToolName(StrEnum):
 MCP_SERVER_NAME = "agentflow"
 # The tools that only read the workspace (the rest write a report or a project document).
 READ_ONLY_TOOLS = frozenset(
-    {ToolName.STATUS, ToolName.NEXT_STEP, ToolName.PLAN_CHECK, ToolName.SCAN_SUMMARY, ToolName.KNOWLEDGE_SEARCH, ToolName.KNOWLEDGE_READ}
+    {
+        ToolName.STATUS,
+        ToolName.NEXT_STEP,
+        ToolName.PLAN_CHECK,
+        ToolName.SCAN_SUMMARY,
+        ToolName.CONVENTIONS,
+        ToolName.KNOWLEDGE_SEARCH,
+        ToolName.KNOWLEDGE_READ,
+    }
 )
 
 
@@ -318,6 +327,7 @@ class Command(StrEnum):
     HOOK = "hook"
     MCP = "mcp"
     PROJECT = "project"
+    CONVENTIONS = "conventions"
     PLAN = "plan"
     SCAN = "scan"
     DECIDE = "decide"

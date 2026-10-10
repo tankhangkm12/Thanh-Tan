@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from importlib.metadata import version
 from pathlib import Path
 
+from agentflow.convention_sources import load_effective_conventions
 from agentflow.services import WorkspaceServices
 from agentflow.constants import McpCommand, ProjectCommand
 from agentflow.project import confirm_conventions, unconfirmed_conventions
@@ -175,6 +176,8 @@ def build_parser() -> argparse.ArgumentParser:
     commit.add_argument(ITEM_OPTION, help="plan item (C1, ...) this commit belongs to")
 
     commands.add_parser(Command.GUARD, help='read {"command", "cwd"} JSON from stdin, print an allow/deny verdict')
+
+    commands.add_parser(Command.CONVENTIONS, help="the conventions to work to: decisions, project and personal store, merged")
 
     project = commands.add_parser(Command.PROJECT, help="the project documents a scout wrote (.agentflow/project/)")
     project_commands = project.add_subparsers(dest="project_command", metavar="<project command>", required=True)
@@ -535,6 +538,21 @@ def cmd_guard(args: argparse.Namespace) -> ExitCode:
     return ExitCode.OK
 
 
+def cmd_conventions(args: argparse.Namespace) -> ExitCode:
+    paths = find_workspace(Path.cwd())
+    items = WorkspaceServices(paths).conventions()
+    if not items:
+        print("no conventions yet (the setup skill writes the project's; a person may add their own)")
+    for item in items:
+        mark = "" if item.enforced else " [unconfirmed: a suggestion, not checked]"
+        rule = f" rule={item.rule}" if item.rule else ""
+        print(f"{item.code} ({item.source}, check={item.check}{rule}){mark}: {item.title}")
+        print(f"    {item.description}")
+    for problem in load_effective_conventions(paths.dir).problems:
+        _err(f"{WARNING_PREFIX}{problem}")
+    return ExitCode.OK
+
+
 def cmd_project(args: argparse.Namespace) -> ExitCode:
     # argparse requires a project subcommand, and confirm is the only one so far.
     paths = find_workspace(Path.cwd())
@@ -590,6 +608,7 @@ HANDLERS: dict[str, Handler] = {
     Command.GUARD: cmd_guard,
     Command.MCP: cmd_mcp,
     Command.PROJECT: cmd_project,
+    Command.CONVENTIONS: cmd_conventions,
 }
 
 

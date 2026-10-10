@@ -26,7 +26,9 @@ from agentflow.engine import next_action
 from agentflow.errors import AgentflowError
 from agentflow.fsutil import write_text_atomic
 from agentflow.gates import plan_problems, plan_report_path
+from agentflow.convention_sources import load_effective_conventions
 from agentflow.models import (
+    ConventionInfo,
     KnowledgeFile,
     KnowledgeHit,
     NextInfo,
@@ -136,6 +138,17 @@ class WorkspaceServices:
         return _scan_summary(self.paths.dir, task)
 
     # --------------------------------------------------------------- knowledge
+
+    def conventions(self) -> Sequence[ConventionInfo]:
+        effective = load_effective_conventions(self.paths.dir)
+        enforced = {id(item) for item in effective.enforced}
+        return [
+            ConventionInfo(
+                item.convention.code, item.convention.title, str(item.source), str(item.convention.check),
+                item.convention.rule, item.convention.description or "", id(item) in enforced,
+            )
+            for item in effective.items
+        ]  # fmt: skip
 
     def knowledge_search(self, query: str, limit: int) -> Sequence[KnowledgeHit]:
         needle = query.strip().lower()

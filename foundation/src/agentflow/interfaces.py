@@ -14,6 +14,7 @@ from agentflow.constants import HookEvent, ProjectSection
 from agentflow.models import (
     CommandResult,
     CommitInfo,
+    ConventionInfo,
     HookInput,
     HookReply,
     KnowledgeFile,
@@ -209,6 +210,8 @@ class WorkspaceService(Protocol):
     def write_project(self, section: ProjectSection, content: str) -> ProjectWriteInfo: ...
 
     def scan_summary(self) -> ScanSummaryInfo: ...
+
+    def conventions(self) -> Sequence[ConventionInfo]: ...
 
     def knowledge_search(self, query: str, limit: int) -> Sequence[KnowledgeHit]: ...
 

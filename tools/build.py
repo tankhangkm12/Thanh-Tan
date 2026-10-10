@@ -51,7 +51,9 @@ class ManifestKey(StrEnum):
 # The MCP server belongs to dev-core, so every plugin's agents name its tools with dev-core's prefix:
 # mcp__plugin_<plugin>_<server>__<tool> (checked in a real session, see docs/mcp-notes.md).
 MCP_SERVER_PREFIX = "mcp__plugin_dev-core_agentflow__"
-WORKSPACE_TOOL_NAMES = ("status", "next_step", "plan_check", "report_write", "scan_summary", "knowledge_search", "knowledge_read")
+WORKSPACE_TOOL_NAMES = (
+    "status", "next_step", "plan_check", "report_write", "scan_summary", "conventions", "knowledge_search", "knowledge_read",
+)  # fmt: skip
 PROJECT_TOOL_NAMES = ("project_write",)
 WORKSPACE_TOOLS = tuple(MCP_SERVER_PREFIX + name for name in WORKSPACE_TOOL_NAMES)
 PROJECT_TOOLS = tuple(MCP_SERVER_PREFIX + name for name in PROJECT_TOOL_NAMES)

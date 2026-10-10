@@ -320,6 +320,8 @@ class HookInput:
 
     cwd: Path | None = None
     command: str | None = None
+    # The file a file-writing tool is about to change (as given, possibly relative).
+    write_target: Path | None = None
     # Claude: this Stop hook already ran this turn. Antigravity: 0-based model invocation number.
     stop_hook_active: bool = False
     invocation_num: int | None = None

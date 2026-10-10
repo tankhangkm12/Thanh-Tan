@@ -234,3 +234,49 @@ def test_hook_command_needs_valid_arguments():
         main(["hook", "nope", "--cli", "claude"])
     with pytest.raises(SystemExit):
         main(["hook", "stop"])
+
+
+# ------------------------------------------------------------ file-writing tools
+
+
+def claude_write(project, tool, path, key="file_path"):
+    return {"cwd": str(project), "tool_name": tool, "tool_input": {key: str(path)}}
+
+
+def agy_write(project, tool, path):
+    return {"workspacePaths": [str(project)], "toolCall": {"name": tool, "args": {"TargetFile": str(path)}}}
+
+
+def test_adapters_read_the_target_of_file_writing_tools():
+    claude = ClaudeAdapter()
+    for tool, key in [("Write", "file_path"), ("Edit", "file_path"), ("MultiEdit", "file_path"), ("NotebookEdit", "notebook_path")]:
+        read = claude.read(HookEvent.PRE_TOOL, {"cwd": "/p", "tool_name": tool, "tool_input": {key: "/p/a.txt"}})
+        assert read.write_target is not None and read.write_target.name == "a.txt"
+    # Reading a file is not writing it, and a Bash command has no target.
+    assert claude.read(HookEvent.PRE_TOOL, {"cwd": "/p", "tool_name": "Read", "tool_input": {"file_path": "/p/a"}}).write_target is None
+    assert claude.read(HookEvent.PRE_TOOL, {"cwd": "/p", "tool_name": "Bash", "tool_input": {"command": "ls"}}).write_target is None
+    agy = AntigravityAdapter()
+    for tool in ["write_to_file", "replace_file_content", "multi_replace_file_content"]:
+        read = agy.read(HookEvent.PRE_TOOL, {"workspacePaths": ["/p"], "toolCall": {"name": tool, "args": {"TargetFile": "/p/a.txt"}}})
+        assert read.write_target is not None and read.write_target.name == "a.txt"
+    assert agy.read(HookEvent.PRE_TOOL, {"toolCall": {"name": "view_file", "args": {"AbsolutePath": "/p/a"}}}).write_target is None
+
+
+@pytest.mark.parametrize("tool,key", [("Write", "file_path"), ("Edit", "file_path"), ("MultiEdit", "file_path"), ("NotebookEdit", "notebook_path")])
+def test_claude_file_tools_cannot_write_into_the_workspace(project, tool, key):
+    for path in [project / ".agentflow" / "decisions" / "x.md", ".agentflow/state.json", project / "src" / ".." / ".agentflow" / "a"]:
+        out = json.loads(hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_write(project, tool, path, key)))
+        assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert ".agentflow" in out["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize("tool", ["write_to_file", "replace_file_content", "multi_replace_file_content"])
+def test_antigravity_file_tools_cannot_write_into_the_workspace(project, tool):
+    out = json.loads(hook(HookEvent.PRE_TOOL, CliKind.ANTIGRAVITY, agy_write(project, tool, project / ".agentflow" / "decisions" / "x.md")))
+    assert out["decision"] == "deny" and ".agentflow" in out["reason"]
+
+
+def test_file_tools_may_write_everywhere_else(project):
+    assert hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_write(project, "Write", project / "src" / "a.py")) == ""
+    assert "deny" not in hook(HookEvent.PRE_TOOL, CliKind.ANTIGRAVITY, agy_write(project, "write_to_file", project / "a.py"))
+    assert hook(HookEvent.PRE_TOOL, CliKind.CLAUDE, claude_write(project, "Write", project / ".agentflow-notes" / "a")) == ""

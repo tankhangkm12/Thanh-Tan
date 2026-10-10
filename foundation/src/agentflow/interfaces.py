@@ -167,6 +167,15 @@ class GateRunner(Protocol):
 
 
 @runtime_checkable
+class WriteTargetPolicy(Protocol):
+    """Decides whether a path may be written by an agent's tools or shell commands."""
+
+    def is_protected(self, target: Path | str, cwd: Path) -> bool:
+        """True when ``target`` (absolute, or relative to ``cwd``) lies inside an agentflow workspace."""
+        ...
+
+
+@runtime_checkable
 class WorkspaceLookup(Protocol):
     """Whether the repository around a directory has an agentflow workspace."""
 

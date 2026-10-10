@@ -11,6 +11,8 @@ from typing import Any
 
 from agentflow.constants import (
     ANTIGRAVITY_PRE_TOOL_PASS_OUTPUT,
+    ANTIGRAVITY_WRITE_TOOLS,
+    CLAUDE_WRITE_TOOLS,
     EMPTY_JSON_OBJECT,
     AntigravityDecision,
     AntigravityHookKey,
@@ -38,10 +40,14 @@ def _path(value: Any) -> Path | None:
 
 class ClaudeAdapter:
     def read(self, event: HookEvent, payload: Mapping[str, Any]) -> HookInput:
-        command = _mapping(payload.get(ClaudeHookKey.TOOL_INPUT)).get(ClaudeHookKey.COMMAND)
+        tool_input = _mapping(payload.get(ClaudeHookKey.TOOL_INPUT))
+        command = tool_input.get(ClaudeHookKey.COMMAND)
+        writes = payload.get(ClaudeHookKey.TOOL_NAME) in CLAUDE_WRITE_TOOLS
+        target = tool_input.get(ClaudeHookKey.FILE_PATH) or tool_input.get(ClaudeHookKey.NOTEBOOK_PATH)
         return HookInput(
             cwd=_path(payload.get(ClaudeHookKey.CWD)),
             command=command if isinstance(command, str) else None,
+            write_target=_path(target) if writes else None,
             stop_hook_active=payload.get(ClaudeHookKey.STOP_HOOK_ACTIVE) is True,
         )
 
@@ -74,8 +80,10 @@ class ClaudeAdapter:
 
 class AntigravityAdapter:
     def read(self, event: HookEvent, payload: Mapping[str, Any]) -> HookInput:
-        args = _mapping(_mapping(payload.get(AntigravityHookKey.TOOL_CALL)).get(AntigravityHookKey.ARGS))
+        call = _mapping(payload.get(AntigravityHookKey.TOOL_CALL))
+        args = _mapping(call.get(AntigravityHookKey.ARGS))
         command = args.get(AntigravityHookKey.COMMAND_LINE)
+        writes = call.get(AntigravityHookKey.NAME) in ANTIGRAVITY_WRITE_TOOLS
         workspaces = payload.get(AntigravityHookKey.WORKSPACE_PATHS)
         first_workspace = _path(workspaces[0]) if isinstance(workspaces, list) and workspaces else None
         number = payload.get(AntigravityHookKey.INVOCATION_NUM)
@@ -83,6 +91,7 @@ class AntigravityAdapter:
             # The hook process runs in the plugin directory, so the project comes from the payload.
             cwd=_path(args.get(AntigravityHookKey.CWD)) or first_workspace,
             command=command if isinstance(command, str) else None,
+            write_target=_path(args.get(AntigravityHookKey.TARGET_FILE)) if writes else None,
             invocation_num=number if isinstance(number, int) and not isinstance(number, bool) else None,
         )
 

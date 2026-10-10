@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["mcp>=2.3,<3"]
+# ///
 """End-to-end smoke test of dev-core + dev-backend on a throw-away sample project.
 
     uv run tools/smoke_backend.py                  # the whole task flow (Docker needed)

@@ -1,34 +1,41 @@
 # Nhóm software-dev
 
-> **Bản nháp.** Chuẩn của nhóm còn đang định hình; mọi mục dưới đây có thể đổi trước khi có skill/agent thật.
+> **Bản nháp (MVP).** Mới `dev-core` có nội dung dùng được; các plugin `dev-*` còn lại vẫn là khung.
 
 Nhóm plugin phục vụ phát triển phần mềm. `dev-core` giữ chuẩn chung của nhóm; các plugin con (`dev-design`, `dev-backend`, `dev-frontend`, `dev-infra`) phụ thuộc vào `dev-core` và chỉ thêm phần nghiệp vụ riêng.
 
 | Plugin | Phạm vi |
 |---|---|
-| `dev-core` | Quy trình, gitflow, gate dùng chung |
+| `dev-core` | Quy trình, gitflow, gate, hook an toàn, 4 skill và 6 role dùng chung |
 | `dev-design` | Thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract API OpenAPI, data model) |
 | `dev-backend` | Service, API, dữ liệu |
 | `dev-frontend` | Giao diện, state phía client |
 | `dev-infra` | CI/CD, container, triển khai |
 
-## Quy trình 7 bước
+## Quy trình 6 bước
 
-1. **Yêu cầu**: làm rõ mục tiêu, phạm vi, tiêu chí chấp nhận.
-2. **Thiết kế**: thiết kế giao diện (UI brief, design token, component spec) và thiết kế hệ thống (ADR, sơ đồ C4, contract OpenAPI, data model).
-3. **Lập kế hoạch**: chia việc thành task nhỏ nhất, mỗi task có tiêu chí xong kiểm được bằng lệnh.
-4. **Triển khai**: làm từng task trên nhánh feature.
-5. **Kiểm thử**: chạy test và các gate tự động; chỉ đi tiếp khi xanh.
-6. **Review**: người duyệt xem diff, kết quả gate và các việc còn mở.
-7. **Bàn giao**: merge theo gitflow, gắn tag phiên bản, ghi lại thay đổi.
+Định nghĩa trong [`core/workflow.yaml`](core/workflow.yaml), do `agentflow` thực thi.
+
+| # | Bước | Role | Cần người duyệt | Fail thì |
+|---|---|---|---|---|
+| 1 | `confirm`: xác nhận task | orchestrator | có | blocked |
+| 2 | `plan`: vào workspace, lập kế hoạch | planner | có | blocked |
+| 3 | `implement`: triển khai | implementer | không | blocked |
+| 4 | `test`: kiểm thử | tester | không | quay về `implement` |
+| 5 | `security`: kiểm tra bảo mật | security | không | quay về `implement` |
+| 6 | `review`: review | reviewer | có | quay về `implement` |
+
+Không có bước "loop" riêng: fail ở `test`/`security`/`review` quay thẳng về `implement` và đếm vòng. Hết 3 vòng (`max_rounds`) task chuyển `blocked`, chỉ người mới cho làm tiếp (`agentflow task approve`, được ghi lại trong `.agentflow/decisions/`) hoặc hủy (`agentflow task cancel`).
+
+Chỉ role `implementer` sửa code. `tester` chỉ ghi vào thư mục test; `orchestrator`, `planner`, `security`, `reviewer` không có tool sửa file và ghi báo cáo qua `agentflow report`.
 
 ## Gitflow
 
 - `main`: chỉ chứa bản đã phát hành.
-- `develop`: nhánh tích hợp; mọi nhánh feature tách từ đây.
-- `feature/<tên>`: một việc một nhánh, commit nhỏ, merge về `develop` sau review.
-- `release/<phiên bản>` và `hotfix/<tên>`: theo gitflow chuẩn khi cần.
-- Agent không tự `push`, không tự merge vào `main`/`develop`, không tạo PR khi chưa được phép.
+- `develop`: nhánh tích hợp; nhánh `feature/...` và `bugfix/...` tách từ đây.
+- `hotfix/...` tách từ `main`.
+- Tên nhánh task: `<loại>/T-001-<slug>`, do `agentflow task new` tạo.
+- Agent không tự `push`, không commit hay merge trên `main`/`develop`; hook của `dev-core` chặn các lệnh này.
 
 ## Gate bằng tool
 
@@ -36,5 +43,5 @@ Một bước chỉ được coi là xong khi tool xác nhận, không dựa và
 
 - Test: `uv run pytest` (hoặc test runner của dự án) phải xanh.
 - Manifest plugin: `claude plugin validate` và `agy plugin validate` phải qua.
-- Bí mật: quét Gitleaks phải sạch trước khi push.
-- Các gate khác (lint, type check, build) sẽ được bổ sung theo từng plugin con.
+- Bí mật: `agentflow commit` quét Gitleaks (Docker/Podman) trên phần staged; engine không chạy là không commit.
+- Các gate khác (lint, type check, build, Semgrep, Trivy) sẽ được bổ sung sau.

@@ -8,7 +8,7 @@ Plugin lõi của nhóm **software-dev**. Giữ những gì mọi plugin `dev-*`
 |---|---|---|
 | Workflow 6 bước | `workflow.yaml` | Đọc bởi `agentflow init --workflow` |
 | 5 skill | `skills/{setup,start,continue,status,approve}/SKILL.md` | Hồ sơ hóa dự án (hỏi người đường dẫn tài liệu rồi giao cho scout), bắt đầu task, làm tiếp, xem trạng thái, duyệt |
-| 7 role (agent) | nguồn `src/roles/*.md` | `orchestrator`, `planner`, `implementer`, `tester`, `security`, `reviewer`, `scout` (đọc dự án, chỉ ghi qua `project_write`) |
+| 7 role, 8 agent | nguồn `src/roles/*.md` | `orchestrator`, `planner`, `implementer` (agent `implementer-fast` và `implementer-deep`), `tester`, `security`, `reviewer`, `scout` (đọc dự án, chỉ ghi qua `project_write`) |
 | Server MCP | `.mcp.json` (Claude Code), `mcp_config.json` (Antigravity) | Chạy `agentflow mcp serve`: 9 tool cho agent (xem [architecture](../../../docs/architecture.md#tool-mcp)) |
 | Hook | `hooks/hooks.json` (Claude Code), `hooks.json` (Antigravity) | Chặn lệnh git nguy hiểm, `git commit` trực tiếp và mọi ghi vào `.agentflow/` (tool ghi file; lệnh shell ở mức cố gắng tốt nhất), nạp tóm tắt task đầu phiên, nhắc cập nhật trạng thái khi dừng (chỉ khi bước đang chạy và đã có báo cáo mới) |
 
@@ -24,6 +24,20 @@ Sửa role ở `src/roles/<role>.md` (frontmatter `name`, `description`, `capabi
 uv run tools/build.py           # sinh claude/agents/*.md, agents/*.md và cập nhật danh sách agents trong manifest
 uv run tools/build.py --check   # báo lỗi nếu file sinh ra đã cũ
 ```
+
+Role có thể đặt model: `settings:` (một agent) hoặc `variants:` (một agent cho mỗi tier, tên `<role>-fast` và `<role>-deep`), mỗi mục có `claude: {model, effort}` và `antigravity: {model}`:
+
+```
+variants:
+  fast:
+    claude: {model: sonnet, effort: low}
+    antigravity: {model: flash}
+  deep:
+    claude: {model: opus, effort: medium}
+    antigravity: {model: pro}
+```
+
+`deep` dùng Opus nên tốn giới hạn sử dụng hơn. Để dùng Sonnet cho cả hai, đổi dòng `deep` của `claude` thành `{model: sonnet, effort: high}` rồi `uv run tools/build.py`. Build chỉ nhận giá trị trong tài liệu của từng CLI (Claude Code: `sonnet|opus|haiku|fable|inherit`, `low|medium|high|xhigh|max`; Antigravity: `inherit|flash|pro`, không có effort). Role không khai báo gì thì `inherit`. `workflow.yaml` có `tiered_roles: [implementer]` để `agentflow plan assign` biết role nào có hai agent.
 
 Không sửa tay `claude/agents/` và `agents/`. `build.py` đổi quyền trừu tượng thành tên tool thật của từng CLI, từ chối tên tool lạ và từ chối cấp quyền sửa file cho `orchestrator`, `planner`, `security`, `reviewer`, `scout`.
 

@@ -68,7 +68,7 @@ claude plugin marketplace add "<repo>"
 claude plugin install dev-core@thanh-tan-plugins
 ```
 
-Kiểm tra: `claude plugin list` phải thấy `dev-core@thanh-tan-plugins` ở trạng thái enabled. Mở lại Claude Code, gõ `/dev-core:` sẽ thấy `setup`, `start`, `continue`, `status`, `approve`. 7 agent hiện dưới tên `dev-core:orchestrator`, `dev-core:planner`, `dev-core:implementer`, `dev-core:tester`, `dev-core:security`, `dev-core:reviewer`, `dev-core:scout`. (Lệnh `claude plugin details` hiện báo `Agents (0)` do cách đếm của nó; agent vẫn được nạp.) Cập nhật: `claude plugin update dev-core@thanh-tan-plugins`.
+Kiểm tra: `claude plugin list` phải thấy `dev-core@thanh-tan-plugins` ở trạng thái enabled. Mở lại Claude Code, gõ `/dev-core:` sẽ thấy `setup`, `start`, `continue`, `status`, `approve`. 8 agent (7 role, riêng implementer có hai biến thể) hiện dưới tên `dev-core:orchestrator`, `dev-core:planner`, `dev-core:implementer-fast`, `dev-core:implementer-deep`, `dev-core:tester`, `dev-core:security`, `dev-core:reviewer`, `dev-core:scout`. (Lệnh `claude plugin details` hiện báo `Agents (0)` do cách đếm của nó; agent vẫn được nạp.) Cập nhật: `claude plugin update dev-core@thanh-tan-plugins`.
 
 ### Bước 2b: cài vào Antigravity CLI
 
@@ -78,7 +78,7 @@ agy plugin list
 agy agents
 ```
 
-`agy plugin list` phải có `dev-core` với `skills`, `agents`, `hooks`; `agy agents` liệt kê 7 role của dev-core (thêm `db-engineer` khi cài dev-backend). `agy plugin install` chép một bản vào máy, nên sau mỗi lần `git pull` hãy chạy lại lệnh cài. Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
+`agy plugin list` phải có `dev-core` với `skills`, `agents`, `hooks`; `agy agents` liệt kê các agent của dev-core (7 role, `implementer` thành `implementer-fast` và `implementer-deep`) (thêm `db-engineer` khi cài dev-backend). `agy plugin install` chép một bản vào máy, nên sau mỗi lần `git pull` hãy chạy lại lệnh cài. Cách cài thẳng từ GitHub cho repo nhiều plugin chưa được xác nhận.
 
 ### Cài thêm dev-backend
 
@@ -197,7 +197,7 @@ uv run tools/smoke_backend.py --only-install-check   # cài lại hai plugin và
 
 Lần đầu trên một dự án có sẵn: gọi skill `setup` (xem hướng dẫn dùng thử ở cuối). Scout đọc tài liệu bạn chỉ và code, rồi viết `.agentflow/project/{profile,architecture,sources,conventions}.md`; mọi quy ước ban đầu là `unconfirmed`. Bạn đọc, trả lời câu hỏi mở (`S1`...) và xác nhận bằng `agentflow project confirm PC-01 PC-02` (hoặc `--all`). `agentflow task new` cảnh báo khi còn quy ước chưa xác nhận.
 
-Mỗi quy ước có `check:` là `plan` (hiện có `item-order`: mục `kind: interface` đứng trước mục `kind: implement` đụng cùng file), `semgrep` (rule do **bạn** viết, để trong `.agentflow/knowledge/semgrep/`, chạy cùng scan ở bước security) hoặc `review` (reviewer ghi `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng` cho từng mã). Ưu tiên: `decisions/` > `project/conventions.md` > `knowledge/conventions.md`. Xem bằng `agentflow conventions`.
+Mỗi quy ước có `check:` là `plan` (luật `item-order`: mục `kind: interface` đứng trước mục `kind: implement` đụng cùng file; luật `layer-order`: các mục theo thứ tự lớp của dự án, xem [Tier và thứ tự lớp](#tier-và-thứ-tự-lớp)), `semgrep` (rule do **bạn** viết, để trong `.agentflow/knowledge/semgrep/`, chạy cùng scan ở bước security) hoặc `review` (reviewer ghi `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng` cho từng mã). Ưu tiên: `decisions/` > `project/conventions.md` > `knowledge/conventions.md`. Xem bằng `agentflow conventions`.
 
 Khi dự án chưa có quy ước cho một điều planner cần quyết, plan có mục `## Chưa có quy ước` và bị chặn tới khi bạn trả lời: `agentflow decide --answer Q1 --text "Tên bảng số ít" --check review` (thêm `--global` để ghi cả vào kho cá nhân của bạn).
 
@@ -215,10 +215,36 @@ Bước `plan` bị chặn nếu kế hoạch không qua `agentflow plan check`.
 ### C1 - Tiêu đề ngắn
 - role: implementer
 - kind: implement      # interface | implement | other (bắt buộc khi có quy ước item-order)
+- tier: fast           # fast | deep (không ghi thì coi là deep)
+- layer: domain        # bắt buộc khi có quy ước layer-order
 - files: src/a.py, tests/test_a.py
 - done-when: `uv run pytest tests/test_a.py`
 - docs: https://... (hoặc: không có — <lý do>)
 ```
+
+### Tier và thứ tự lớp
+
+**Tier.** Mỗi mục kế hoạch có thể ghi `tier: fast` hoặc `tier: deep`; thiếu thì là `deep`. Planner đề xuất, bạn sửa trực tiếp trong báo cáo plan khi duyệt (hoặc nhờ planner sửa), và `agentflow plan check` từ chối giá trị khác. Skill `continue` chạy `agentflow plan assign` (in `mã role tier agent` cho từng mục) rồi giao mục `fast` cho `implementer-fast`, mục `deep` cho `implementer-deep`; role không chia tier (như `db-engineer` của dev-backend) luôn dùng một agent duy nhất, và agent đó đặt ở mức mạnh nhất.
+
+| | fast | deep |
+|---|---|---|
+| Claude Code | `model: sonnet`, `effort: low` | `model: opus`, `effort: medium` |
+| Antigravity | `model: flash` | `model: pro` |
+
+Giá trị nằm trong nguồn role (`families/software-dev/core/src/roles/implementer.md`, khối `variants`) và được `tools/build.py` sinh ra. **Lưu ý giới hạn sử dụng:** `deep` dùng Opus nên tốn giới hạn hơn Sonnet; `db-engineer` cũng dùng Opus. Muốn tiết kiệm, đổi `deep` của Claude Code thành `claude: {model: sonnet, effort: high}` trong nguồn role, chạy `uv run tools/build.py` rồi cài lại plugin. Antigravity không có trường effort. Build kiểm giá trị theo danh sách trong tài liệu từng CLI (`sonnet|opus|haiku|fable|inherit` và `low|medium|high|xhigh|max` cho Claude Code; `inherit|flash|pro` cho Antigravity) và từ chối giá trị khác.
+
+**Thứ tự lớp (`layer-order`).** Quy ước do **dự án** khai báo; plugin không có sẵn quy ước nào. Ví dụ trong `project/conventions.md` (hoặc trả lời câu hỏi bằng `agentflow decide`):
+
+```
+### PC-04 - Thứ tự lớp
+- check: plan
+- rule: layer-order
+- layers: interface, api, infra, service, domain
+- source: docs/architecture.md:12
+- description: Làm lớp trước xong mới tới lớp sau.
+```
+
+Khi quy ước hiệu lực, mỗi mục kế hoạch phải có `layer:` thuộc danh sách, và **trên toàn bộ kế hoạch** một mục lớp sau không được đứng trước mục lớp trước (mỗi lớp có thể nằm ở thư mục riêng, nên luật không dựa vào thư mục). Muốn thu hẹp, thêm `- scope: src/**, lib/**`: khi đó luật chỉ xét các mục có file khớp một trong các glob đó (và các mục phải ghi `files`). Qua `decide`: `agentflow decide --answer Q1 --text "..." --check plan --rule layer-order --layers "interface, api, infra, service, domain" [--scope "src/**"]`.
 
 Khi bạn duyệt bước cuối, `agentflow` ghi `.agentflow/tasks/<task>/summary.md` (mục, commit, link docs, kết quả scan) và tạo **annotated tag** `agentflow/<task>/approved` (message có mã task, tiêu đề, người duyệt) trên commit cuối của nhánh task. `agentflow task new` từ chối nếu task xong gần nhất chưa có tag này; bạn tạo bù cho task cũ bằng `agentflow task seal <id>` (thêm `--commit <sha>` nếu nhánh đã bị xóa). Agent không bao giờ push, merge hay tạo PR: bạn tự làm.
 

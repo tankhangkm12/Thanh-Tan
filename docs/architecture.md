@@ -41,6 +41,7 @@ Mỗi nhóm khai báo quy trình của mình trong một file `workflow.yaml` đ
 | `family` | Tên nhóm, dạng `^[a-z][a-z0-9-]*$` |
 | `steps[].id`, `name`, `role` | Mã bước, tên hiển thị, role phụ trách (foundation chỉ coi role là chuỗi) |
 | `steps[].requires_approval` | Bước cần người duyệt (mặc định `false`) |
+| `tiered_roles` | Role có một agent cho mỗi tier của mục kế hoạch (`<role>-fast`, `<role>-deep`); role khác chỉ có một agent. Tùy chọn; mỗi role phải là role của một bước |
 | `max_rounds` | Số lần một task được quay lại làm lại (cả workflow) |
 | `steps[].on_fail` | Bước đứng trước mà task quay về khi bước này fail |
 | `steps[].gates` | Gate bước phải qua trước khi `task advance --result pass` được nhận: `plan-valid` (kế hoạch qua `plan check`, kể cả quy ước `item-order` và mọi câu hỏi "Chưa có quy ước" đã được trả lời), `scans-clean` (kết quả scan không còn mục chặn), `conventions-reviewed` (báo cáo review có một dòng cho từng quy ước `check: review`) |
@@ -109,6 +110,7 @@ Task trong `state.json` có `id` (`T-001`), `title`, `status` (`open`/`blocked`/
 | `agentflow ext add <file>` / `ext list` / `ext sync [tên] [--force]` | Đăng ký, liệt kê, đồng bộ extension (`add`, `sync` là việc của người) | File không hợp lệ, sai family, trùng role/tool, nguồn mất |
 | `agentflow config get <khóa>` / `config set <khóa> <giá trị>` / `config check` | Đọc, đặt (việc của người), kiểm cài đặt dự án theo schema của các extension | Chưa đặt (`SETTINGS_INVALID`) |
 | `agentflow plan check [--file f]` | Kiểm kế hoạch: mã `C<n>`, role hợp lệ, `done-when`, `docs` | Có mục sai (mã `PLAN_INVALID`) |
+| `agentflow plan assign` | In `mã role tier agent` cho từng mục của kế hoạch đang dùng (tier thiếu là `deep`; agent là `<role>-<tier>` nếu role nằm trong `tiered_roles`, ngược lại là `<role>`) | Chưa có báo cáo plan |
 | `agentflow report --step <bước>` | Ghi stdin vào `tasks/<task>/reports/<bước>.md` | Bước không có trong workflow, nội dung rỗng |
 | `agentflow commit "<nội dung>" [--item C1]` | Scan secret rồi commit với tiền tố `T-001: `; `--item` ghi trailer `Plan-Item: C1` | Sai nhánh, không có gì staged, thấy secret, engine container không chạy, mục không có trong plan |
 | `agentflow project confirm <mã...>\|--all` | Việc của người: đánh dấu quy ước `confirmed` trong `project/conventions.md` | Chưa có quy ước, mã không có, file có lỗi |
@@ -173,7 +175,7 @@ Quyền xác nhận thuộc về người:
 **Ba nguồn quy ước**, ưu tiên từ cao xuống: `decisions/` (câu trả lời của người, `DC-NN`) > `project/conventions.md` (`PC-NN`) > `knowledge/conventions.md` (bản chép quy ước cá nhân, `KC-NN`). `agentflow conventions` (và tool MCP `conventions`) gộp chúng; một quy ước thay quy ước khác khi ghi `overrides: <mã>` và nguồn của nó ưu tiên cao hơn. Quy ước của người (DC, KC) có hiệu lực ngay; quy ước của dự án chỉ được kiểm sau khi người `project confirm`.
 
 **Ba cách kiểm** (`check:` là tập đóng):
-- `plan`: hiện có `rule: item-order`. Mục kế hoạch có thêm `kind: interface|implement|other`; mục `interface` phải đứng trước mục `implement` đụng cùng file. Khi quy ước này đang hiệu lực, `kind` là bắt buộc, và mục interface/implement phải có `files`.
+- `plan`: hiện có hai luật, `item-order` và `layer-order`. `layer-order` đọc `layers: a, b, c` (thứ tự các lớp, ít nhất hai, không trùng) và tùy chọn `scope: glob, glob`: mặc định luật xét **toàn bộ kế hoạch**, mục lớp sau không được đứng trước mục lớp trước; có `scope` thì chỉ xét các mục có file khớp (và các mục phải ghi `files`). Mục trong phạm vi phải có `layer:` thuộc danh sách. `decide --answer ... --rule layer-order --layers "..." [--scope "..."]` tạo quy ước này. `item-order`: Mục kế hoạch có thêm `kind: interface|implement|other`; mục `interface` phải đứng trước mục `implement` đụng cùng file. Khi quy ước này đang hiệu lực, `kind` là bắt buộc, và mục interface/implement phải có `files`.
 - `semgrep`: `rule: <file>.yaml` là rule do **người** viết, để trong `.agentflow/knowledge/semgrep/` (người chép từ kho cá nhân bằng `knowledge pull semgrep/<file>`). Chạy cùng scan ở bước `security` như một tool riêng `semgrep-conventions` (container riêng, mount chỉ đọc, không mạng); rule chỉ chặn khi `severity` là ERROR/HIGH/CRITICAL. Thiếu hoặc hỏng file rule là lỗi cứng, không bỏ qua im lặng. Không dùng rule của Semgrep Registry ở đây.
 - `review`: gate `conventions-reviewed` đòi báo cáo review có `PC-01: đạt` hoặc `vi phạm PC-01 ở file:dòng` cho **từng** quy ước hiệu lực; có vi phạm thì không cho `pass` (phải `fail` để implementer sửa).
 
@@ -185,6 +187,7 @@ Quyền xác nhận thuộc về người:
 
 ### Kế hoạch, gate và tag duyệt
 
+- Mục kế hoạch còn có `tier:` (`fast` hoặc `deep`, thiếu là `deep`; `plan check` từ chối giá trị khác) và `layer:` (xem `layer-order`). Foundation chỉ biết hai trường này và giá trị hợp lệ của `tier`; việc role nào chia tier do `tiered_roles` của workflow quyết định.
 - Mỗi mục kế hoạch là một khối `### C1 - tiêu đề` kèm `role:`, `files:`, `done-when:`, `docs:` (xem README). `plan check` đòi mã duy nhất, role thuộc bộ role hợp lệ (role của workflow cộng role extension đăng ký), `done-when` không rỗng, `docs` là link hoặc `không có — <lý do>`.
 - Gate `plan-valid` gắn vào bước `plan` trong `workflow.yaml`: `task advance --result pass` bị từ chối (mã `GATE_FAILED`) nếu báo cáo plan không qua kiểm tra. Gate chỉ áp dụng cho kết quả `pass`.
 - Khi task chuyển sang `done` (duyệt bước cuối, hoặc bước cuối pass mà không cần duyệt), `agentflow` ghi `tasks/<task>/summary.md` rồi tạo annotated tag `agentflow/<task>/approved` ở commit cuối của nhánh task, **trước** khi lưu state: nếu việc đó lỗi thì task không bị đánh dấu xong. `task new` từ chối khi task `done` gần nhất thiếu tag.

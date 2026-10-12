@@ -1,11 +1,17 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml"]
+# ///
 """Check the links and IDs of the markdown files of a design (default: `.agent-workspace/drafts/`).
 
 Blocking errors (exit 1):
 - a markdown link whose file does not exist, or whose `#anchor` is not a heading of the target file;
-- an ID defined twice. An ID is `<prefix>-<number or name>` with a prefix of FR NFR TC FL SCR SVC API EVT TBL BKT R D CH
-  (SVC-order and TBL-orders are valid); it is *defined* by a heading that starts with it, or, only when no heading in any
+- an ID defined twice. An ID is `<prefix>-<number or name>` with a prefix of data/ids.yaml (FR NFR C A TC FL SCR SVC API EVT TBL
+  BKT R D CH; SVC-order and TBL-orders are valid); it is *defined* by a heading that starts with it, or, only when no heading in any
   file defines it, by the first cell of a table row (so an index table in an overview file never clashes with the file
   that defines the ID in detail). Two headings, or two table cells when there is no heading, make a duplicate;
+- an ID defined outside its home file (data/ids.yaml: C-xx in 00-context/constraints.md, A-xx in 00-context/assumptions.md);
+- an ID defined outside its home file (data/ids.yaml: C-xx in 00-context/constraints.md, A-xx in 00-context/assumptions.md);
 - a file that defines an SVC / TBL / BKT / EVT / API ID but has no "Được dùng bởi" section, or whose section does not link
   every other file that mentions one of those IDs (FR, NFR, TC and R need no back link);
 - a stack layer file (`02-tech-stack/layers/`) with no TC reference or a TC that is defined nowhere, and a risk row of
@@ -29,9 +35,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
+import idlist
+
 ENCODING = "utf-8"
-ID_KINDS = ("FR", "NFR", "TC", "FL", "SCR", "SVC", "API", "EVT", "TBL", "BKT", "R", "D", "CH")
-BACKLINK_KINDS = ("SVC", "TBL", "BKT", "EVT", "API")
+IDS = idlist.load()  # ID prefixes, back-link kinds and the home file of C / A: core/data/ids.yaml
+ID_KINDS = IDS.kinds
+BACKLINK_KINDS = IDS.backlink_kinds
 BACKLINK_HEADING = "Được dùng bởi"
 STACK_DIR = "02-tech-stack/"
 LAYERS_DIR = STACK_DIR + "layers/"
@@ -39,8 +48,7 @@ RISK_REGISTER = "11-risks/risk-register.md"
 RISK_COMPONENTS_COLUMN = "Thành phần liên quan"
 SHOWN_ERRORS = 25
 
-NAME = r"[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)*"
-ID_RE = re.compile(r"(?<![A-Za-z0-9_-])((?:%s)-%s)(?![A-Za-z0-9_])" % ("|".join(sorted(ID_KINDS, key=len, reverse=True)), NAME))
+ID_RE = IDS.id_re()
 FENCE_RE = re.compile(r"^\s{0,3}(```|~~~)")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -293,6 +301,17 @@ def check_ids(docs: list[Doc]) -> tuple[list[Finding], list[Finding]]:
     return errors, warnings
 
 
+def check_homes(docs: list[Doc]) -> list[Finding]:
+    """An ID whose kind has a home file (C, A) may be defined only there."""
+    findings = []
+    for ident, places in sorted(effective_definitions(docs).items()):
+        home = IDS.homes.get(IDS.kind_of(ident))
+        for doc, number in places:
+            if home and doc.rel != home:
+                findings.append(Finding(doc.rel, number, "id-outside-home", f"{ident} phải được định nghĩa ở {home}, không phải ở {doc.rel}"))
+    return findings
+
+
 def check_layers(docs: list[Doc]) -> list[Finding]:
     """Q5: each stack layer traces back to the TC it was chosen by."""
     defined_tc = {i for i in effective_definitions(docs) if i.startswith("TC-")}
@@ -360,7 +379,7 @@ def run(root: Path) -> tuple[list[Finding], list[Finding], int]:
     docs = load(root)
     errors = check_links(docs, Anchors(docs))
     id_errors, warnings = check_ids(docs)
-    errors += id_errors + check_layers(docs) + check_risk_register(docs)
+    errors += id_errors + check_homes(docs) + check_layers(docs) + check_risk_register(docs)
     errors.sort(key=lambda f: (f.path, f.line, f.code))
     warnings.sort(key=lambda f: (f.path, f.line, f.code))
     return errors, warnings, len(docs)

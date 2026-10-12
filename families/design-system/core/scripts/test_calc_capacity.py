@@ -938,15 +938,19 @@ def test_the_script_does_not_write_anywhere_else(tmp_path):
     assert new == {f"drafts/{rel}" for rel in OUTPUTS if rel != "00-context/assumptions.md"} | {"drafts/00-context/assumptions.md"}
 
 
-def test_generated_documents_define_no_ids_so_they_never_clash_with_the_designers_files(tmp_path):
+def test_generated_documents_define_only_the_a_ids_of_assumptions_md_so_they_never_clash_with_the_designers_files(tmp_path):
     workspace = make(tmp_path)
     assert run(workspace) == 0
     docs = [d for d in cl.load(workspace / "drafts") if d.rel.startswith(("03-capacity/", "00-context/assumptions"))]
     assert docs
     for doc in docs:
-        assert cl.definitions(doc) == [], doc.rel
+        ids = [ident for ident, _ in cl.definitions(doc)]
+        if doc.rel == "00-context/assumptions.md":
+            assert ids and all(ident.startswith("A-") for ident in ids), ids  # A-xx is defined here, its home file (data/ids.yaml)
+        else:
+            assert ids == [], doc.rel
     errors, _, _ = cl.run(workspace / "drafts")
-    assert [e.render() for e in errors if e.code in ("broken-link", "broken-anchor", "duplicate-id")] == []
+    assert [e.render() for e in errors if e.code in ("broken-link", "broken-anchor", "duplicate-id", "id-outside-home")] == []
 
 
 # --- --check ------------------------------------------------------------------------------------------------------------------------

@@ -36,6 +36,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import calc_capacity as cc  # noqa: E402
+import idlist  # noqa: E402
+
+IDS = idlist.load()  # the ID prefixes shared with check_links / tally_votes / check_trace: core/data/ids.yaml
 
 ENCODING = "utf-8"
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "data" / "numbers.yaml"
@@ -53,6 +56,7 @@ SEPARATOR = re.compile(r"^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$")
 SENTENCE_END = re.compile(r"(?<=[.!?;])\s+")
 # Text whose digits are not quantities: IDs (FR-001, TC-03), dates, link targets, bare URLs. Masked with spaces (same length).
 MASKS = (
+    IDS.id_re(),  # every ID of data/ids.yaml (SVC-api2, NFR-p95, C-01 ...)
     re.compile(r"\b[A-Za-z][A-Za-z0-9]*-\d[\w-]*"),
     re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),
     re.compile(r"(?<=\]\()[^)]*(?=\))"),
@@ -60,7 +64,7 @@ MASKS = (
 )
 LINK_EVIDENCE = re.compile(r"\]\(|https?://")
 FORMULA_EVIDENCE = re.compile(r"[=×÷⌈⌉⌊⌋]|công thức", re.IGNORECASE)
-ASSUMPTION_REF = re.compile(r"\bA-[A-Za-z0-9][A-Za-z0-9_-]*")
+ASSUMPTION_REF = IDS.id_re(["A"])  # A-xx
 NUMBER = r"\d[\d.,]*\d|\d"
 
 

@@ -414,3 +414,40 @@ def test_cli_lists_at_most_25_errors_but_the_report_has_all(tmp_path):
     result = run_cli("--workspace", str(workspace), "--date", "2026-10-12")
     assert result.stdout.count("error: `") == 25 and "15 lỗi nữa" in result.stdout
     assert (workspace / "checks" / "links-2026-10-12.md").read_text(encoding="utf-8").count("[broken-link]") == 40
+
+
+# --- C and A have a home file (data/ids.yaml) ----------------------------------------------------------------------------
+
+HOMES = {
+    "00-context/constraints.md": "# Ràng buộc\n\n## C-01 Ngân sách\n\nTối đa 500 USD.\n",
+    "00-context/assumptions.md": "# Giả định\n\n| ID | Mô tả |\n| --- | --- |\n| A-dau | DAU |\n",
+}
+
+
+def test_c_and_a_defined_in_their_home_files_are_fine(tmp_path):
+    root = tree(tmp_path, {**HOMES, "00-context/other.md": "Theo C-01 và A-dau.\n"})
+    assert codes(root)[0] == []
+
+
+@pytest.mark.parametrize("where, text, expected", [
+    ("06-backend/x.md", "# Dịch vụ\n\n## C-02 Giới hạn\n", ["id-outside-home"]),
+    ("00-context/requirements.md", "# Yêu cầu\n\n| ID | Nội dung |\n| --- | --- |\n| C-02 | giới hạn |\n", ["id-outside-home"]),
+    ("00-context/constraints.md", "# Ràng buộc\n\n## A-07 Giả định đặt nhầm chỗ\n", ["id-outside-home"]),
+    ("00-context/other.md", "# Khác\n\n## A-dau Định nghĩa lại\n", ["id-outside-home"]),   # a heading beats the table cell of the home file
+    ("00-context/other.md", "# Khác\n\n## C-01 Định nghĩa lại\n", ["duplicate-id", "id-outside-home"]),
+])
+def test_c_or_a_defined_outside_its_home_is_an_error(tmp_path, where, text, expected):
+    files = {**HOMES}
+    files[where] = files.get(where, "") + text if where in files else text
+    root = tree(tmp_path, files)
+    assert sorted(codes(root)[0]) == sorted(expected)
+
+
+def test_prefixes_without_a_home_may_be_defined_anywhere(tmp_path):
+    root = tree(tmp_path, {**HOMES, "06-backend/x.md": "# FR-09 Một yêu cầu\n\n## TC-04 tiêu chí\n"})
+    assert codes(root)[0] == []
+
+
+def test_tc_and_nfr_are_not_read_as_c_and_r(tmp_path):
+    root = tree(tmp_path, {**HOMES, "02-tech-stack/selection-criteria.md": "# Tiêu chí\n\n## TC-01 Chi phí\n\n## NFR-01 Độ trễ\n"})
+    assert codes(root)[0] == []

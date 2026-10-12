@@ -12,7 +12,7 @@
 
 ## Hội đồng
 
-- **Kết quả:** <đề xuất phương án X | chưa đạt đồng thuận, hai phương án dẫn đầu: X và Y | "không phương án nào phù hợp": Designer làm lại brief>
+- **Kết quả:** <đề xuất phương án X | chưa quá bán ở vòng 1: chờ vòng 2 | chưa đạt đồng thuận, hai phương án dẫn đầu: X và Y | "không phương án nào phù hợp": Designer làm lại brief>
 - **Số vòng:** <1 | 2>
 - **Quá bán cần:** <2/3 | 3/5>
 - **Độ đa dạng model:** <đủ: mỗi thành viên một model khác nhau | giảm: dùng chung model <tên> cho <góc nhìn>>

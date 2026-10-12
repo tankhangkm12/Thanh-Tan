@@ -48,8 +48,8 @@ Bạn vẫn chấm **mọi TC** của brief; góc nhìn quyết định bạn đ
 
 1. Chấm từng phương án **theo từng TC** trong brief. Điểm thô là số nguyên 0-5: 0 không đáp ứng · 1 kém · 2 dưới mức cần · 3 đạt mức cần · 4 tốt · 5 vượt mức cần. Vượt xa nhu cầu không được cộng thêm: ghi ở "Làm quá tay".
 2. TC **loại trừ**: ghi `pass` hoặc `fail` cho từng phương án. Phương án có một `fail` bị loại khỏi phiếu này: bạn không được chọn nó.
-3. **Làm quá tay:** phương án vượt xa nhu cầu mà tốn thêm chi phí hoặc độ phức tạp thì bị trừ điểm. Ghi số điểm trừ (số nguyên không âm, trên thang 100 của tổng đã quy đổi) và **lý do bắt buộc** khi trừ, nêu cái thừa so với nhu cầu và trích hồ sơ, NFR hoặc TC.
-4. **Mỗi lý do phải trích** một `TC`, `NFR`, ràng buộc (`C-xx`), con số trong `03-capacity` (kèm giá trị) hoặc `R-xx` có trong brief. Lý do kiểu "chuẩn ngành", "đang phổ biến", "ai cũng dùng" **không được tính**. Chỉ dùng dữ kiện **có trong brief và có nguồn**; hiểu biết riêng của bạn không phải căn cứ.
+3. **Làm quá tay:** phương án vượt xa nhu cầu mà tốn thêm chi phí hoặc độ phức tạp thì bị trừ điểm. Ghi số điểm trừ (số nguyên không âm, tối đa 20 mỗi phương án và vượt thì phiếu bị từ chối; trên thang 100 của tổng đã quy đổi) và **lý do bắt buộc** khi trừ, nêu cái thừa so với nhu cầu và trích hồ sơ, NFR hoặc TC.
+4. **Mỗi lý do phải trích** một `TC`, `NFR`, ràng buộc (`C-xx`), con số trong `03-capacity` (kèm giá trị) hoặc `R-xx` có trong brief. Lý do kiểu "chuẩn ngành", "đang phổ biến", "ai cũng dùng" **không được tính**. Chỉ dùng dữ kiện **có trong brief và có nguồn**; hiểu biết riêng của bạn không phải căn cứ. **Mọi con số trong một lý do phải xuất hiện nguyên văn trong brief** (bạn chỉ đọc brief): số không có trong brief thì phiếu bị từ chối; không tự tính lại, đổi đơn vị hay làm tròn lại số của brief. Chữ số trong ID (`TC-01`, `R-04`) không phải con số.
 5. **Không tự ghi tổng.** Tổng có trọng số do script tính: `tổng = Σ(điểm × trọng số) / (5 × Σ trọng số) × 100 − điểm trừ làm quá tay`, trên các TC có trọng số trong brief, chỉ cho phương án không vi phạm TC loại trừ.
 6. **`choice`** là phương án sẽ có tổng cao nhất theo công thức trên (bạn tự tính để chọn, không ghi tổng vào phiếu). Lệch thì phiếu bị từ chối. Hai phương án chênh nhau dưới 0,01 điểm (so giá trị chưa làm tròn) coi là hòa: chọn một và ghi lý do trích nguồn vào `tie_reason`.
 7. Luôn có lựa chọn **`choice: none`** ("không phương án nào phù hợp"). Hợp lệ khi (a) mọi phương án vi phạm ít nhất một TC loại trừ, hoặc (b) `cites` không rỗng và phần "Lý do" nêu vì sao không phương án nào đạt, có trích nguồn. Vẫn phải ghi điểm thô đủ ô.
@@ -96,7 +96,7 @@ cites: [TC-01, NFR-02, R-04]
 - <rủi ro phương án đã chọn sinh ra mà brief chưa có, kèm khả năng và tác động 1-5 nếu có cơ sở>  (hoặc "không có")
 ```
 
-- `cites` liệt kê mọi ID `TC`, `NFR`, `C-xx`, `R-xx` mà phần "Lý do" trích; phải có ít nhất một. Số trong `03-capacity` ghi trong lý do kèm giá trị, không đưa vào `cites`.
+- `cites` liệt kê mọi ID `TC`, `NFR`, `C-xx`, `A-xx`, `R-xx` mà phần "Lý do" trích; phải có ít nhất một. Số trong `03-capacity` ghi trong lý do kèm giá trị, không đưa vào `cites`.
 - Tên phương án trong `scores`, `exclusions`, `overreach` và ID TC phải **đúng như brief**.
 
 ## Không được làm

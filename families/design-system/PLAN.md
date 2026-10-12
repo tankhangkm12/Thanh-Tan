@@ -328,9 +328,9 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 
 `decision.md` trình cho bạn: phương án đề xuất, tỉ lệ phiếu, ý kiến thiểu số (luôn hiển thị), rủi ro mới sinh ra.
 
-**Việc nào đưa ra hội đồng:** kiểu kiến trúc, stack từng lớp, phiên bản chốt, ranh giới service, loại database, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất. Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát. Điều này giữ lượt dùng trong giới hạn gói Pro.
+**Việc nào đưa ra hội đồng:** kiểu kiến trúc, stack từng lớp, phiên bản chốt, ranh giới service, loại database, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát. Điều này giữ lượt dùng trong giới hạn gói Pro.
 
-**Quyết định khó đảo ngược** (hội đồng 5 phiếu ở mức L): đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu khóa chính của các bảng tăng nhanh nhất. Planner được đề xuất thêm ở G0; bạn duyệt.
+**Quyết định khó đảo ngược** (hội đồng 5 phiếu ở mức L): đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm ở G0; bạn duyệt.
 
 ## Các giai đoạn và gate
 

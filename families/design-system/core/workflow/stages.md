@@ -33,7 +33,7 @@ Chế độ nâng cấp: G0 đọc `inputs/previous-design/` trước, và mỗi
 - `calc_capacity.py`: ở G5, G7 và G10.
 - `tally_votes.py`: ở mọi gate có hội đồng.
 - `check_workspace.py`: ở mọi gate. G10 chạy toàn bộ script.
-- **Hội đồng** chỉ dùng cho: kiểu kiến trúc (G3); stack từng lớp, phiên bản chốt, loại database (G4); ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất (G7). Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát.
+- **Hội đồng** chỉ dùng cho: kiểu kiến trúc (G3); stack từng lớp, phiên bản chốt, loại database (G4); ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại (G7). Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát.
 - **Số thành viên theo mức:** S 3 phiếu, chỉ cho kiểu kiến trúc (G3) và stack từng lớp (G4); M 3; L 3, và 5 cho quyết định khó đảo ngược (xem mục bên dưới); XL 5.
 
 ## Phần của `architecture/` theo mức áp dụng
@@ -57,7 +57,7 @@ Mọi phần được giữ đều nằm trong `architecture/` và được comm
 
 ## Quyết định khó đảo ngược (hội đồng 5 phiếu ở mức L)
 
-Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu khóa chính của các bảng tăng nhanh nhất. Planner được đề xuất thêm vào danh sách (ghi ở `plan/plan.md`); người dùng duyệt ở G0.
+Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm vào danh sách (ghi ở `plan/plan.md`); người dùng duyệt ở G0.
 
 ## Bảng tóm tắt
 
@@ -134,7 +134,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G7. Thiết kế chi tiết
 
 - **Đầu vào:** luồng chính đã duyệt, stack, capacity sơ bộ.
-- **Việc:** Designer thiết kế chi tiết từng app frontend (kiến trúc và tối ưu cho thiết bị thật, không quyết định visual; Q7), từng service, từng database. Hội đồng quyết ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất. Khi kiểu dữ liệu thật lộ ra, **quay lại G5** tính lại capacity rồi mới đi tiếp.
+- **Việc:** Designer thiết kế chi tiết từng app frontend (kiến trúc và tối ưu cho thiết bị thật, không quyết định visual; Q7), từng service, từng database. Hội đồng quyết ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Khi kiểu dữ liệu thật lộ ra, **quay lại G5** tính lại capacity rồi mới đi tiếp.
 - **Điều kiện qua gate:** mỗi thành phần truy về FR/NFR/ràng buộc (Q1), có mục "Tối ưu" với chỉ số bằng số (Q2), có đường scale, nâng cấp và gánh nặng bảo trì (Q3); frontend có ma trận thiết bị và ngân sách hiệu năng (Q7); bảng, bucket, event nhắc trong luồng đều có ở phần data; từng service, database, app được người dùng duyệt. Trọng tâm: Q1, Q2, Q3, Q7 (frontend), Q6, Q8.
 - **File tạo ra:** `05-frontend/` (`overview.md`, `device-matrix.md`, `performance-budget.md`, `<app>/*`), `06-backend/` (`overview.md`, `communication.md`, `cross-cutting.md`, `repo-structure.md`, `contracts/`, `services/<service>/*`), `07-data/` (`overview.md`, `databases/<db>/*`, `object-storage.md`, `cache.md`, `messaging.md`, `consistency.md`, `backup-recovery.md`), theo phần hồ sơ giữ lại; `.agent-workspace/capacity/tables.yaml` cập nhật, `reviews/R-xxx-<phần>.md`.
 - **Script:** `calc_capacity.py`, `tally_votes.py`, `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.

@@ -70,9 +70,9 @@ Mỗi tiêu chí có hai lớp: script (máy kiểm được) chạy trước, r
 **Q5. Kiểu dữ liệu, kiến trúc, stack, phiên bản rõ từ đầu.** Ma trận phiên bản và tính năng đã được người dùng duyệt ở gate stack; kiểu dữ liệu cột có số byte và lý do; không chi tiết nào dựa trên stack hay phiên bản chưa chốt; phiên bản đã hết hoặc sắp hết EOL phải có lý do.
 <!-- END:council-q Q5 -->
 
-- **Script:** kiểm ma trận phiên bản (làm ở Giai đoạn 3): mọi công nghệ trong `02-tech-stack/README.md` có dòng trong `versions-features.md` với phiên bản chốt, ngày EOL và link nguồn. `check_links.py` (mỗi lớp stack truy về `TC`), `check_workspace.py` (quyết định chưa có quyết định của người dùng).
+- **Script:** `check_versions.py`: mọi công nghệ trong `02-tech-stack/README.md` có dòng trong `versions-features.md` với phiên bản chốt (major.minor; riêng lớp third-party được thêm phiên bản theo ngày YYYY-MM-DD hoặc "SaaS, không phiên bản"), ngày EOL và link nguồn; phiên bản **đã hết hỗ trợ** tại ngày chạy là lỗi chặn; phiên bản hết hỗ trợ **trong 12 tháng** là cảnh báo và dòng đó phải có link `R-xx` ở cột Rủi ro, thiếu thì lỗi chặn; dòng trùng (cùng công nghệ và phiên bản) là lỗi chặn. `check_links.py` (mỗi lớp stack truy về `TC`), `check_workspace.py` (quyết định chưa có quyết định của người dùng).
 - **Reviewer:** ma trận phiên bản và tính năng đã được người dùng duyệt ở G4 (có dòng duyệt theo ID trong `decision.md`/`decision-log.md`); kiểu dữ liệu cột trong `tables.md` có số byte và lý do; không chi tiết nào dựa trên stack hay phiên bản chưa chốt.
-- **Lỗi chặn:** thiết kế chi tiết (G7 trở đi) dùng lớp, phiên bản hoặc kiểu dữ liệu chưa được duyệt; phiên bản đã hết hoặc sắp hết EOL mà không nêu lý do.
+- **Lỗi chặn:** thiết kế chi tiết (G7 trở đi) dùng lớp, phiên bản hoặc kiểu dữ liệu chưa được duyệt; phiên bản đã hết hỗ trợ (script báo); phiên bản sắp hết hỗ trợ trong 12 tháng mà dòng đó không có link `R-xx` ở cột Rủi ro (script báo).
 
 ### Q6. Quản lý rủi ro
 
@@ -81,9 +81,9 @@ Mỗi tiêu chí có hai lớp: script (máy kiểm được) chạy trước, r
 **Q6. Quản lý rủi ro.** Mỗi quyết định sinh rủi ro vào sổ rủi ro; điểm rủi ro = khả năng × tác động (mỗi thang 1-5, tối đa 25). Rủi ro 15-25 điểm cần giảm thiểu, và nếu vẫn giữ thì người dùng phải chấp nhận rõ ràng; rủi ro 8-14 điểm cần giảm thiểu và dấu hiệu sớm.
 <!-- END:council-q Q6 -->
 
-- **Script:** `check_workspace.py` (quyết định chưa có quyết định của người dùng; rủi ro ≥ 15 điểm chưa xử lý), `check_links.py` (rủi ro `R-xx` link tới thành phần liên quan).
+- **Script:** `check_workspace.py` (quyết định chưa có quyết định của người dùng; rủi ro ≥ 15 điểm chưa xử lý), `check_links.py` (rủi ro `R-xx` link tới thành phần liên quan), `check_versions.py` (phiên bản hết hỗ trợ trong 12 tháng phải link `R-xx` ở cột Rủi ro của `versions-features.md`; Reviewer đối chiếu `R-xx` đó có thật trong sổ rủi ro và đúng thành phần).
 - **Reviewer:** ở mỗi gate, rủi ro mới từ giai đoạn vừa làm đã được khai vào sổ rủi ro chưa; mỗi brief quyết định, dòng phiên bản, bảng sizing và khoảng trống kỹ năng đều có rủi ro tương ứng; điểm (khả năng × tác động) có cần chấm lại không; rủi ro 15–25 điểm có giảm thiểu, và nếu vẫn giữ thì có dòng chấp nhận theo ID của người dùng ở `risks/acceptance.md`; rủi ro 8–14 có giảm thiểu và dấu hiệu sớm.
-- **Lỗi chặn:** quyết định hoặc dòng phiên bản không sinh rủi ro; rủi ro ≥ 15 điểm chưa giảm thiểu hoặc chưa được chấp nhận.
+- **Lỗi chặn:** quyết định hoặc dòng phiên bản không sinh rủi ro (phiên bản sắp hết hỗ trợ không link `R-xx`: script báo); rủi ro ≥ 15 điểm chưa giảm thiểu hoặc chưa được chấp nhận.
 
 ### Q7. Frontend: kiến trúc sâu, tối ưu cho thiết bị thật, không đụng GUI
 

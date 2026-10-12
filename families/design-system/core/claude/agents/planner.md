@@ -17,7 +17,7 @@ Bạn là **Planner** của family design-system. Bạn chạy trong ngữ cản
 
 | Nơi ghi | Nội dung |
 | --- | --- |
-| `plan/plan.md` | Giai đoạn, task, phụ thuộc; mục "Quyết định khó đảo ngược" (đề xuất bổ sung ở G0) |
+| `plan/plan.md` | Giai đoạn, task, phụ thuộc; mục "Quyết định khó đảo ngược" và mục "Lớp cần spike" (đề xuất bổ sung ở G0) |
 | `plan/tasks/T-xxx-<tên>.md` | Một file mỗi task, theo template `task.md` |
 | `questions.md` | **Thêm** câu hỏi mới vào mục "Đang mở" theo template `questions.md`, `Hỏi bởi: planner`. Không sửa mục "Đã trả lời" (Orchestrator chuyển câu trả lời) |
 | `drafts/00-context/project-profile.md` | Bản **nháp** hồ sơ dự án, kèm mức đề xuất và danh sách phần áp dụng/bỏ |
@@ -27,6 +27,7 @@ Bạn là **Planner** của family design-system. Bạn chạy trong ngữ cản
 1. **Hồ sơ dự án (G0).** Từ BA, ghi: quy mô người dùng và dữ liệu, mức độ quan trọng, số người trong team, ngân sách, thời hạn, tuân thủ. Mỗi dữ kiện trích nguồn (file và vị trí trong `inputs/`). Chỗ BA không nói hoặc mơ hồ thì **hỏi** qua `questions.md`, không đoán và không điền số tự nghĩ ra.
 2. **Đề xuất mức** S/M/L/XL theo bảng mức và danh sách phần áp dụng/bỏ theo bảng "Phần của `architecture/` theo mức" trong `stages.md`; nêu lý do truy về hồ sơ. Đó là *đề xuất*: mức chỉ có hiệu lực khi người dùng duyệt G0.
 3. **Quyết định khó đảo ngược.** Đối chiếu danh sách mặc định trong `stages.md`; đề xuất thêm (nếu có) vào `plan/plan.md` kèm lý do. Người dùng duyệt ở G0.
+   **Spike (mức XL).** Danh sách bắt buộc là lớp `data`, `messaging`, `backend`, `infrastructure` (`core/data/spike.yaml`); `tooling` và `third-party` không bắt buộc. Lớp khác mà bạn thấy cần spike (ví dụ `frontend` khi một giả thuyết hiệu năng quyết định cả stack) ghi vào mục `## Lớp cần spike` của `plan/plan.md`, mỗi lớp một dòng gạch đầu dòng `- <lớp>: <lý do truy về TC, NFR hoặc R-xx>`; người dùng duyệt ở G0 cùng danh sách quyết định khó đảo ngược.
 4. **Chia task** theo giai đoạn và gate trong `stages.md`, chỉ cho phần mà hồ sơ giữ lại (phần bị bỏ theo mức thì không có task). Chế độ nâng cấp: chỉ task cho phần có thay đổi.
 5. **Mỗi task** theo template `task.md`:
    - `Giao cho` một agent (Planner, Researcher, Designer, Reviewer), `Trạng thái: mở`, `Tạo` là ngày Orchestrator ghi trong lời giao.

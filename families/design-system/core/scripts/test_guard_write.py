@@ -540,3 +540,46 @@ def test_hooks_json_wires_the_script():
     script = [a for a in hook["args"] if a.endswith("guard_write.py")]
     assert script and script[0].startswith("${CLAUDE_PLUGIN_ROOT}/scripts/")
     assert (CORE / script[0].removeprefix("${CLAUDE_PLUGIN_ROOT}/")).is_file()
+
+
+# --- spikes: the spec is the Designer's, the result is only run_spike.py's --------------------------------------------------------
+
+SPIKE_SPEC = "stack/layers/data/spikes/S-02-pg-version.md"
+SPIKE_RESULT = "stack/layers/data/spikes/S-02-pg-version.result.md"
+
+
+@pytest.mark.parametrize("role, rel, ok", [
+    ("designer", SPIKE_SPEC, True), ("designer", "stack/layers/messaging/spikes/S-10-queue.md", True),
+    ("designer", SPIKE_RESULT, False), ("designer", "stack/layers/data/spikes/S-02-pg-version.RESULT.MD", False),
+    ("designer", "stack/layers/data/spikes/S-02.result.md", False),
+    ("designer", "stack/layers/data/spikes/notes.md", False), ("designer", "stack/layers/data/spikes/sub/S-02-x.md", False),
+    ("designer", "stack/layers/data/S-02-x.md", False), ("designer", "stack/layers/data/longlist.md", False), ("designer", "stack/S-02-x.md", False),
+    ("researcher", SPIKE_RESULT, False), ("researcher", "stack/layers/messaging/spikes/S-10-queue.result.md", False),
+    ("researcher", SPIKE_SPEC, True), ("researcher", "stack/layers/data/longlist.md", True),
+    ("planner", SPIKE_SPEC, False), ("planner", SPIKE_RESULT, False), ("orchestrator", SPIKE_SPEC, False), ("orchestrator", SPIKE_RESULT, False),
+    ("council-fit", SPIKE_SPEC, False), ("reviewer", SPIKE_RESULT, False),
+])
+def test_spike_zones(ws, role, rel, ok):
+    assert allowed(ws, agent(role), "Write", rel, content="x") is ok, (role, rel)
+
+
+def test_nobody_edits_a_spike_result_not_even_to_fix_a_typo(ws):
+    put = ws / SPIKE_RESULT
+    put.parent.mkdir(parents=True, exist_ok=True)
+    put.write_text("---\nresult: đạt\n---\n", encoding="utf-8")
+    for role in ("designer", "researcher"):
+        assert "deny" in call(ws, agent(role), "Edit", SPIKE_RESULT, old_string="đạt", new_string="không đạt"), role
+        assert "deny" in call(ws, agent(role), "Write", SPIKE_RESULT, content="---\nresult: đạt\n---\nx"), role
+    (ws / SPIKE_SPEC).write_text("spec x\n", encoding="utf-8")
+    assert allowed(ws, agent("designer"), "Edit", SPIKE_SPEC, old_string="x", new_string="y")  # the spec itself is the Designer's
+
+
+def test_the_orchestrator_runs_run_spike_and_nobody_else_does():
+    command = 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/run_spike.py" --spike S-02 --show'
+    assert shell("orchestrator", "Bash", command) == "allow"
+    assert shell("orchestrator", "Bash", 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/run_spike.py" --spike S-02') == "allow"
+    assert shell("reviewer", "Bash", command).startswith("deny")      # it starts containers: never a check script
+    assert shell("designer", "Bash", command).startswith("deny")
+    assert shell("orchestrator", "Bash", 'uv run "${CLAUDE_PLUGIN_ROOT}/scripts/run_spike.py" --spike S-02 > state.md').startswith("deny")
+    assert shell("orchestrator", "Bash", "docker run --rm alpine sh").startswith("deny")  # no container except through the script
+    assert shell("orchestrator", "Bash", "podman run --rm alpine sh").startswith("deny")

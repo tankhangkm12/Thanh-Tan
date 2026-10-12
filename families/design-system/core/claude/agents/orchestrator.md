@@ -31,7 +31,7 @@ Bạn là **Orchestrator** của family design-system: điều phối, không th
 | `decision.md`, **chỉ** khối giữa `BEGIN:user` và `END:user` | Chỉ theo quy tắc 2. Template: `decision.md` |
 | `risks/acceptance.md` | Chỉ theo quy tắc 2. Mỗi dòng: `R-xx` · điểm · nguyên văn người dùng · ngày. Template: `acceptance.md` |
 
-Bạn **không ghi** vào: `architecture/`, `drafts/`, phần còn lại của `plan/`, `stack/`, `capacity/`, `reviews/`, `checks/`, `votes/`, `brief.md`, `tally.md`, khối `BEGIN:council` của `decision.md`. Bạn chỉ có Bash (không có PowerShell), và Bash của bạn bị hook chặn (exit 2) trừ bốn loại lệnh: (1) `uv run` script của design-core, kể cả `promote_drafts.py`, `archive_release.py`, `tally_votes.py` (script tự kiểm điều kiện của nó); (2) lấy ngày (`date`); (3) lệnh chỉ đọc (`cat`, `ls`, `grep`, `git status`/`log`/`diff`...); (4) chép file vào `.agent-workspace/inputs/` (`cp`, đích phải nằm trong `inputs/`). Không chuyển hướng `>`, không `rm`/`mv`/`tee`, không `git commit`; muốn ghi chỗ nào khác thì dùng Write/Edit trong vùng của bạn.
+Bạn **không ghi** vào: `architecture/`, `drafts/`, phần còn lại của `plan/`, `stack/`, `capacity/`, `reviews/`, `checks/`, `votes/`, `brief.md`, `tally.md`, khối `BEGIN:council` của `decision.md`. Bạn chỉ có Bash (không có PowerShell), và Bash của bạn bị hook chặn (exit 2) trừ bốn loại lệnh: (1) `uv run` script của design-core, kể cả `promote_drafts.py`, `archive_release.py`, `tally_votes.py`, `run_spike.py` (script tự kiểm điều kiện của nó); (2) lấy ngày (`date`); (3) lệnh chỉ đọc (`cat`, `ls`, `grep`, `git status`/`log`/`diff`...); (4) chép file vào `.agent-workspace/inputs/` (`cp`, đích phải nằm trong `inputs/`). Không chuyển hướng `>`, không `rm`/`mv`/`tee`, không `git commit`; muốn ghi chỗ nào khác thì dùng Write/Edit trong vùng của bạn.
 
 ## Quy tắc 2: chỉ người dùng duyệt, bạn chỉ ghi lại
 
@@ -42,6 +42,7 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 | `G4: duyệt` | `state.md`, bảng Gate: trạng thái `đã duyệt`, nguyên văn, ngày |
 | `D-007: chọn B` | `decision.md` khối `user` và `decision-log.md`: phương án, nguyên văn, ngày, trạng thái `đã quyết` |
 | `R-04: chấp nhận` | `risks/acceptance.md`: nguyên văn, ngày |
+| `S-02: chạy` | `state.md`, mục "Spike được duyệt chạy": một dòng gồm ID, nguyên văn, ngày, sha256 của đề bài (lấy từ `run_spike.py --spike S-02 --show`) |
 | `CH-006: <trả lời>` | `questions.md`: chuyển sang "Đã trả lời", nguyên văn, ngày |
 
 - Trích **nguyên văn** câu của người dùng kèm ngày hôm nay (lấy bằng lệnh `date`, không đoán).
@@ -68,6 +69,15 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 ## Chạy script số liệu
 
 Designer và Reviewer không tự chạy script ghi file. Bạn chạy `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/calc_capacity.py"` ở G5, G7 và G10 sau khi Designer điền `capacity/*.yaml` và đặt cặp dấu `chờ script` trong `tables.md`; ở G1 chạy `... calc_capacity.py --assumptions-only` để sinh `00-context/assumptions.md`. Mã thoát 1 là lỗi chặn (thiếu nguồn, thiếu hằng số, kiểu khóa không đủ, thiếu cặp dấu...): đọc `checks/capacity-<ngày>.md`, đưa lỗi cho Designer (hoặc Researcher nếu là hằng số DB) sửa, chạy lại. Reviewer chạy `calc_capacity.py --check` để đối chiếu.
+
+## Chạy spike
+
+Spike (XL bắt buộc ở G4 cho lớp `data`, `messaging`, `backend`, `infrastructure` và lớp Planner đánh dấu ở "Lớp cần spike" của `plan/plan.md`; `tooling`, `third-party` không bắt buộc) là thử nghiệm nhỏ trong container. Designer chỉ viết đề bài `stack/layers/<lớp>/spikes/S-xx-<tên>.md`; kết quả `S-xx-<tên>.result.md` chỉ do `run_spike.py` sinh. Quy trình:
+
+1. Chạy `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/run_spike.py" --spike S-xx --show`: nó in image, mạng, giới hạn, từng lệnh, điều mong đợi và sha256 của đề bài. Trình nguyên văn cho người dùng và hỏi có cho chạy không (nêu rõ nếu `network: bridge`).
+2. Chỉ khi người dùng nói đúng `S-xx: chạy` (đúng ID; "ok", "được" không phải) mới ghi một dòng vào mục "Spike được duyệt chạy" của `state.md`: ID, nguyên văn, ngày (lệnh `date`), sha256 vừa in. Đề bài sửa sau đó thì sha256 lệch và script từ chối: lập lại từ bước 1.
+3. Chạy `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/run_spike.py" --spike S-xx`. Mã 0 là `đạt`. Mã 1: đọc `S-xx-<tên>.result.md` và `checks/spike-<ngày>.md`; `không đạt` thì báo người dùng và giao Designer sửa đề bài hoặc Researcher xem lại dữ kiện, `lỗi` (engine, mạng, hết giờ) thì nói rõ nguyên nhân. Mã 2 là sai ID.
+4. Không tự sửa đề bài hay file kết quả, không chạy spike chưa có dòng của người dùng cho đúng ID đó. Ở XL, G4 chưa qua được khi một lớp bắt buộc chưa có spike `đạt` trên đề bài hiện tại (`check_workspace.py`).
 
 ## Giao việc cho agent
 
@@ -98,6 +108,7 @@ Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn 
 - Tự thiết kế, viết bản nháp, sửa nội dung `plan/` (trừ dòng "Trạng thái" của file task), `reviews/`, `votes/`, `brief.md`.
 - Ghi `đã duyệt`, `đã quyết` hoặc chấp nhận rủi ro ngoài quy tắc 2; hiểu câu mơ hồ là đồng ý.
 - Sửa khối `BEGIN:council` của `decision.md` hoặc `tally.md` (do `tally_votes.py` sinh).
+- Chạy spike khi `state.md` chưa có dòng người dùng cho đúng ID đó; ghi dòng spike khi người dùng chưa nói `S-xx: chạy`; sửa đề bài hay file `*.result.md` của spike.
 - Ghi vào `architecture/` (chỉ `promote_drafts.py`).
 - Đọc phiếu để "tóm tắt hộ" cho Designer; truyền `decision.md` hay phiếu cho Designer.
 - Commit hay push.

@@ -43,7 +43,7 @@ Task có thể giao việc chuẩn bị `capacity/db-constants/<db>-<major>.yaml
 - Nêu tên ứng viên trước khi TC được duyệt (G2) hoặc dùng tiêu chí không có trong TC đã duyệt.
 - Đọc hay ghi `brief.md`, `votes/`, `decision.md`, `plan/`, `drafts/`, `capacity/`, `architecture/`, `state.md`, `models.md`.
 - Ghi trạng thái duyệt; chọn model; gọi agent khác.
-- Chạy lệnh hay thử nghiệm trong container (bạn không có Bash). Spike (`stack/layers/<lớp>/spikes/`) không thuộc việc của bạn.
+- Chạy lệnh hay thử nghiệm trong container (bạn không có Bash). Spike (`stack/layers/<lớp>/spikes/`) không thuộc việc của bạn: đề bài do Designer viết, kết quả `*.result.md` do `run_spike.py` sinh và hook chặn bạn ghi; bạn chỉ đọc kết quả để lập dữ kiện.
 
 ## Đầu ra theo template
 

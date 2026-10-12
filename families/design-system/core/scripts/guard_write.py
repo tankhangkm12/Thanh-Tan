@@ -33,6 +33,7 @@ REVIEWER_CHECK_ONLY_SCRIPTS = ("calc_capacity.py",)
 # preconditions).
 ORCHESTRATOR_SCRIPTS = REVIEWER_SCRIPTS + (
     "init_workspace.py", "detect_models.py", "call_council_cli.py", "tally_votes.py", "calc_capacity.py", "promote_drafts.py", "archive_release.py",
+    "run_spike.py",
 )
 READ_ONLY_COMMANDS = ("cat", "head", "tail", "wc", "ls", "dir", "type", "grep", "rg", "pwd", "diff", "stat", "echo", "cd", "find", "git")
 GIT_READ_ONLY = ("status", "log", "diff", "show", "ls-files", "rev-parse")
@@ -194,6 +195,8 @@ def create_only(old: str | None, new: str) -> None:
 # --- zones --------------------------------------------------------------------------------------------------------------
 
 ANY = None
+# The result of a spike is a fact only run_spike.py may write: no agent, whatever else its zone says (first match wins).
+SPIKE_RESULT = ("stack/layers/*/spikes/*.result.md", "deny:là kết quả spike do run_spike.py sinh, không agent nào ghi")
 ZONES = {
     "orchestrator": [
         ("state.md", ANY), ("models.md", ANY), ("questions.md", ANY), ("inputs/**", ANY),
@@ -201,14 +204,15 @@ ZONES = {
         ("plan/tasks/*.md", only_status_line), ("decisions/*/decision.md", only_user_block),
     ],
     "planner": [("plan/**", ANY), ("questions.md", ANY), ("drafts/00-context/project-profile.md", ANY)],
-    "researcher": [("stack/**", ANY), ("capacity/db-constants/*.yaml", ANY)],
+    "researcher": [SPIKE_RESULT, ("stack/**", ANY), ("capacity/db-constants/*.yaml", ANY)],
     "designer": [
+        SPIKE_RESULT,
         ("capacity/db-constants/**", "deny:là hằng số DB đã xác minh nguồn, của Researcher"),
         ("drafts/00-context/assumptions.md", "deny:do calc_capacity.py sinh từ capacity/assumptions.yaml, không sửa tay"),
         ("drafts/03-capacity/**", "deny:do calc_capacity.py sinh"),
         ("drafts/07-data/databases/*/tables.md", calc_blocks_frozen),
         ("decisions/*/brief.md", ANY), ("drafts/**", ANY), ("capacity/**", ANY), ("questions.md", ANY),
-        ("stack/criteria-draft.md", ANY),
+        ("stack/criteria-draft.md", ANY), ("stack/layers/*/spikes/S-*.md", ANY),
     ],
 }
 

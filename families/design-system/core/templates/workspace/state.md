@@ -48,6 +48,16 @@ Trạng thái: `chưa làm` · `đang làm` · `chờ duyệt` · `đã duyệt`
 
 - (không có)
 
+## Spike được duyệt chạy
+
+<!-- Chỉ người dùng cho chạy spike (quy tắc 2). Khi người dùng nói đúng `S-02: chạy` (ID đúng, có chữ "chạy"), Orchestrator ghi MỘT dòng: ID, nguyên văn, ngày, sha256 của đề bài lấy từ `run_spike.py --spike S-02 --show`. Sửa đề bài sau đó thì sha256 không khớp và `run_spike.py` từ chối: phải xin lại. "ok", "được" không phải đồng ý. -->
+
+| ID | Người dùng nói (nguyên văn) | Ngày | sha256 đề bài |
+| --- | --- | --- | --- |
+| | | | |
+
+(ví dụ một dòng hợp lệ: `| S-02 | "S-02: chạy" | 2026-10-12 | 3f2a…64 ký tự hex |`)
+
 ## Việc tiếp theo
 
 1. <việc đầu tiên session sau phải làm>

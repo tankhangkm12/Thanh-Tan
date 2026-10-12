@@ -274,10 +274,10 @@ Mỗi việc giao cho một agent độc lập, chạy trong context riêng, ch�
 | Orchestrator (phiên chính) | Chạy workflow, dò model, gọi agent, cập nhật trạng thái; không tự thiết kế | `state.md`, `models.md`; ngoài ra chỉ dòng "Trạng thái" trong `plan/tasks/*.md` | Model của phiên bạn mở / medium |
 | Planner | Đọc input, lập hồ sơ dự án, chia task, viết checklist, gom câu hỏi | `plan/`, `questions.md`, nháp `project-profile` | Theo `models.md` / high |
 | Researcher | Longlist công nghệ, dữ kiện phiên bản, EOL, giấy phép, giá, giới hạn, có link nguồn | `stack/` | Model có tìm web trong `models.md` / medium |
-| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/`, `stack/criteria-draft.md` (bản nháp TC không nêu tên công nghệ hay ứng viên nào) | Theo `models.md` / high |
+| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/`, `questions.md` (thêm câu hỏi), `stack/criteria-draft.md` (bản nháp TC không nêu tên công nghệ hay ứng viên nào) | Theo `models.md` / high |
 | Hội đồng (3 hoặc 5) | Chấm và bỏ phiếu độc lập | `decisions/*/votes/` | Mỗi thành viên một model khác nhau trong `models.md` |
 | Reviewer | Soát bản nháp theo 8 tiêu chí và checklist, chạy lại script; không sửa | `reviews/` | Khác model với Designer / high |
-| Script | Đếm phiếu, tính capacity, kiểm link, truy vết, chuyển bản nháp đã duyệt | `tally.md`, `checks/`, `architecture/` | Không phải agent |
+| Script | Đếm phiếu, tính capacity, sinh `assumptions.md`, kiểm link, truy vết, chuyển bản nháp đã duyệt | `tally.md`, `r1-summary.md`, `drafts/03-capacity/`, `drafts/00-context/assumptions.md`, khối bảng số trong `tables.md`, `checks/`, `architecture/` | Không phải agent |
 
 Chỉ script `promote_drafts.py` được ghi vào `architecture/`, và chỉ chạy sau khi bạn duyệt gate. Nhờ vậy đầu ra luôn đúng nghĩa "chỉ nội dung đã chốt".
 
@@ -299,7 +299,7 @@ Quy tắc gán model:
 - Mỗi agent chỉ nhận đúng danh sách file Orchestrator truyền cho task đó.
 - Thành viên hội đồng chỉ đọc `brief.md` và phần context được trích; vòng 1 không thấy phiếu nào khác, vòng 2 chỉ thấy bản tóm tắt ẩn danh.
 - Designer không thấy phiếu từng người, chỉ thấy quyết định cuối của bạn.
-- Reviewer chỉ đọc bản nháp, template, checklist và nguồn gốc (BA, `assumptions`); không đọc brief hay lý luận của Designer, để soát như người ngoài.
+- Reviewer chỉ đọc bản nháp, template, checklist và nguồn gốc (BA, `assumptions`) và bản ghi quyết định, chấp nhận rủi ro của người dùng (`decision-log.md`, `acceptance.md`); không đọc brief hay lý luận của Designer, để soát như người ngoài.
 - Agent trao đổi với nhau chỉ qua file trong workspace, không truyền tin trực tiếp.
 
 ## Hội đồng bỏ phiếu quá bán
@@ -458,8 +458,8 @@ Việc gì máy kiểm được thì giao cho script Python chạy qua uv, khôn
 | `init_workspace.py` | Tạo `.agent-workspace/`, thêm vào `.gitignore`, chép template, tạo file hướng dẫn CLI | — |
 | `detect_models.py` | Dò model và CLI gọi được, ghi `models.md` (mỗi dòng ghi loại: subagent Claude hay qua CLI ngoài) | — |
 | `call_council_cli.py` | Gọi một thành viên hội đồng qua CLI ngoài (không tương tác): đưa phần thân file góc nhìn + `brief.md`, ghi phiếu đúng định dạng `vote.md` vào `votes/` | Phiếu sai định dạng (do `tally_votes.py` bắt) |
-| `guard_write.py` (hook `PreToolUse` của plugin, matcher `Write\|Edit`) | Đọc `agent_type` và đường dẫn từ dữ liệu hook, chặn (exit 2) khi agent ghi ngoài vùng của mình theo `permissions.md` | Chặn từng lần ghi; không phải kiểm gate |
-| `calc_capacity.py` | Đọc `capacity/*.yaml`, sinh bảng số vào `drafts/03-capacity/` và `tables.md` | YAML thiếu nguồn cho hằng số hoặc giá |
+| `guard_write.py` (hook `PreToolUse` của plugin, matcher `Write\|Edit\|Bash`) | Đọc `agent_type` và đường dẫn từ dữ liệu hook, chặn (exit 2) khi agent ghi ngoài vùng của mình theo `permissions.md`. Với Bash của subagent: Reviewer chỉ được `uv run` các script kiểm tra của design-core và lệnh chỉ đọc, mọi lệnh khác bị chặn | Chặn từng lần ghi; không phải kiểm gate |
+| `calc_capacity.py` | Đọc `capacity/*.yaml`, sinh bảng số vào `drafts/03-capacity/` và khối bảng số có đánh dấu trong `tables.md` | YAML thiếu nguồn cho hằng số hoặc giá |
 | `tally_votes.py` | Đếm phiếu từng vòng, ghi `tally.md`, xác định quá bán; sinh `votes/r1-summary.md` ẩn danh khi cần vòng 2 | Thiếu phiếu, phiếu sai định dạng |
 | `check_links.py` | Link gãy, ID trùng, ID mồ côi, thiếu liên kết ngược | Có lỗi bất kỳ |
 | `check_trace.py` | FR không có luồng; API frontend gọi mà backend không có; bảng, bucket, event nhắc trong luồng mà phần data không có | Có lỗi bất kỳ |

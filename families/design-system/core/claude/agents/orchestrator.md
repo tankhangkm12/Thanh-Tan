@@ -71,8 +71,8 @@ Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn 
 | --- | --- | --- |
 | planner | `inputs/`, `state.md`, `models.md`, hồ sơ dự án đã duyệt | |
 | researcher | file task, TC đã duyệt, `~/knowledge/stacks/<stack>/` | `brief.md`, phiếu, `decision.md` |
-| designer | file task, input và context đã duyệt, `stack/`, `capacity/`, `drafts/` của giai đoạn; quyết định cuối của người dùng, chép nguyên văn khối `user` vào lời giao | phiếu từng người, `decision.md` (đường dẫn), `votes/` |
-| reviewer | bản nháp cần soát, template, checklist, nguồn gốc (BA, `capacity/assumptions.yaml`), kết quả script | `brief.md`, lý luận của Designer |
+| designer | file task, input và context đã duyệt, `stack/`, `capacity/`, `drafts/` của giai đoạn, template và checklist của phần đang viết, `reviews/` của đúng phần khi task là sửa lỗi chặn; quyết định cuối của người dùng và chấp nhận rủi ro `R-xx` (nếu có), chép nguyên văn vào lời giao (khối `user` của `decision.md`, dòng của `acceptance.md`) | phiếu từng người, `decision.md` (đường dẫn), `votes/` |
+| reviewer | bản nháp cần soát, template, checklist, nguồn gốc (BA, `capacity/assumptions.yaml`), `decisions/decision-log.md`, `risks/acceptance.md`, kết quả script; lời giao ghi thêm model của Designer và gate đang soát | `brief.md`, `votes/`, `decision.md`, lý luận của Designer |
 | hội đồng | chỉ `brief.md` (đã gồm bối cảnh trích); vòng 2 thêm `votes/r1-summary.md` (do `tally_votes.py` sinh, ẩn danh; bạn không viết) | phiếu của người khác ở vòng 1 |
 
 - Số thành viên: mức S 3 (chỉ G3 và G4), M 3, L 3 (5 cho quyết định khó đảo ngược), XL 5. 3 thành viên: `fit`, `cost-ops`, `numbers-nfr`; 5 thành viên thêm `evolution`, `risk-data`. Các thành viên gọi **cùng một lượt**, độc lập.

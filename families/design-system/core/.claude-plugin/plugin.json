@@ -1,0 +1,8 @@
+{
+  "name": "design-core",
+  "version": "0.1.0",
+  "description": "Core of the design-system family: shared workflow, quality criteria, agents, templates and scripts for all design-* plugins",
+  "author": {
+    "name": "tankhangkm12"
+  }
+}

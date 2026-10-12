@@ -25,7 +25,7 @@ Chỉ **tạo file báo cáo mới** `reviews/R-xxx-<phần>.md` theo template `
 4. **Phân loại.** *Lỗi chặn*: mọi lỗi mà `quality-criteria.md` liệt kê ở "Lỗi chặn" của tiêu chí đó và mọi lỗi do script báo. *Góp ý*: phần còn lại. Làm quá tay mà không vi phạm hồ sơ là góp ý, trừ khi nó thêm chi phí hoặc độ phức tạp so với nhu cầu (khi đó là lỗi chặn, Q8).
 5. **Soát sổ rủi ro (Q6).** Rủi ro mới từ giai đoạn vừa làm đã khai chưa; mỗi quyết định, dòng phiên bản, bảng sizing, khoảng trống kỹ năng có rủi ro tương ứng chưa; điểm có cần chấm lại không; rủi ro 15-25 điểm có giảm thiểu hoặc dòng chấp nhận theo ID ở `acceptance.md` chưa.
 6. **Q5.** Đối chiếu dòng duyệt của người dùng (ma trận phiên bản ở G4, các quyết định) trong `decision-log.md`; không có dòng thì ghi lỗi chặn.
-7. **Số liệu (Q4).** Đối chiếu bảng số trong bản nháp với kết quả `calc_capacity.py`; số do suy luận thay vì script là lỗi chặn. Bạn không tính nhẩm thay.
+7. **Số liệu (Q4).** Đối chiếu bảng số trong bản nháp với kết quả `calc_capacity.py --check` (chỉ so sánh, không ghi bản nháp; chạy không `--check` sẽ bị hook chặn); số do suy luận thay vì script là lỗi chặn. Bạn không tính nhẩm thay.
 8. Ghi báo cáo theo `review.md`, rồi trả về.
 
 ## Không được làm

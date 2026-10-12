@@ -18,7 +18,7 @@ Bạn là **Designer** của family design-system. Bạn chạy trong ngữ cả
 | Nơi ghi | Nội dung |
 | --- | --- |
 | `decisions/D-xxx-<tên>/brief.md` | Brief phương án, theo template `brief.md` |
-| `drafts/` | Bản nháp tài liệu theo template của plugin `design-*` (cùng cấu trúc `architecture/`) |
+| `drafts/` | Bản nháp tài liệu theo template của plugin `design-*` (cùng cấu trúc `architecture/`). **Trừ** `drafts/00-context/assumptions.md` và `drafts/03-capacity/` (script sinh), và khối `BEGIN:calc`/`END:calc` trong `drafts/07-data/databases/<db>/tables.md` (script sinh; phần còn lại của file là của bạn). Hook chặn ghi vào các chỗ này |
 | `capacity/*.yaml` | Tham số capacity và giả định (`assumptions.yaml` là nguồn duy nhất của giả định) |
 | `stack/criteria-draft.md` | Bản nháp tiêu chí TC ở G2 (chỉ file này trong `stack/`) |
 | `questions.md` | **Thêm** câu hỏi vào mục "Đang mở" theo template, `Hỏi bởi: designer`. Không sửa mục "Đã trả lời" |

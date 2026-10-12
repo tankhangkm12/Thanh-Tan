@@ -117,6 +117,8 @@ def test_tools_per_role():
     assert tools_of("designer") == {"Read", "Glob", "Grep", "Write", "Edit"}
     assert tools_of("researcher") == {"Read", "Glob", "Grep", "Write", "WebSearch", "WebFetch"}
     assert tools_of("reviewer") == {"Read", "Glob", "Grep", "Write", "Bash"}
+    # The Orchestrator has Bash for four kinds of command (guard_write.py) and no PowerShell.
+    assert tools_of("orchestrator") == {"Read", "Glob", "Grep", "Write", "Edit", "Bash", "Agent"}
     for slug in PERSPECTIVES:
         meta, _ = split(COUNCIL / f"{slug}.md")
         assert {tool.strip() for tool in meta["tools"].split(",")} == {"Read", "Write"}

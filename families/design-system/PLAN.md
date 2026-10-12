@@ -179,7 +179,9 @@ Các từ như "nhanh", "lớn", "đủ dùng", "scale tốt" không có số đ
 
 **Kiểu dữ liệu chọn theo số, không theo thói quen.** Mỗi cột trong `tables.md` ghi kiểu, số byte và lý do. Quy tắc: chọn kiểu nhỏ nhất vẫn đủ cho mốc xa nhất cộng biên an toàn. Ví dụ với PostgreSQL: `integer` (4 byte) có giá trị lớn nhất 2.147.483.647. Bảng thêm 10.000 dòng/ngày thì dùng được hàng trăm năm, nên giữ `integer`. Bảng thêm 1 triệu dòng/ngày (365 triệu/năm) thì hết sau khoảng 5,9 năm, nên phải dùng `bigint` (8 byte) ngay từ đầu.
 
-**Dung lượng dữ liệu** = (phần đầu dòng + con trỏ dòng + tổng byte các cột + padding căn lề) × số dòng, cộng index. Các hằng số phần đầu dòng và căn lề lấy từ tài liệu chính thức của DB đã chọn. Ví dụ: 10.000 đơn/ngày là 3,65 triệu dòng/năm; với khoảng 80 byte/dòng thì cỡ 292 MB/năm, chưa tính index.
+**Dung lượng dữ liệu** = (phần đầu dòng + con trỏ dòng + tổng byte các cột + padding căn lề) × số dòng, cộng index. Các hằng số phần đầu dòng và căn lề kiểu lấy từ tài liệu chính thức của DB đã chọn; MAXALIGN phụ thuộc nền tảng nên là giả định (x86_64 hoặc arm64, có nguồn), không phải hằng số. Ví dụ: 10.000 đơn/ngày là 3,65 triệu dòng/năm; với khoảng 80 byte/dòng thì cỡ 292 MB/năm, chưa tính index.
+
+**Hai con số cho dữ liệu của mỗi database.** *Dung lượng logic* là số tính từ dòng, trang và index như trên. *Dung lượng cần cấp* là số thật phải mua: `(heap × hệ số phình heap + index × hệ số phình index + WAL) × (1 + số bản sao) + số backup × dữ liệu sau phình`, và chi phí lưu trữ database tính trên số này. Các thứ script không mô hình được nên bắt buộc khai thành giả định cho **mỗi database** (`database_assumptions` trong `assumptions.yaml`): hệ số phình heap và index, dung lượng WAL giữ lại, số bản sao, số backup giữ lại, tỉ lệ cột vượt ngưỡng TOAST (TOAST chưa được mô hình; `data-sizing.md` nói rõ và ghi tỉ lệ đã khai) và MAXALIGN. Mỗi giả định có giá trị và nguồn hoặc lý do; giá trị 0 (hoặc hệ số phình 1) được phép nhưng phải có `reason`; thiếu là lỗi.
 
 **Tải tính toán** đi từ giả định người dùng:
 
@@ -192,6 +194,8 @@ Hệ số đỉnh và biên an toàn cũng là giả định, nằm trong `assum
 **Object storage** = số file/ngày × kích thước trung bình × thời gian lưu; băng thông ra = lượt xem × kích thước. **Chi phí** lấy từ trang giá chính thức, ghi ngày tra cứu.
 
 **Cách làm:** Designer ghi giả định và tham số vào `capacity/*.yaml` trong workspace; script `calc_capacity.py` sinh bảng số vào bản nháp; Reviewer chạy lại script và đối chiếu. Mỗi khi kiểu dữ liệu hay giả định đổi, toàn bộ số được tính lại. `capacity/assumptions.yaml` là nguồn duy nhất của giả định; `00-context/assumptions.md` sinh từ nó, và `check_numbers.py` báo lỗi nếu hai file lệch.
+
+**Hằng số của DB không viết cứng trong script.** Phần đầu dòng, căn lề, kích thước kiểu, kích thước trang, fillfactor nằm trong `capacity/db-constants/<db>-<major>.yaml` (mỗi hằng số có `value` và `source` là link tài liệu chính thức; link vào mã nguồn phải trỏ **tag phát hành cố định** như `REL_16_4`, không trỏ nhánh như `REL_16_STABLE`; file có `looked_up`), và `calc_capacity.py` chỉ đọc từ đó (hoặc từ `--constants-dir`). Nguồn dùng lại giữa các dự án là `~/knowledge/stacks/<db>/constants-<major>.yaml`; ở G4, sau khi chốt DB, Researcher xác minh lại từng link rồi chép vào workspace. Hằng số hay đơn giá thiếu nguồn thì script báo lỗi và không tính. Schema các file `capacity/*.yaml`: [core/workflow/capacity-schema.md](core/workflow/capacity-schema.md).
 
 ## Phiên bản và ma trận tính năng
 
@@ -273,8 +277,8 @@ Mỗi việc giao cho một agent độc lập, chạy trong context riêng, ch�
 | --- | --- | --- | --- |
 | Orchestrator (phiên chính) | Chạy workflow, dò model, gọi agent, cập nhật trạng thái; không tự thiết kế | `state.md`, `models.md`; ngoài ra chỉ dòng "Trạng thái" trong `plan/tasks/*.md` | Model của phiên bạn mở / medium |
 | Planner | Đọc input, lập hồ sơ dự án, chia task, viết checklist, gom câu hỏi | `plan/`, `questions.md`, nháp `project-profile` | Theo `models.md` / high |
-| Researcher | Longlist công nghệ, dữ kiện phiên bản, EOL, giấy phép, giá, giới hạn, có link nguồn | `stack/` | Model có tìm web trong `models.md` / medium |
-| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/`, `questions.md` (thêm câu hỏi), `stack/criteria-draft.md` (bản nháp TC không nêu tên công nghệ hay ứng viên nào) | Theo `models.md` / high |
+| Researcher | Longlist công nghệ, dữ kiện phiên bản, EOL, giấy phép, giá, giới hạn, có link nguồn | `stack/`, `capacity/db-constants/<db>-<major>.yaml` (hằng số DB đã xác minh nguồn) | Model có tìm web trong `models.md` / medium |
+| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/` (trừ `capacity/db-constants/`), `questions.md` (thêm câu hỏi), `stack/criteria-draft.md` (bản nháp TC không nêu tên công nghệ hay ứng viên nào) | Theo `models.md` / high |
 | Hội đồng (3 hoặc 5) | Chấm và bỏ phiếu độc lập | `decisions/*/votes/` | Mỗi thành viên một model khác nhau trong `models.md` |
 | Reviewer | Soát bản nháp theo 8 tiêu chí và checklist, chạy lại script; không sửa | `reviews/` | Khác model với Designer / high |
 | Script | Đếm phiếu, tính capacity, sinh `assumptions.md`, kiểm link, truy vết, chuyển bản nháp đã duyệt | `tally.md`, `r1-summary.md`, `drafts/03-capacity/`, `drafts/00-context/assumptions.md`, khối bảng số trong `tables.md`, `checks/`, `architecture/` | Không phải agent |
@@ -417,7 +421,8 @@ Nên mỗi session làm trọn một giai đoạn để ngữ cảnh phiên chí
 │   ├── tables.yaml                # bảng, cột, kiểu, số dòng/ngày
 │   ├── storage.yaml               # file/ngày, kích thước, thời gian lưu
 │   ├── compute.yaml               # năng lực mỗi instance
-│   └── pricing.yaml               # đơn giá + link + ngày tra cứu
+│   ├── pricing.yaml               # đơn giá + link + ngày tra cứu
+│   └── db-constants/<db>-<major>.yaml   # hằng số DB (đầu dòng, căn lề, kích thước kiểu), từng hằng số kèm link nguồn
 │
 ├── decisions/
 │   ├── decision-log.md            # ID, câu hỏi, trạng thái, ngày
@@ -460,7 +465,7 @@ Việc gì máy kiểm được thì giao cho script Python chạy qua uv, khôn
 | `detect_models.py` | Dò model và CLI gọi được, ghi `models.md` (mỗi dòng ghi loại: subagent Claude hay qua CLI ngoài) | — |
 | `call_council_cli.py` | Gọi một thành viên hội đồng qua CLI ngoài (không tương tác): đưa phần thân file góc nhìn + `brief.md`, ghi phiếu đúng định dạng `vote.md` vào `votes/` | Phiếu sai định dạng (do `tally_votes.py` bắt) |
 | `guard_write.py` (hook `PreToolUse` của plugin, matcher `Write\|Edit\|Bash\|PowerShell`) | Đọc `agent_type` và đường dẫn từ dữ liệu hook, chặn (exit 2) khi agent ghi ngoài vùng của mình theo `permissions.md`. Với shell (agent chỉ có Bash; PowerShell vẫn nằm trong matcher và có cùng luật làm lớp dự phòng): Reviewer chỉ được `uv run` các script kiểm tra của design-core (`calc_capacity.py` chỉ kèm `--check`, không ghi bản nháp) và lệnh chỉ đọc; Orchestrator chỉ được `uv run` script của design-core (kể cả `promote_drafts.py`, `archive_release.py`, `tally_votes.py`), lấy ngày, lệnh chỉ đọc, và chép file vào `.agent-workspace/inputs/`; mọi lệnh khác bị chặn; Planner, Researcher, Designer, hội đồng không có shell. Thêm: Orchestrator chỉ sửa dòng "Trạng thái" của file task và khối `BEGIN:user` của `decision.md`; Designer không sửa khối `BEGIN:calc` của `tables.md` và `drafts/03-capacity/`, `assumptions.md`; Reviewer chỉ tạo file mới trong `reviews/` | Chặn từng lần ghi; không phải kiểm gate |
-| `calc_capacity.py` | Đọc `capacity/*.yaml`, sinh bảng số vào `drafts/03-capacity/` và khối bảng số có đánh dấu trong `tables.md` | YAML thiếu nguồn cho hằng số hoặc giá |
+| `calc_capacity.py [--check] [--assumptions-only] [--constants-dir DIR]` | Đọc `capacity/*.yaml` và `capacity/db-constants/`, sinh `drafts/03-capacity/*`, `drafts/00-context/assumptions.md` và bảng số trong `tables.md` chỉ giữa `<!-- BEGIN:calc:<bảng> -->` và `<!-- END:calc:<bảng> -->`; `--check` chỉ tính lại và so sánh (Reviewer chạy); `--assumptions-only` chỉ sinh `assumptions.md` (G1); mốc tính theo mức dự án (S: ra mắt, 1 năm; M: thêm 3 năm; L: thêm 5 năm; XL: thêm đỉnh tải); kiểu khóa tăng dần không đủ cho mốc xa nhất cũng là lỗi | YAML thiếu nguồn cho hằng số hoặc giá |
 | `tally_votes.py` | Đếm phiếu từng vòng, ghi `tally.md`, xác định quá bán; sinh `votes/r1-summary.md` ẩn danh khi cần vòng 2 | Thiếu phiếu, phiếu sai định dạng |
 | `check_links.py` | Link gãy (file và `#mục`), ID trùng (ID được định nghĩa bởi heading; ô đầu dòng bảng chỉ định nghĩa khi không có heading nào, nên bảng chỉ mục ở file overview không trùng với file chi tiết), thiếu liên kết ngược (file có ID `SVC`/`TBL`/`BKT`/`EVT`/`API` phải có mục "Được dùng bởi" link tới mọi file nhắc ID đó; không áp cho `FR`/`NFR`/`TC`/`R`), mỗi lớp stack truy về `TC` đã định nghĩa (Q5), mỗi `R-xx` có trong cột "Thành phần liên quan" ID `SVC`/`TBL`/`BKT`/`EVT`/`API` hoặc link tới file trong `02-tech-stack/` (Q6; tên công nghệ trần không link là lỗi); cảnh báo ID mồ côi (định nghĩa mà không file nào khác nhắc) | Có lỗi chặn (ID mồ côi chỉ cảnh báo, không chặn) |
 | `check_trace.py` | FR không có luồng; API frontend gọi mà backend không có; bảng, bucket, event nhắc trong luồng mà phần data không có | Có lỗi bất kỳ |

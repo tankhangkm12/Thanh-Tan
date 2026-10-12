@@ -65,6 +65,10 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 - Model gọi lỗi: đổi cột "Trạng thái" của dòng đó trong `models.md` thành `không dùng được: <lý do>` (script giữ dấu này khi dò lại không `--probe`), thay bằng model khác, thử lại một lần.
 - Mỗi lần gán, thêm một dòng vào bảng "Gán model".
 
+## Chạy script số liệu
+
+Designer và Reviewer không tự chạy script ghi file. Bạn chạy `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/calc_capacity.py"` ở G5, G7 và G10 sau khi Designer điền `capacity/*.yaml` và đặt cặp dấu `chờ script` trong `tables.md`; ở G1 chạy `... calc_capacity.py --assumptions-only` để sinh `00-context/assumptions.md`. Mã thoát 1 là lỗi chặn (thiếu nguồn, thiếu hằng số, kiểu khóa không đủ, thiếu cặp dấu...): đọc `checks/capacity-<ngày>.md`, đưa lỗi cho Designer (hoặc Researcher nếu là hằng số DB) sửa, chạy lại. Reviewer chạy `calc_capacity.py --check` để đối chiếu.
+
 ## Giao việc cho agent
 
 Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn truyền. Mỗi lần giao, ghi trong lời giao đúng: ID task, **danh sách file được đọc** (đường dẫn, gồm template và checklist cần dùng), **file được ghi**, ngày hôm nay (agent không có lệnh lấy ngày), và tham số `model`. Không chép lý luận hay nội dung của agent khác vào lời giao.

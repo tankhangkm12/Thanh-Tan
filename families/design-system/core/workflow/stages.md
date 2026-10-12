@@ -86,10 +86,10 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G1. Context
 
 - **Đầu vào:** `inputs/ba/`, hồ sơ dự án đã duyệt.
-- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do script sinh từ yaml, không sửa tay.
+- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
 - **Điều kiện qua gate:** FR, NFR có chỉ số bằng số, ràng buộc và giả định đều có ID; không có từ mơ hồ thiếu số (Q1, Q4); người dùng duyệt. Trọng tâm: Q1, Q4, Q6, Q8.
 - **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
-- **Script:** `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py --assumptions-only`, `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`.
 
 ## G2. Tiêu chí lựa chọn (TC)
 
@@ -110,16 +110,16 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G4. Stack và phiên bản
 
 - **Đầu vào:** TC đã duyệt, kiểu kiến trúc đã chốt, kiến thức stack ở `~/knowledge/stacks/<stack>/`.
-- **Việc:** với từng lớp, Researcher lập longlist có nguồn → loại theo TC (knockout) → shortlist → chấm theo trọng số. Hội đồng quyết stack từng lớp, phiên bản chốt và loại database (mức S: chỉ stack từng lớp; phiên bản chốt không qua hội đồng nhưng vẫn phải có trong `versions-features.md` và được người dùng duyệt ở G4, Q5). Spike trong container khi mức dự án yêu cầu (XL bắt buộc). Cuối cùng kiểm tra chéo toàn stack và lập ma trận phiên bản và tính năng.
-- **Điều kiện qua gate:** từng lớp được người dùng duyệt; ma trận phiên bản đã duyệt (Q5); kiểm tra chéo không còn xung đột; mọi dữ kiện có link nguồn chính thức (Q4). Trọng tâm: Q4, Q5, Q6, Q8.
-- **File tạo ra:** phần còn lại của `02-tech-stack/`: `README.md`, `layers/`, `versions-features.md`, `compatibility.md`, `cost-licensing.md`, `team-readiness.md`, `exit-strategy.md`; `.agent-workspace/stack/layers/<lớp>/` (`longlist.md`, `knockout.md`, `shortlist.md`, `scoring.md`, `spikes/`), `stack/cross-check.md`, `decisions/D-xxx-*`.
+- **Việc:** với từng lớp, Researcher lập longlist có nguồn → loại theo TC (knockout) → shortlist → chấm theo trọng số. Hội đồng quyết stack từng lớp, phiên bản chốt và loại database (mức S: chỉ stack từng lớp; phiên bản chốt không qua hội đồng nhưng vẫn phải có trong `versions-features.md` và được người dùng duyệt ở G4, Q5). Spike trong container khi mức dự án yêu cầu (XL bắt buộc). Sau khi chốt database, Researcher xác minh từng link nguồn của hằng số DB trong `~/knowledge/stacks/<db>/constants-<major>.yaml` (đúng phiên bản chốt) rồi chép vào `capacity/db-constants/<db>-<major>.yaml`. Cuối cùng kiểm tra chéo toàn stack và lập ma trận phiên bản và tính năng.
+- **Điều kiện qua gate:** từng lớp được người dùng duyệt; ma trận phiên bản đã duyệt (Q5); kiểm tra chéo không còn xung đột; mọi dữ kiện có link nguồn chính thức (Q4); mỗi database đã chốt có file hằng số `capacity/db-constants/<db>-<major>.yaml` với mọi hằng số có link nguồn. Trọng tâm: Q4, Q5, Q6, Q8.
+- **File tạo ra:** phần còn lại của `02-tech-stack/`: `README.md`, `layers/`, `versions-features.md`, `compatibility.md`, `cost-licensing.md`, `team-readiness.md`, `exit-strategy.md`; `.agent-workspace/stack/layers/<lớp>/` (`longlist.md`, `knockout.md`, `shortlist.md`, `scoring.md`, `spikes/`), `stack/cross-check.md`, `capacity/db-constants/<db>-<major>.yaml`, `decisions/D-xxx-*`.
 - **Script:** `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G5. Capacity sơ bộ
 
 - **Đầu vào:** NFR, giả định, stack đã chốt.
-- **Việc:** Designer điền tham số capacity; `calc_capacity.py` tính tải, dung lượng, chi phí theo từng mốc của mức dự án (S: ra mắt, 1 năm; M: thêm 3 năm; L: thêm 5 năm; XL: thêm đỉnh tải).
-- **Điều kiện qua gate:** mọi hằng số và đơn giá có nguồn và ngày tra cứu; script tính lại khớp bản nháp (Q4); người dùng duyệt tải, dung lượng, chi phí từng mốc. Trọng tâm: Q2, Q4, Q6, Q8.
+- **Việc:** Designer điền tham số capacity (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`, schema ở [capacity-schema.md](capacity-schema.md)) và đặt trong `tables.md` mỗi bảng một cặp dấu `<!-- BEGIN:calc:<bảng> -->` / `chờ script` / `<!-- END:calc:<bảng> -->`; Orchestrator chạy `calc_capacity.py` (Designer không có Bash), `calc_capacity.py` tính tải, dung lượng, chi phí theo từng mốc của mức dự án (S: ra mắt, 1 năm; M: thêm 3 năm; L: thêm 5 năm; XL: thêm đỉnh tải).
+- **Điều kiện qua gate:** mọi hằng số và đơn giá có nguồn và ngày tra cứu; mỗi database khai đủ giả định phình, WAL, bản sao, backup, TOAST và MAXALIGN; script tính lại khớp bản nháp (Q4); người dùng duyệt tải, dung lượng, chi phí từng mốc. Trọng tâm: Q2, Q4, Q6, Q8.
 - **File tạo ra:** `03-capacity/workload-model.md`, `data-sizing.md`, `storage-sizing.md`, `compute-sizing.md`, `cost-model.md`; `.agent-workspace/capacity/` (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`), `checks/numbers-<ngày>.md`.
 - **Script:** `calc_capacity.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
 

@@ -198,6 +198,11 @@ def test_orchestrator_may_write_only_the_user_block_of_decision_md(ws):
     ("planner", "drafts/00-context/glossary.md", False), ("planner", "state.md", False), ("planner", "models.md", False),
     ("planner", "stack/x.md", False), ("planner", "inputs/ba/x.md", False), ("planner", "capacity/assumptions.yaml", False),
     ("researcher", "stack/layers/db/longlist.md", True), ("researcher", "stack/cross-check.md", True),
+    ("researcher", "capacity/db-constants/postgresql-16.yaml", True), ("researcher", "capacity/db-constants/sub/x.yaml", False),
+    ("researcher", "capacity/assumptions.yaml", False), ("researcher", "capacity/pricing.yaml", False), ("researcher", "capacity/db-constants/readme.md", False),
+    ("designer", "capacity/db-constants/postgresql-16.yaml", False), ("designer", "capacity/tables.yaml", True),
+    ("planner", "capacity/db-constants/postgresql-16.yaml", False), ("orchestrator", "capacity/db-constants/postgresql-16.yaml", False),
+    ("reviewer", "capacity/db-constants/postgresql-16.yaml", False),
     ("researcher", "drafts/x.md", False), ("researcher", "decisions/D-001-x/brief.md", False), ("researcher", "state.md", False),
     ("researcher", "plan/plan.md", False), ("researcher", "reviews/R-005-x.md", False),
     ("designer", "decisions/D-001-x/brief.md", True), ("designer", "drafts/05-frontend/overview.md", True),
@@ -223,6 +228,32 @@ def test_designer_keeps_out_of_the_calc_blocks_of_tables_md(ws):
     assert "deny" in call(ws, agent("designer"), "Write", "drafts/07-data/databases/new/tables.md",
                           content="<!-- BEGIN:calc:t -->\nx\n<!-- END:calc:t -->\n")  # cannot forge a block
     assert allowed(ws, agent("designer"), "Write", "drafts/07-data/databases/new/tables.md", content="# mới\n")
+
+
+PENDING_TABLES = "# tables\n\nGhi chú.\n\n<!-- BEGIN:calc:items -->\nchờ script\n<!-- END:calc:items -->\n"
+
+
+def test_designer_may_add_and_remove_an_empty_calc_block_marked_cho_script(ws):
+    tables = "drafts/07-data/databases/orders/tables.md"
+    new = "drafts/07-data/databases/billing/tables.md"
+    for pending in ("chờ script", "<!-- chờ script -->", "  Chờ Script  "):
+        content = f"# t\n\n<!-- BEGIN:calc:items -->\n{pending}\n<!-- END:calc:items -->\n"
+        assert allowed(ws, agent("designer"), "Write", new, content=content), pending
+    # next to a filled block, a second (pending) pair may be added
+    assert allowed(ws, agent("designer"), "Edit", tables, old_string="Ghi chú của Designer.", new_string="Ghi chú.\n\n<!-- BEGIN:calc:items -->\nchờ script\n<!-- END:calc:items -->")
+    # and a pending pair that is already in the file may be removed
+    path = ws / "drafts/07-data/databases/billing/tables.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(PENDING_TABLES, encoding="utf-8")
+    assert allowed(ws, agent("designer"), "Write", new, content="# tables\n\nGhi chú.\n")
+    # never a filled block: add, change or remove
+    assert "deny" in call(ws, agent("designer"), "Write", new, content=PENDING_TABLES.replace("chờ script", "| a | 1 |"))
+    assert "deny" in call(ws, agent("designer"), "Edit", new, old_string="chờ script", new_string="| a | 1 |")
+    assert "deny" in call(ws, agent("designer"), "Edit", tables, old_string="| id | 8 |", new_string="chờ script")
+    assert "deny" in call(ws, agent("designer"), "Write", tables, content="# tables\n")  # a filled block removed
+    # a pending block renamed is still only an empty pair; a duplicate name or a lone marker is not allowed
+    assert "deny" in call(ws, agent("designer"), "Write", new, content=PENDING_TABLES + PENDING_TABLES)
+    assert "deny" in call(ws, agent("designer"), "Write", new, content=PENDING_TABLES.replace("<!-- END:calc:items -->", ""))
 
 
 # --- Reviewer ------------------------------------------------------------------------------------------------------------------

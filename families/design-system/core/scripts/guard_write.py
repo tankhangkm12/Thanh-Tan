@@ -161,9 +161,29 @@ def only_user_block(old: str | None, new: str) -> None:
         raise Denied("Orchestrator chỉ được sửa khối giữa BEGIN:user và END:user của decision.md (phần hội đồng do tally_votes.py sinh)")
 
 
+PENDING_BLOCK = re.compile(r"(?:<!--\s*)?chờ script(?:\s*-->)?", re.IGNORECASE)
+
+
 def calc_blocks_frozen(old: str | None, new: str) -> None:
-    if CALC_BLOCK.findall(old or "") != CALC_BLOCK.findall(new) or (old or "").count("BEGIN:calc") != new.count("BEGIN:calc"):
-        raise Denied("khối giữa BEGIN:calc:<bảng> và END:calc:<bảng> trong tables.md do calc_capacity.py sinh; Designer chỉ sửa phần ngoài khối")
+    """A filled calc block is the script's. The Designer may only add (or remove) a block that holds just "chờ script"."""
+    old, new = old or "", new
+    old_blocks, new_blocks = CALC_BLOCK.findall(old), CALC_BLOCK.findall(new)
+    message = "khối giữa BEGIN:calc:<bảng> và END:calc:<bảng> trong tables.md do calc_capacity.py sinh; Designer chỉ sửa phần ngoài khối, và chỉ được thêm/bỏ cặp dấu mà bên trong chỉ có \"chờ script\""
+    if old.count("BEGIN:calc") != len(old_blocks) or new.count("BEGIN:calc") != len(new_blocks):
+        if old.count("BEGIN:calc") == new.count("BEGIN:calc") and old_blocks == new_blocks:
+            return  # a broken marker that was already there and is untouched
+        raise Denied(message)
+    before, after = dict(old_blocks), dict(new_blocks)
+    if len(before) != len(old_blocks) or len(after) != len(new_blocks):
+        raise Denied(message)
+    for name, content in after.items():
+        if name in before and before[name] != content:
+            raise Denied(message)
+        if name not in before and not PENDING_BLOCK.fullmatch(nfc(content).strip()):
+            raise Denied(message)
+    for name, content in before.items():
+        if name not in after and not PENDING_BLOCK.fullmatch(nfc(content).strip()):
+            raise Denied(message)
 
 
 def create_only(old: str | None, new: str) -> None:
@@ -181,8 +201,9 @@ ZONES = {
         ("plan/tasks/*.md", only_status_line), ("decisions/*/decision.md", only_user_block),
     ],
     "planner": [("plan/**", ANY), ("questions.md", ANY), ("drafts/00-context/project-profile.md", ANY)],
-    "researcher": [("stack/**", ANY)],
+    "researcher": [("stack/**", ANY), ("capacity/db-constants/*.yaml", ANY)],
     "designer": [
+        ("capacity/db-constants/**", "deny:là hằng số DB đã xác minh nguồn, của Researcher"),
         ("drafts/00-context/assumptions.md", "deny:do calc_capacity.py sinh từ capacity/assumptions.yaml, không sửa tay"),
         ("drafts/03-capacity/**", "deny:do calc_capacity.py sinh"),
         ("drafts/07-data/databases/*/tables.md", calc_blocks_frozen),

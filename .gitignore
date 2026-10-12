@@ -12,3 +12,6 @@ GEMINI.md
 .claude/
 .agents/
 .agentflow/
+
+# Local build notes for the design-system family
+families/design-system/BUILD-PROGRESS.md

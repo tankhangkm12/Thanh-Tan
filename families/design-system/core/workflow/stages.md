@@ -78,7 +78,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G0. Khởi tạo và hồ sơ dự án
 
 - **Đầu vào:** tài liệu BA trong prompt; chế độ nâng cấp thì thêm bản `architecture/` cũ.
-- **Việc:** Orchestrator chạy `init_workspace.py`, lưu input vào `inputs/` (`ba/`, `ui-design/`, `previous-design/`), chạy `detect_models.py` để lập danh mục model. Planner lập hồ sơ dự án (quy mô người dùng và dữ liệu, mức độ quan trọng, số người, ngân sách, thời hạn, tuân thủ), đề xuất mức S/M/L/XL và danh sách phần áp dụng/bỏ; lập `plan/plan.md` và task đầu; đề xuất bổ sung (nếu có) vào danh sách quyết định khó đảo ngược.
+- **Việc:** Orchestrator chạy `init_workspace.py`, lưu input vào `inputs/` (`ba/`, `ui-design/`, `previous-design/`), chạy `detect_models.py` để lập danh mục model, rồi sau khi có mức dự án đề xuất, chạy `detect_models.py --probe <các model đã chọn trước>` một lần (model chưa thử chưa được dùng). Planner lập hồ sơ dự án (quy mô người dùng và dữ liệu, mức độ quan trọng, số người, ngân sách, thời hạn, tuân thủ), đề xuất mức S/M/L/XL và danh sách phần áp dụng/bỏ; lập `plan/plan.md` và task đầu; đề xuất bổ sung (nếu có) vào danh sách quyết định khó đảo ngược.
 - **Điều kiện qua gate:** người dùng duyệt mức, danh sách phần áp dụng và danh mục model (Q8). Đây là bước đầu tiên: chưa duyệt thì không làm gì khác.
 - **File tạo ra:** `00-context/project-profile.md`; `.agent-workspace/state.md`, `models.md`, `inputs/*`, `plan/plan.md`, `plan/tasks/*`, `questions.md`.
 - **Script:** `init_workspace.py`, `detect_models.py`, `check_workspace.py`.

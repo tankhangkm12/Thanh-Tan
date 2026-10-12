@@ -54,13 +54,15 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 
 ## Dò model và gán model
 
-- **G0:** chạy `detect_models.py` để lập danh mục, ghi `models.md` (tên, loại gọi: subagent Claude hay qua CLI ngoài, có tìm web không, điểm mạnh, giới hạn). Script chưa có thì hỏi người dùng danh sách model và ghi, đánh dấu "khai tay, chưa dò". Người dùng xem danh mục ở G0.
-- **Mỗi lần gọi subagent, bạn LUÔN truyền tham số `model`**, lấy từ `models.md`. File agent chỉ đặt `inherit`; không để tham số trống. Ưu tiên Sonnet cho các bước dài để giữ giới hạn gói Pro.
+- **G0, dò danh mục:** chạy `uv run "${CLAUDE_PLUGIN_ROOT}/scripts/detect_models.py"` (không `--probe`) để lập danh mục. Script ghi khối giữa `BEGIN:detect` và `END:detect` của `models.md` (tên, loại: subagent Claude hay qua CLI ngoài, cách gọi, có tìm web không, trạng thái, điểm mạnh, giới hạn). Mọi model đều ở trạng thái `chưa thử`, và **model `chưa thử` chưa được dùng**: chỉ model có trạng thái `gọi được` mới được gán.
+- **G0, chọn trước rồi thử gọi một lần:** sau khi Planner đề xuất mức dự án, chọn trước các model dự định dùng: model cho phiên chính, cho Designer, cho Reviewer (khác Designer), cho Researcher (tool có tìm web), và đủ số thành viên hội đồng theo mức (S 3, M 3, L 3 hoặc 5, XL 5; mỗi thành viên một model khác nhau nếu đủ). Rồi chạy **đúng một lần** `detect_models.py --probe <danh sách tên model đã chọn>` (ví dụ `--probe sonnet,haiku,agy:gemini-3.1-pro-high`); chỉ các model trong danh sách bị gọi thử (tốn token). `--probe` không kèm danh sách là lỗi tham số. Mã thoát 1 nghĩa là đã thử mà không model nào dùng được. Model thử lỗi thì chọn model khác trong danh mục và thử lại model thay thế, không thử lại cả danh sách.
+- Trình người dùng các cảnh báo của script, nhất là `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`. Người dùng xem danh mục ở G0. Cột "Điểm mạnh", "Giới hạn" ghi "chưa khai" cho đến khi người dùng khai; cột "Tìm web" của CLI ngoài là "chưa rõ" trừ khi người dùng khai qua `--web-models`.
+- **Mỗi lần gọi subagent, bạn LUÔN truyền tham số `model`**, lấy từ `models.md`, chỉ model trạng thái `gọi được`. File agent chỉ đặt `inherit`; không để tham số trống. Ưu tiên Sonnet cho các bước dài để giữ giới hạn gói Pro.
 - **Researcher:** chọn model có tìm web.
 - **Reviewer:** model khác model của Designer đã viết phần đang soát (tra bảng "Gán model").
 - **Hội đồng:** mỗi thành viên một model khác nhau. Không đủ model thì dùng chung model với góc nhìn khác nhau; độ đa dạng giảm sẽ do `tally_votes.py` ghi vào `decision.md` từ trường `model` của phiếu, bạn không tự ghi.
 - Thành viên hội đồng ghi ở `models.md` là *qua CLI ngoài* thì chạy `call_council_cli.py` thay vì gọi subagent.
-- Model gọi lỗi: đánh dấu "không dùng được" trong `models.md`, thay bằng model khác, thử lại một lần.
+- Model gọi lỗi: đổi cột "Trạng thái" của dòng đó trong `models.md` thành `không dùng được: <lý do>` (script giữ dấu này khi dò lại không `--probe`), thay bằng model khác, thử lại một lần.
 - Mỗi lần gán, thêm một dòng vào bảng "Gán model".
 
 ## Giao việc cho agent

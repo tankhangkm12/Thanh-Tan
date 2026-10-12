@@ -94,7 +94,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G2. Tiêu chí lựa chọn (TC)
 
 - **Đầu vào:** context đã duyệt ở G1, hồ sơ dự án.
-- **Việc:** Planner/Designer đề xuất tiêu chí TC-xx và trọng số cho stack và kiểu kiến trúc, mỗi TC truy về FR/NFR/ràng buộc; chấm theo hồ sơ dự án (làm quá tay bị trừ điểm). Phải xong **trước khi** có bất kỳ ứng viên nào.
+- **Việc:** Designer đề xuất tiêu chí TC-xx (ghi `stack/criteria-draft.md`, không nêu tên công nghệ hay ứng viên nào) và trọng số cho stack và kiểu kiến trúc, mỗi TC truy về FR/NFR/ràng buộc; chấm theo hồ sơ dự án (làm quá tay bị trừ điểm). Phải xong **trước khi** có bất kỳ ứng viên nào.
 - **Điều kiện qua gate:** người dùng duyệt tiêu chí và trọng số; chưa có ứng viên nào trong `.agent-workspace/stack/`. Trọng tâm: Q1, Q5, Q6, Q8.
 - **File tạo ra:** `02-tech-stack/selection-criteria.md`; bản nháp trước duyệt: `.agent-workspace/stack/criteria-draft.md`.
 - **Script:** `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.

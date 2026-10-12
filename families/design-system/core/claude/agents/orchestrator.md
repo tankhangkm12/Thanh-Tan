@@ -65,7 +65,7 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 
 ## Giao việc cho agent
 
-Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn truyền. Mỗi lần giao, ghi trong lời giao đúng: ID task, **danh sách file được đọc** (đường dẫn), **file được ghi**, và tham số `model`. Không chép lý luận hay nội dung của agent khác vào lời giao.
+Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn truyền. Mỗi lần giao, ghi trong lời giao đúng: ID task, **danh sách file được đọc** (đường dẫn, gồm template và checklist cần dùng), **file được ghi**, ngày hôm nay (agent không có lệnh lấy ngày), và tham số `model`. Không chép lý luận hay nội dung của agent khác vào lời giao.
 
 | Agent | File được đọc (truyền cho agent) | Không truyền |
 | --- | --- | --- |

@@ -274,7 +274,7 @@ Mỗi việc giao cho một agent độc lập, chạy trong context riêng, ch�
 | Orchestrator (phiên chính) | Chạy workflow, dò model, gọi agent, cập nhật trạng thái; không tự thiết kế | `state.md`, `models.md`; ngoài ra chỉ dòng "Trạng thái" trong `plan/tasks/*.md` | Model của phiên bạn mở / medium |
 | Planner | Đọc input, lập hồ sơ dự án, chia task, viết checklist, gom câu hỏi | `plan/`, `questions.md`, nháp `project-profile` | Theo `models.md` / high |
 | Researcher | Longlist công nghệ, dữ kiện phiên bản, EOL, giấy phép, giá, giới hạn, có link nguồn | `stack/` | Model có tìm web trong `models.md` / medium |
-| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/` | Theo `models.md` / high |
+| Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/`, `stack/criteria-draft.md` (bản nháp TC không nêu tên công nghệ hay ứng viên nào) | Theo `models.md` / high |
 | Hội đồng (3 hoặc 5) | Chấm và bỏ phiếu độc lập | `decisions/*/votes/` | Mỗi thành viên một model khác nhau trong `models.md` |
 | Reviewer | Soát bản nháp theo 8 tiêu chí và checklist, chạy lại script; không sửa | `reviews/` | Khác model với Designer / high |
 | Script | Đếm phiếu, tính capacity, kiểm link, truy vết, chuyển bản nháp đã duyệt | `tally.md`, `checks/`, `architecture/` | Không phải agent |
@@ -402,7 +402,7 @@ Nên mỗi session làm trọn một giai đoạn để ngữ cảnh phiên chí
 ├── questions.md                   # câu hỏi chờ bạn (mở / đã trả lời)
 │
 ├── stack/
-│   ├── criteria-draft.md          # nháp TC trước khi bạn duyệt
+│   ├── criteria-draft.md          # nháp TC trước khi bạn duyệt (Designer ghi; không nêu ứng viên)
 │   ├── layers/<lớp>/
 │   │   ├── longlist.md            # ứng viên + dữ kiện có nguồn
 │   │   ├── knockout.md            # ai bị loại, vì TC nào

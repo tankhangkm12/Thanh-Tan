@@ -20,6 +20,7 @@ class Ids:
     kinds: tuple[str, ...]
     backlink_kinds: tuple[str, ...]
     homes: dict[str, str]
+    placeholder_name: str = "[xX]+"
 
     def id_re(self, kinds: tuple[str, ...] | list[str] | None = None) -> re.Pattern:
         """An ID of one of `kinds` (default: all) not glued to other word characters: `TC-01` is not a `C-01`."""
@@ -28,6 +29,10 @@ class Ids:
 
     def kind_of(self, ident: str) -> str:
         return ident.split("-", 1)[0]
+
+    def is_placeholder(self, ident: str) -> bool:
+        """`FR-xx`, `SVC-xxx`: the name is only placeholder letters."""
+        return re.fullmatch(self.placeholder_name, ident.split("-", 1)[1] if "-" in ident else "") is not None
 
 
 def load(path: Path = DEFAULT) -> Ids:
@@ -55,4 +60,9 @@ def load(path: Path = DEFAULT) -> Ids:
         raise ValueError(f"{path}: homes phải là {{tiền tố: đường dẫn .md tương đối}}")
     if set(homes) - set(kinds):
         raise ValueError(f"{path}: homes có tiền tố không nằm trong kinds: {sorted(set(homes) - set(kinds))}")
-    return Ids(kinds, backlinks, dict(homes))
+    placeholder = data.get("placeholder_name", "[xX]+")
+    try:
+        re.compile(placeholder)
+    except (re.error, TypeError) as error:
+        raise ValueError(f"{path}: placeholder_name không phải regex hợp lệ: {error}") from error
+    return Ids(kinds, backlinks, dict(homes), placeholder)

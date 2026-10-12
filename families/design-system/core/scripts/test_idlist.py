@@ -71,6 +71,7 @@ def test_kind_of():
     ({"homes": {"C": "/abs/constraints.md"}}, "homes"),
     ({"homes": {"C": "constraints.txt"}}, "homes"),
     ({"homes": ["C"]}, "homes"),
+    ({"placeholder_name": "["}, "placeholder_name"),
 ])
 def test_a_bad_list_is_refused(tmp_path, overrides, message):
     with pytest.raises(ValueError, match=message):

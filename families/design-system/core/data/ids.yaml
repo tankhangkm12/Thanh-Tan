@@ -11,6 +11,10 @@ kinds: [FR, NFR, C, A, TC, FL, SCR, SVC, API, EVT, TBL, BKT, R, D, CH]
 # A file that defines one of these IDs must have a "Được dùng bởi" section linking every other file that mentions it.
 backlink_kinds: [SVC, TBL, BKT, EVT, API]
 
+# The name part of an ID that is only a placeholder (`FR-xx`, `SVC-xxx`, as in the file names of the templates): not a real ID, so no
+# script counts it as a mention or a definition.
+placeholder_name: '[xX]+'
+
 # Where an ID must be defined, as a path under architecture/ (the drafts of the workspace have the same layout). An ID of a kind
 # listed here that is defined (heading or first table cell) in any other file is an error. Kinds not listed here may be defined anywhere.
 homes:

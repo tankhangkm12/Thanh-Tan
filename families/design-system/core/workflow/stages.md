@@ -30,7 +30,7 @@ Chế độ nâng cấp: G0 đọc `inputs/previous-design/` trước, và mỗi
 
 - `check_links.py`, `check_numbers.py`, `check_profile.py`: từ G1 trở đi (đến G1 đã có NFR và giả định phải có số). `check_profile.py` chạy với `--gate Gn` (n là gate đang soát) và với `--templates <thư mục template của plugin design-*>`; không truyền cả hai thì script lỗi, và `--no-templates` ghi "Chưa kiểm mục bắt buộc" ở đầu báo cáo nên không được coi là đạt gate.
 - `check_versions.py`: từ G4 trở đi. Ma trận phiên bản có từ G4, nhưng ngày hết hỗ trợ trôi theo ngày chạy nên chạy lại ở mọi gate sau: phiên bản đã hết hỗ trợ là lỗi chặn, sắp hết hỗ trợ (12 tháng) phải link `R-xx` ở cột Rủi ro.
-- `check_trace.py`: từ G6 trở đi.
+- `check_trace.py --gate Gn`: từ G6 trở đi, truyền `--gate` của gate đang soát. Từ G6 kiểm mỗi FR có ít nhất một file đơn luồng `04-flows/FL-*.md` nhắc tới; từ G7 (khi backend và data đã thiết kế, G6 luồng được duyệt trước nên chưa kiểm) kiểm API `API-xx` frontend gọi có ở `06-backend/` và `TBL-`/`BKT-`/`EVT-` luồng nhắc có ở `07-data/`; ID được nhắc mà chưa định nghĩa ở đâu là lỗi (SVC, API, EVT, TBL, BKT chỉ từ G7). Chi tiết: `core/data/trace.yaml`.
 - `calc_capacity.py`: ở G1 với `--assumptions-only` (sinh `00-context/assumptions.md`), ở G5, G7 và G10 đầy đủ. Orchestrator chạy; Reviewer chỉ chạy `--check` (so sánh, không ghi).
 - `detect_models.py`: ở G0, lập danh mục model; `--probe <danh sách>` chỉ thử đúng các model đã chọn trước, một lần. `guard_write.py` là hook `PreToolUse` luôn chạy, không phải bước của gate.
 - `run_spike.py`: ở G4 khi có spike (XL bắt buộc), chỉ Orchestrator chạy, chỉ khi `state.md` có dòng người dùng đồng ý đúng `S-xx: chạy` kèm sha256 của đề bài hiện tại; kết quả `.result.md` chỉ do script ghi.

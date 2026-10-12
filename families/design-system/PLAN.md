@@ -37,8 +37,8 @@ Hồ sơ ghi: quy mô người dùng và dữ liệu dự kiến, mức độ qu
 
 | Mức | Ví dụ dự án | Phần bắt buộc | Hội đồng | Mốc tính số liệu |
 | --- | --- | --- | --- | --- |
-| S | Công cụ nội bộ, MVP | context, stack, capacity rút gọn, luồng chính, backend, data | 3 phiếu, chỉ cho stack và kiểu kiến trúc | Lúc ra mắt, 1 năm |
-| M | Sản phẩm thật, một team | Như S + frontend đầy đủ, security, infra, process, rủi ro | 3 phiếu | Ra mắt, 1 năm, 3 năm |
+| S | Công cụ nội bộ, MVP | context (`00-context`), system tối thiểu (`architecture-style.md`, `containers.md`), stack, capacity rút gọn, luồng chính, backend, data, rủi ro rút gọn (chỉ rủi ro ≥ 8 điểm), `implementation-plan.md` | 3 phiếu, chỉ cho stack và kiểu kiến trúc | Lúc ra mắt, 1 năm |
+| M | Sản phẩm thật, một team | Như S + system đầy đủ, frontend đầy đủ, security, infra, process, rủi ro đầy đủ, `scaling-stages.md`, `upgrade-roadmap.md` | 3 phiếu | Ra mắt, 1 năm, 3 năm |
 | L | Nhiều team, nhiều client | Toàn bộ 13 phần, chi tiết từng service | 3 phiếu, 5 cho quyết định khó đảo ngược | Ra mắt, 1, 3, 5 năm |
 | XL | Phân tán, tải lớn, yêu cầu tuân thủ cao | Toàn bộ + spike bắt buộc cho stack, DR chi tiết | 5 phiếu | Ra mắt, 1, 3, 5 năm + đỉnh tải |
 
@@ -58,7 +58,8 @@ architecture/
 │   ├── requirements-trace.md      # FR/NFR → FL → SVC → TBL/BKT
 │   ├── quality-attributes.md      # NFR có số: tải, latency, uptime, RPO/RTO
 │   ├── constraints.md             # ngân sách, team, hạ tầng, pháp lý, thời hạn
-│   ├── assumptions.md             # mọi giả định dùng để tính số (DAU, tăng trưởng…)
+│   ├── assumptions.md             # mọi giả định dùng để tính số (DAU, tăng trưởng…);
+│   │                              #   sinh từ capacity/assumptions.yaml bằng script, không sửa tay
 │   └── glossary.md
 │
 ├── 01-system/
@@ -190,7 +191,7 @@ Hệ số đỉnh và biên an toàn cũng là giả định, nằm trong `assum
 
 **Object storage** = số file/ngày × kích thước trung bình × thời gian lưu; băng thông ra = lượt xem × kích thước. **Chi phí** lấy từ trang giá chính thức, ghi ngày tra cứu.
 
-**Cách làm:** Designer ghi giả định và tham số vào `capacity/*.yaml` trong workspace; script `calc_capacity.py` sinh bảng số vào bản nháp; Reviewer chạy lại script và đối chiếu. Mỗi khi kiểu dữ liệu hay giả định đổi, toàn bộ số được tính lại.
+**Cách làm:** Designer ghi giả định và tham số vào `capacity/*.yaml` trong workspace; script `calc_capacity.py` sinh bảng số vào bản nháp; Reviewer chạy lại script và đối chiếu. Mỗi khi kiểu dữ liệu hay giả định đổi, toàn bộ số được tính lại. `capacity/assumptions.yaml` là nguồn duy nhất của giả định; `00-context/assumptions.md` sinh từ nó, và `check_numbers.py` báo lỗi nếu hai file lệch.
 
 ## Phiên bản và ma trận tính năng
 
@@ -242,6 +243,8 @@ Rủi ro được ghi ngay khi nó xuất hiện, không đợi đến cuối: m
 | 1–7 | Theo dõi, có dấu hiệu sớm |
 
 Ở mỗi gate, Reviewer soát lại sổ: rủi ro mới từ giai đoạn vừa làm đã được khai chưa, điểm có cần chấm lại không. Phát hành snapshot chỉ khi mọi rủi ro từ 15 điểm trở lên đã được giảm thiểu hoặc được bạn chấp nhận.
+
+Sổ rủi ro có ở mọi mức áp dụng và nằm trong `architecture/` (workspace không được commit). Mức S dùng bản rút gọn: chỉ ghi rủi ro từ 8 điểm trở lên.
 
 ## Phạm vi kiến trúc frontend
 
@@ -326,6 +329,8 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 `decision.md` trình cho bạn: phương án đề xuất, tỉ lệ phiếu, ý kiến thiểu số (luôn hiển thị), rủi ro mới sinh ra.
 
 **Việc nào đưa ra hội đồng:** kiểu kiến trúc, stack từng lớp, phiên bản chốt, ranh giới service, loại database, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất. Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát. Điều này giữ lượt dùng trong giới hạn gói Pro.
+
+**Quyết định khó đảo ngược** (hội đồng 5 phiếu ở mức L): đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu khóa chính của các bảng tăng nhanh nhất. Planner được đề xuất thêm ở G0; bạn duyệt.
 
 ## Các giai đoạn và gate
 

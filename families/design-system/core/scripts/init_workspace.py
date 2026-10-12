@@ -3,7 +3,7 @@
 What it does (and never overwrites anything that already exists):
 
 - creates the `.agent-workspace/` folders of PLAN.md ("Cấu trúc .agent-workspace/") and copies the templates
-  `state.md`, `questions.md` and `decisions/decision-log.md` into it;
+  `state.md`, `questions.md`, `decisions/decision-log.md` and `risks/acceptance.md` into it;
 - adds `.agent-workspace/` to the project's `.gitignore`;
 - writes the one rule "read `.agent-workspace/state.md` before anything else" into the instruction file each CLI reads
   on its own: `CLAUDE.md` (Claude Code) and `GEMINI.md` (Antigravity CLI, which reads `AGENTS.md` too).
@@ -45,6 +45,7 @@ TEMPLATES = {
     "state.md": "state.md",
     "questions.md": "questions.md",
     "decision-log.md": "decisions/decision-log.md",
+    "acceptance.md": "risks/acceptance.md",
 }
 
 CLAUDE_FILE = "CLAUDE.md"

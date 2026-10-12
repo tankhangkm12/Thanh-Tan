@@ -22,7 +22,7 @@ TREE_DIRS = [
     "checks",
     "archive",
 ]
-TREE_FILES = ["state.md", "questions.md", "decisions/decision-log.md"]
+TREE_FILES = ["state.md", "questions.md", "decisions/decision-log.md", "risks/acceptance.md"]
 
 
 def lines(path: Path) -> list[str]:
@@ -40,7 +40,7 @@ def test_creates_the_tree(tmp_path: Path):
         assert (root / relative).is_dir(), relative
     for relative in TREE_FILES:
         assert (root / relative).is_file(), relative
-    # Only the three templates are copied; the files other agents own are not made here.
+    # Only the four templates are copied; the files other agents own are not made here.
     assert sorted(p.name for p in root.rglob("*") if p.is_file()) == sorted(Path(f).name for f in TREE_FILES)
 
 
@@ -48,6 +48,13 @@ def test_templates_are_copied_unchanged(tmp_path: Path):
     iw.init(tmp_path)
     for name, target in iw.TEMPLATES.items():
         assert (tmp_path / ".agent-workspace" / target).read_bytes() == (iw.TEMPLATES_DIR / name).read_bytes()
+
+
+def test_acceptance_template_is_copied_to_risks(tmp_path: Path):
+    iw.init(tmp_path)
+    copied = tmp_path / ".agent-workspace" / "risks" / "acceptance.md"
+    assert copied.read_bytes() == (iw.TEMPLATES_DIR / "acceptance.md").read_bytes()
+    assert "Người dùng nói (nguyên văn)" in iw.read(copied)
 
 
 def test_second_run_changes_nothing(tmp_path: Path):

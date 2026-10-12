@@ -271,7 +271,7 @@ Mỗi việc giao cho một agent độc lập, chạy trong context riêng, ch�
 
 | Agent | Việc | Được ghi vào | Model / effort |
 | --- | --- | --- | --- |
-| Orchestrator (phiên chính) | Chạy workflow, dò model, gọi agent, cập nhật trạng thái; không tự thiết kế | `state.md`, `models.md` | Model của phiên bạn mở / medium |
+| Orchestrator (phiên chính) | Chạy workflow, dò model, gọi agent, cập nhật trạng thái; không tự thiết kế | `state.md`, `models.md`; ngoài ra chỉ dòng "Trạng thái" trong `plan/tasks/*.md` | Model của phiên bạn mở / medium |
 | Planner | Đọc input, lập hồ sơ dự án, chia task, viết checklist, gom câu hỏi | `plan/`, `questions.md`, nháp `project-profile` | Theo `models.md` / high |
 | Researcher | Longlist công nghệ, dữ kiện phiên bản, EOL, giấy phép, giá, giới hạn, có link nguồn | `stack/` | Model có tìm web trong `models.md` / medium |
 | Designer | Viết brief phương án; sau khi bạn chốt thì viết bản nháp docs và tham số capacity | `decisions/*/brief.md`, `drafts/`, `capacity/` | Theo `models.md` / high |
@@ -327,7 +327,7 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 **Đếm phiếu** (script `tally_votes.py`): quá bán nghĩa là 2/3 hoặc 3/5 phiếu.
 
 1. Vòng 1 bỏ phiếu kín. Có phương án quá bán thì thành đề xuất.
-2. Không quá bán thì sang vòng 2: mỗi thành viên đọc bản tóm tắt lý do vòng 1 đã ẩn danh, rồi bỏ phiếu lại.
+2. Không quá bán thì sang vòng 2: mỗi thành viên đọc `r1-summary.md`, rồi bỏ phiếu lại. File này do `tally_votes.py` sinh, không do model tóm tắt: gom nguyên văn phần "Lý do" của từng phiếu vòng 1, xóa member, model và góc nhìn, xáo thứ tự ngẫu nhiên.
 3. Vẫn không quá bán thì trình bạn hai phương án dẫn đầu, ghi rõ "chưa đạt đồng thuận".
 4. "Không phương án nào phù hợp" thắng thì Designer làm lại brief.
 
@@ -460,7 +460,7 @@ Việc gì máy kiểm được thì giao cho script Python chạy qua uv, khôn
 | `call_council_cli.py` | Gọi một thành viên hội đồng qua CLI ngoài (không tương tác): đưa phần thân file góc nhìn + `brief.md`, ghi phiếu đúng định dạng `vote.md` vào `votes/` | Phiếu sai định dạng (do `tally_votes.py` bắt) |
 | `guard_write.py` (hook `PreToolUse` của plugin, matcher `Write\|Edit`) | Đọc `agent_type` và đường dẫn từ dữ liệu hook, chặn (exit 2) khi agent ghi ngoài vùng của mình theo `permissions.md` | Chặn từng lần ghi; không phải kiểm gate |
 | `calc_capacity.py` | Đọc `capacity/*.yaml`, sinh bảng số vào `drafts/03-capacity/` và `tables.md` | YAML thiếu nguồn cho hằng số hoặc giá |
-| `tally_votes.py` | Đếm phiếu từng vòng, ghi `tally.md`, xác định quá bán | Thiếu phiếu, phiếu sai định dạng |
+| `tally_votes.py` | Đếm phiếu từng vòng, ghi `tally.md`, xác định quá bán; sinh `votes/r1-summary.md` ẩn danh khi cần vòng 2 | Thiếu phiếu, phiếu sai định dạng |
 | `check_links.py` | Link gãy, ID trùng, ID mồ côi, thiếu liên kết ngược | Có lỗi bất kỳ |
 | `check_trace.py` | FR không có luồng; API frontend gọi mà backend không có; bảng, bucket, event nhắc trong luồng mà phần data không có | Có lỗi bất kỳ |
 | `check_numbers.py` | Con số thiếu công thức, giả định hoặc nguồn; từ mơ hồ không kèm số | Có lỗi bất kỳ |

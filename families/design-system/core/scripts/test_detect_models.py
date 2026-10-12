@@ -264,3 +264,31 @@ def test_main_exit_codes_and_report(cli):
     assert "không có model nào dùng được" in (workspace / "checks" / f"models-{TODAY}.md").read_text(encoding="utf-8")
     fake.fail = ()
     assert dm.main(["--workspace", str(workspace), "--probe", "sonnet", "--date", TODAY]) == 0
+
+
+def test_cli_rows_say_in_the_limits_column_that_only_the_locked_call_is_isolated():
+    text, rows, _ = detect()
+    limits = row(rows, "agy:gemini-3.1-pro-high").limits
+    assert "call_council_cli.py" in limits and "agent khóa công cụ" in limits and "KHÔNG cô lập" in limits
+    assert row(rows, "sonnet").limits == dm.UNSET   # a Claude subagent has the tools its agent file grants
+    assert "KHÔNG cô lập" in text
+
+
+def edit_row(text: str, name: str, old: str, new: str) -> str:
+    lines = text.split("\n")
+    index = next(i for i, line in enumerate(lines) if line.startswith(f"| {name} |"))
+    assert old in lines[index]
+    lines[index] = lines[index].replace(old, new)
+    return "\n".join(lines)
+
+
+def test_a_limits_cell_written_by_a_person_wins_and_an_unset_one_gets_the_default():
+    text, rows, _ = detect()
+    default = row(rows, "agy:gemini-3.1-pro-high").limits
+    mine = edit_row(text, "agy:claude-sonnet-4-6", default, "giới hạn tay của tôi")
+    _, rows, _ = detect(existing=mine)
+    assert row(rows, "agy:claude-sonnet-4-6").limits == "giới hạn tay của tôi"
+    assert "KHÔNG cô lập" in row(rows, "agy:gemini-3.1-pro-high").limits
+    # a file written before the default existed has "chưa khai" in the cell: the next run fills it in
+    old = edit_row(text, "agy:gemini-3.1-pro-high", default, dm.UNSET)
+    assert row(detect(existing=old)[1], "agy:gemini-3.1-pro-high").limits == default

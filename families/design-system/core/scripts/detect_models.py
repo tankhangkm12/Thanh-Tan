@@ -53,6 +53,9 @@ EXTERNAL_CLIS = {
         "title": "Antigravity CLI",
         "list_args": ["models"],
         "call": "agy -p <prompt> --model {model}",
+        # Default text of the "Giới hạn" column (a person's own text replaces it): what a CLI call can and cannot do.
+        "limits": "chỉ làm thành viên hội đồng qua `call_council_cli.py`, nơi agy chạy bằng agent khóa công cụ (không công cụ, không MCP, thư mục tạm rỗng, kiểm bằng mã xác nhận); "
+                  "agy gọi trực tiếp thì KHÔNG cô lập: đủ công cụ, đọc được mọi file, ghi được file kể cả `--mode plan`",
     },
 }
 
@@ -175,6 +178,7 @@ def external_rows(which: Callable[[str], str | None], run: Runner, web_models: s
                     kind="cli",
                     how=f"{spec['call'].format(model=model_id)} (chỉ qua `call_council_cli.py`, thành viên hội đồng); {title}",
                     web="có" if (name in web_models or model_id in web_models) else "chưa rõ",
+                    limits=spec.get("limits", UNSET),
                     command=[path, "-p", PROBE_PROMPT, "--model", model_id],
                 )
             )
@@ -231,7 +235,10 @@ def keep_manual(rows: list[ModelRow], old: dict[str, list[str]], probed: set[str
         cells = old.get(row.name)
         if not cells:
             continue
-        row.strengths, row.limits = cells[5], cells[6]
+        if cells[5] != UNSET:
+            row.strengths = cells[5]
+        if cells[6] != UNSET:
+            row.limits = cells[6]  # a column left at "chưa khai" gets the current default instead
         if row.name not in probed and (cells[4] == STATUS_OK or cells[4].startswith(STATUS_BAD)):
             row.status = cells[4]
 

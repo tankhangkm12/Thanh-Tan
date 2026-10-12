@@ -283,6 +283,11 @@ Chỉ script `promote_drafts.py` được ghi vào `architecture/`, và chỉ ch
 
 **Danh mục model tự dò.** Ở G0, Orchestrator kiểm tra model nào gọi được trong môi trường hiện tại: các model của Claude Code, và CLI khác như Antigravity nếu đã cài và chạy được ở chế độ không tương tác. Kết quả ghi vào `.agent-workspace/models.md`: tên, cách gọi, có tìm web không, điểm mạnh, giới hạn. Mỗi lần gọi agent, Orchestrator chọn model từ danh mục này; model gọi lỗi thì bị đánh dấu không dùng được và được thay bằng model khác. Bạn xem danh mục ở gate G0.
 
+**Hai cách gọi model.** Mỗi dòng trong `models.md` ghi rõ loại:
+
+- *Subagent Claude*: model Claude Code gọi được (`sonnet`, `opus`, `haiku`, `fable`, ID đầy đủ). Mọi file agent đặt `model: inherit`; Orchestrator **luôn truyền model lúc gọi** subagent, lấy từ `models.md` (tham số lúc gọi thắng frontmatter). Biến môi trường `CLAUDE_CODE_SUBAGENT_MODEL` / `…_FORCE` có thể ghi đè nên `detect_models.py` cảnh báo nếu đang đặt.
+- *Qua CLI ngoài*: model của CLI khác (ví dụ Antigravity, Gemini) không thể là subagent trong Claude Code. Chỉ làm được thành viên hội đồng: script gọi CLI ở chế độ không tương tác, đưa nguyên phần thân file góc nhìn kèm `brief.md`, rồi ghi phiếu đúng định dạng `vote.md`. Vì vậy phần thân mỗi file góc nhìn của hội đồng tự đứng được, không dựa vào tool hay cú pháp riêng của Claude Code.
+
 Quy tắc gán model:
 
 - Hội đồng: mỗi thành viên một model khác nhau. Không đủ model thì dùng chung model với góc nhìn khác nhau, và `decision.md` ghi rõ độ đa dạng bị giảm.
@@ -330,7 +335,7 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 
 **Việc nào đưa ra hội đồng:** kiểu kiến trúc, stack từng lớp, phiên bản chốt, ranh giới service, loại database, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát. Điều này giữ lượt dùng trong giới hạn gói Pro.
 
-**Quyết định khó đảo ngược** (hội đồng 5 phiếu ở mức L): đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm ở G0; bạn duyệt.
+**Quyết định khó đảo ngược** (hội đồng 5 phiếu ở mức L): đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm ở G0; bạn duyệt.
 
 ## Các giai đoạn và gate
 
@@ -451,7 +456,9 @@ Việc gì máy kiểm được thì giao cho script Python chạy qua uv, khôn
 | Script | Làm gì | Chặn gate khi |
 | --- | --- | --- |
 | `init_workspace.py` | Tạo `.agent-workspace/`, thêm vào `.gitignore`, chép template, tạo file hướng dẫn CLI | — |
-| `detect_models.py` | Dò model và CLI gọi được, ghi `models.md` | — |
+| `detect_models.py` | Dò model và CLI gọi được, ghi `models.md` (mỗi dòng ghi loại: subagent Claude hay qua CLI ngoài) | — |
+| `call_council_cli.py` | Gọi một thành viên hội đồng qua CLI ngoài (không tương tác): đưa phần thân file góc nhìn + `brief.md`, ghi phiếu đúng định dạng `vote.md` vào `votes/` | Phiếu sai định dạng (do `tally_votes.py` bắt) |
+| `guard_write.py` (hook `PreToolUse` của plugin, matcher `Write\|Edit`) | Đọc `agent_type` và đường dẫn từ dữ liệu hook, chặn (exit 2) khi agent ghi ngoài vùng của mình theo `permissions.md` | Chặn từng lần ghi; không phải kiểm gate |
 | `calc_capacity.py` | Đọc `capacity/*.yaml`, sinh bảng số vào `drafts/03-capacity/` và `tables.md` | YAML thiếu nguồn cho hằng số hoặc giá |
 | `tally_votes.py` | Đếm phiếu từng vòng, ghi `tally.md`, xác định quá bán | Thiếu phiếu, phiếu sai định dạng |
 | `check_links.py` | Link gãy, ID trùng, ID mồ côi, thiếu liên kết ngược | Có lỗi bất kỳ |
@@ -478,13 +485,14 @@ families/design-system/
 │   │   ├── stages.md              # giai đoạn, gate, điều kiện qua gate
 │   │   ├── permissions.md         # agent nào được ghi vào đâu
 │   │   └── quality-criteria.md    # 8 tiêu chí Q1–Q8
-│   ├── agents/
+│   ├── claude/agents/             # định dạng Claude Code (viết tay, manifest liệt kê rõ)
 │   │   ├── orchestrator.md
 │   │   ├── planner.md
 │   │   ├── researcher.md
 │   │   ├── designer.md
 │   │   ├── reviewer.md
 │   │   └── council/               # một file mỗi góc nhìn
+│   ├── agents/                    # bản Antigravity: tạo ở Giai đoạn 6, trước đó để trống
 │   ├── templates/workspace/       # task, brief, phiếu bầu, decision, review
 │   └── scripts/                   # các script ở phần trên, môi trường uv
 │

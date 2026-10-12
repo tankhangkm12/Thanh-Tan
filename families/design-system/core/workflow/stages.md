@@ -57,7 +57,7 @@ Mọi phần được giữ đều nằm trong `architecture/` và được comm
 
 ## Quyết định khó đảo ngược (hội đồng 5 phiếu ở mức L)
 
-Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm vào danh sách (ghi ở `plan/plan.md`); người dùng duyệt ở G0.
+Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate dữ liệu hoặc tách/gộp service. Danh sách mặc định: kiểu kiến trúc, loại database, ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Planner được đề xuất thêm vào danh sách (ghi ở `plan/plan.md`); người dùng duyệt ở G0.
 
 ## Bảng tóm tắt
 

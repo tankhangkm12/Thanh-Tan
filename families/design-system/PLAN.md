@@ -319,7 +319,7 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 **Quy tắc chấm "phù hợp nhất"**
 
 - Brief do Designer viết trình bày các phương án trung lập, không kèm khuyến nghị.
-- Mỗi thành viên chấm từng phương án theo các `TC` có trọng số và chỉ thấy brief, không thấy phiếu của người khác.
+- Mỗi thành viên chấm từng phương án theo các `TC` và chỉ thấy brief, không thấy phiếu của người khác. Thành viên chỉ ghi điểm thô 0–5 theo từng TC (TC loại trừ ghi đạt hoặc không đạt) và điểm trừ làm quá tay kèm lý do; `tally_votes.py` tính tổng có trọng số từ brief, loại phương án vi phạm TC loại trừ khỏi phiếu đó, và báo lỗi phiếu nếu lựa chọn lệch phương án có tổng cao nhất.
 - Mỗi lý do phải trích một `TC`, `NFR`, ràng buộc, con số trong `03-capacity` hoặc `R-xx`. Lý do kiểu "chuẩn ngành", "đang phổ biến" không được tính.
 - Phương án vượt xa nhu cầu mà tốn thêm chi phí hoặc độ phức tạp bị trừ điểm.
 - Luôn có lựa chọn "không phương án nào phù hợp".

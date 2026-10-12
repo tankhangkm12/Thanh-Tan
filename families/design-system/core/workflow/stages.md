@@ -28,9 +28,11 @@ Chế độ nâng cấp: G0 đọc `inputs/previous-design/` trước, và mỗi
 
 ## Quy tắc script và hội đồng
 
-- `check_links.py`, `check_numbers.py`, `check_profile.py`: từ G1 trở đi (đến G1 đã có NFR và giả định phải có số).
+- `check_links.py`, `check_numbers.py`, `check_profile.py`: từ G1 trở đi (đến G1 đã có NFR và giả định phải có số). `check_profile.py` chạy với `--gate Gn` (n là gate đang soát) và với `--templates <thư mục template của plugin design-*>`; không truyền cả hai thì script lỗi, và `--no-templates` ghi "Chưa kiểm mục bắt buộc" ở đầu báo cáo nên không được coi là đạt gate.
+- `check_versions.py`: từ G4 trở đi. Ma trận phiên bản có từ G4, nhưng ngày hết hỗ trợ trôi theo ngày chạy nên chạy lại ở mọi gate sau: phiên bản đã hết hỗ trợ là lỗi chặn, sắp hết hỗ trợ (12 tháng) phải link `R-xx` ở cột Rủi ro.
 - `check_trace.py`: từ G6 trở đi.
-- `calc_capacity.py`: ở G5, G7 và G10.
+- `calc_capacity.py`: ở G1 với `--assumptions-only` (sinh `00-context/assumptions.md`), ở G5, G7 và G10 đầy đủ. Orchestrator chạy; Reviewer chỉ chạy `--check` (so sánh, không ghi).
+- `detect_models.py`: ở G0, lập danh mục model; `--probe <danh sách>` chỉ thử đúng các model đã chọn trước, một lần. `guard_write.py` là hook `PreToolUse` luôn chạy, không phải bước của gate.
 - `tally_votes.py`: ở mọi gate có hội đồng.
 - `check_workspace.py`: ở mọi gate. G10 chạy toàn bộ script.
 - **Hội đồng** chỉ dùng cho: kiểu kiến trúc (G3); stack từng lớp, phiên bản chốt, loại database (G4); ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại (G7). Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát.
@@ -53,7 +55,7 @@ Mọi phần được giữ đều nằm trong `architecture/` và được comm
 
 ## Giả định: một nguồn duy nhất
 
-`.agent-workspace/capacity/assumptions.yaml` là nguồn duy nhất của giả định. `00-context/assumptions.md` được sinh từ yaml bằng script, không sửa tay; `check_numbers.py` báo lỗi nếu hai file lệch nhau. (Script sinh file được làm ở Giai đoạn 3.)
+`.agent-workspace/capacity/assumptions.yaml` là nguồn duy nhất của giả định. `00-context/assumptions.md` được sinh từ yaml bằng script, không sửa tay; `check_numbers.py` báo lỗi nếu hai file lệch nhau. (`calc_capacity.py --assumptions-only` sinh; xem [capacity-schema.md](capacity-schema.md).)
 
 ## Quyết định khó đảo ngược (hội đồng 5 phiếu ở mức L)
 
@@ -113,7 +115,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** với từng lớp, Researcher lập longlist có nguồn → loại theo TC (knockout) → shortlist → chấm theo trọng số. Hội đồng quyết stack từng lớp, phiên bản chốt và loại database (mức S: chỉ stack từng lớp; phiên bản chốt không qua hội đồng nhưng vẫn phải có trong `versions-features.md` và được người dùng duyệt ở G4, Q5). Spike trong container khi mức dự án yêu cầu (XL bắt buộc). Sau khi chốt database, Researcher xác minh từng link nguồn của hằng số DB trong `~/knowledge/stacks/<db>/constants-<major>.yaml` (đúng phiên bản chốt) rồi chép vào `capacity/db-constants/<db>-<major>.yaml`. Cuối cùng kiểm tra chéo toàn stack và lập ma trận phiên bản và tính năng.
 - **Điều kiện qua gate:** từng lớp được người dùng duyệt; ma trận phiên bản đã duyệt (Q5); kiểm tra chéo không còn xung đột; mọi dữ kiện có link nguồn chính thức (Q4); mỗi database đã chốt có file hằng số `capacity/db-constants/<db>-<major>.yaml` với mọi hằng số có link nguồn. Trọng tâm: Q4, Q5, Q6, Q8.
 - **File tạo ra:** phần còn lại của `02-tech-stack/`: `README.md`, `layers/`, `versions-features.md`, `compatibility.md`, `cost-licensing.md`, `team-readiness.md`, `exit-strategy.md`; `.agent-workspace/stack/layers/<lớp>/` (`longlist.md`, `knockout.md`, `shortlist.md`, `scoring.md`, `spikes/`), `stack/cross-check.md`, `capacity/db-constants/<db>-<major>.yaml`, `decisions/D-xxx-*`.
-- **Script:** `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G5. Capacity sơ bộ
 
@@ -121,7 +123,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer điền tham số capacity (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`, schema ở [capacity-schema.md](capacity-schema.md)) và đặt trong `tables.md` mỗi bảng một cặp dấu `<!-- BEGIN:calc:<bảng> -->` / `chờ script` / `<!-- END:calc:<bảng> -->`; Orchestrator chạy `calc_capacity.py` (Designer không có Bash), `calc_capacity.py` tính tải, dung lượng, chi phí theo từng mốc của mức dự án (S: ra mắt, 1 năm; M: thêm 3 năm; L: thêm 5 năm; XL: thêm đỉnh tải).
 - **Điều kiện qua gate:** mọi hằng số và đơn giá có nguồn và ngày tra cứu; mỗi database khai đủ giả định phình, WAL, bản sao, backup, TOAST và MAXALIGN; script tính lại khớp bản nháp (Q4); người dùng duyệt tải, dung lượng, chi phí từng mốc. Trọng tâm: Q2, Q4, Q6, Q8.
 - **File tạo ra:** `03-capacity/workload-model.md`, `data-sizing.md`, `storage-sizing.md`, `compute-sizing.md`, `cost-model.md`; `.agent-workspace/capacity/` (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`), `checks/numbers-<ngày>.md`.
-- **Script:** `calc_capacity.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G6. Luồng chính
 
@@ -129,7 +131,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết các luồng chính (sơ đồ tuần tự, lỗi, dữ liệu chạm tới); chưa thiết kế chi tiết trước khi luồng được duyệt.
 - **Điều kiện qua gate:** mọi FR có ít nhất một luồng (Q1), `check_trace.py` sạch; người dùng duyệt luồng. Trọng tâm: Q1, Q6, Q8.
 - **File tạo ra:** `04-flows/flow-index.md`, `04-flows/FL-xxx-<tên>.md`; `.agent-workspace/checks/trace-<ngày>.md`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G7. Thiết kế chi tiết
 
@@ -137,7 +139,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer thiết kế chi tiết từng app frontend (kiến trúc và tối ưu cho thiết bị thật, không quyết định visual; Q7), từng service, từng database. Hội đồng quyết ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Khi kiểu dữ liệu thật lộ ra, **quay lại G5** tính lại capacity rồi mới đi tiếp.
 - **Điều kiện qua gate:** mỗi thành phần truy về FR/NFR/ràng buộc (Q1), có mục "Tối ưu" với chỉ số bằng số (Q2), có đường scale, nâng cấp và gánh nặng bảo trì (Q3); frontend có ma trận thiết bị và ngân sách hiệu năng (Q7); bảng, bucket, event nhắc trong luồng đều có ở phần data; từng service, database, app được người dùng duyệt. Trọng tâm: Q1, Q2, Q3, Q7 (frontend), Q6, Q8.
 - **File tạo ra:** `05-frontend/` (`overview.md`, `device-matrix.md`, `performance-budget.md`, `<app>/*`), `06-backend/` (`overview.md`, `communication.md`, `cross-cutting.md`, `repo-structure.md`, `contracts/`, `services/<service>/*`), `07-data/` (`overview.md`, `databases/<db>/*`, `object-storage.md`, `cache.md`, `messaging.md`, `consistency.md`, `backup-recovery.md`), theo phần hồ sơ giữ lại; `.agent-workspace/capacity/tables.yaml` cập nhật, `reviews/R-xxx-<phần>.md`.
-- **Script:** `calc_capacity.py`, `tally_votes.py`, `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py`, `tally_votes.py`, `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G8. Bảo mật, hạ tầng, quy trình
 
@@ -145,7 +147,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết từng phần bảo mật, hạ tầng, quy trình (chỉ phần mà hồ sơ dự án áp dụng).
 - **Điều kiện qua gate:** mỗi phần đạt Q1–Q3; chỉ có phần được hồ sơ cho phép (`check_profile.py` sạch); người dùng duyệt từng phần. Trọng tâm: Q2, Q3, Q6, Q8.
 - **File tạo ra:** `08-security/` (`authz-matrix.md`, `threat-model.md`, `secrets-compliance.md`), `09-infrastructure/` (`topology.md`, `environments.md`, `scaling-ha.md`, `observability.md`, `ci-cd.md`), `10-process/` (`delivery.md`, `data-change.md`, `maintenance.md`, `operations.md`); `.agent-workspace/reviews/*`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G9. Rủi ro và roadmap
 
@@ -153,7 +155,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer hợp nhất sổ rủi ro và viết roadmap (mức S: sổ rủi ro rút gọn chỉ ghi rủi ro ≥ 8 điểm, roadmap chỉ `implementation-plan.md`); rủi ro từ 15 điểm trở lên phải được xử lý hoặc được người dùng chấp nhận rõ ràng.
 - **Điều kiện qua gate:** không còn rủi ro ≥ 15 điểm chưa xử lý; rủi ro ≥ 15 được chấp nhận thì ghi ở `risks/acceptance.md` (Q6); người dùng duyệt sổ rủi ro. Trọng tâm: Q3, Q6, Q8.
 - **File tạo ra:** `11-risks/risk-register.md`, `12-roadmap/` (`implementation-plan.md` mọi mức; `scaling-stages.md`, `upgrade-roadmap.md` từ mức M); `.agent-workspace/risks/acceptance.md`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
 
 ## G10. Kiểm tra chéo và phát hành
 
@@ -161,4 +163,4 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** chạy toàn bộ script; `calc_capacity.py` tính lại lần cuối; Reviewer soát toàn bộ theo Q1–Q8; `promote_drafts.py` chép phần còn lại sang `architecture/`; `archive_release.py` chụp workspace vào `archive/vN/` và cập nhật `CHANGELOG.md`.
 - **Điều kiện qua gate:** tính lại toàn bộ số khớp, mọi script sạch, người dùng duyệt phát hành vN. Trọng tâm: cả Q1–Q8.
 - **File tạo ra:** `README.md` (mục lục, phiên bản, mức áp dụng) và `CHANGELOG.md` (chế độ nâng cấp: khác gì bản trước) của `architecture/`; `.agent-workspace/archive/vN/`, `checks/*-<ngày>.md`.
-- **Script:** toàn bộ: `calc_capacity.py`, `tally_votes.py`, `check_links.py`, `check_trace.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py`, `archive_release.py`.
+- **Script:** toàn bộ: `calc_capacity.py`, `tally_votes.py`, `check_links.py`, `check_trace.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py`, `archive_release.py`.

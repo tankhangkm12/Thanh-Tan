@@ -37,7 +37,7 @@ Mỗi tiêu chí có hai lớp: script (máy kiểm được) chạy trước, r
 **Q2. Tối ưu theo từng tầng** (frontend, backend, lưu trữ, hạ tầng, quy trình). Mỗi phần có mục "Tối ưu" với chỉ số mục tiêu bằng số và đơn vị; chỉ số truy được về NFR.
 <!-- END:council-q Q2 -->
 
-- **Script:** kiểm mục bắt buộc theo template (làm ở Giai đoạn 3): mỗi phần có mục "Tối ưu". `check_numbers.py` (từ mơ hồ như "nhanh", "lớn", "đủ dùng", "scale tốt" không kèm số).
+- **Script:** `check_profile.py` (mục bắt buộc theo template, đánh dấu `<!-- required -->`): mỗi phần có mục "Tối ưu" không trống. `check_numbers.py` (từ mơ hồ như "nhanh", "lớn", "đủ dùng", "scale tốt" không kèm số).
 - **Reviewer:** mỗi phần thuộc frontend, backend, lưu trữ, hạ tầng, quy trình có mục "Tối ưu" với chỉ số mục tiêu bằng số và đơn vị; chỉ số truy được về NFR.
 - **Lỗi chặn:** thiếu mục "Tối ưu"; chỉ số không có số; từ mơ hồ không kèm số.
 
@@ -48,7 +48,7 @@ Mỗi tiêu chí có hai lớp: script (máy kiểm được) chạy trước, r
 **Q3. Sẵn sàng mở rộng, nâng cấp, bảo trì.** Mỗi thành phần có (a) đường scale: đơn vị scale, giới hạn, ngưỡng số để lên giai đoạn sau; (b) đường nâng cấp: phiên bản, ngày EOL; (c) gánh nặng bảo trì ước tính (người, giờ hoặc tần suất việc định kỳ).
 <!-- END:council-q Q3 -->
 
-- **Script:** kiểm mục bắt buộc theo template (làm ở Giai đoạn 3): mỗi thành phần có mục scale, nâng cấp, bảo trì. `check_links.py` kiểm link tới `scaling.md`, `upgrade-roadmap.md` nếu có. Việc ước tính có cơ sở vẫn do Reviewer.
+- **Script:** `check_profile.py` (mục bắt buộc theo template, đánh dấu `<!-- required -->`): mỗi thành phần có mục scale, nâng cấp, bảo trì không trống. `check_links.py` kiểm link tới `scaling.md`, `upgrade-roadmap.md` nếu có. Việc ước tính có cơ sở vẫn do Reviewer.
 - **Reviewer:** mỗi thành phần có (a) đường scale: đơn vị scale, giới hạn, ngưỡng số để lên giai đoạn sau; (b) đường nâng cấp: phiên bản, ngày EOL; (c) gánh nặng bảo trì ước tính (người, giờ hoặc tần suất việc định kỳ).
 - **Lỗi chặn:** thành phần thiếu một trong ba mục. Mục "ước tính" không có cơ sở là góp ý.
 

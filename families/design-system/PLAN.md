@@ -458,6 +458,8 @@ Việc gì máy kiểm được thì giao cho script Python chạy qua uv, khôn
 | `check_trace.py` | FR không có luồng; API frontend gọi mà backend không có; bảng, bucket, event nhắc trong luồng mà phần data không có | Có lỗi bất kỳ |
 | `check_numbers.py` | Con số thiếu công thức, giả định hoặc nguồn; từ mơ hồ không kèm số | Có lỗi bất kỳ |
 | `check_profile.py` | Phần bắt buộc theo `project-profile.md` còn thiếu; phần đã bỏ lại xuất hiện | Có lỗi bất kỳ |
+| Kiểm mục bắt buộc theo template (gộp vào `check_profile.py` hoặc script riêng, quyết ở Giai đoạn 3) | Mỗi file đầu ra có đủ các mục mà template của nó đánh dấu bắt buộc, ví dụ "Tối ưu" (Q2), scale / nâng cấp / bảo trì (Q3) | Thiếu mục bắt buộc |
+| Kiểm ma trận phiên bản (`check_versions.py` hoặc gộp, quyết ở Giai đoạn 3) | Mọi công nghệ trong `02-tech-stack/README.md` có dòng trong `versions-features.md` với phiên bản chốt, ngày EOL và link nguồn (Q5) | Thiếu dòng, thiếu phiên bản, EOL hoặc nguồn |
 | `check_workspace.py` | Task chưa đóng, quyết định chưa có quyết định của bạn, rủi ro ≥ 15 chưa xử lý | Có lỗi bất kỳ |
 | `promote_drafts.py` | Chép bản nháp đã qua gate sang `architecture/` | Chỉ chạy khi gate đã được bạn duyệt |
 | `archive_release.py` | Chụp workspace vào `archive/vN/`, cập nhật `CHANGELOG.md` | — |

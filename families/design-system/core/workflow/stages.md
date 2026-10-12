@@ -36,7 +36,7 @@ Chế độ nâng cấp: G0 đọc `inputs/previous-design/` trước, và mỗi
 - `run_spike.py`: ở G4 khi có spike (XL bắt buộc), chỉ Orchestrator chạy, chỉ khi `state.md` có dòng người dùng đồng ý đúng `S-xx: chạy` kèm sha256 của đề bài hiện tại; kết quả `.result.md` chỉ do script ghi.
 - `call_council_cli.py`: ở mọi gate có hội đồng, cho từng thành viên chạy qua CLI ngoài (thành viên là subagent Claude thì Orchestrator gọi bằng Agent tool, không qua script); chỉ gọi model đã `--probe` đạt (`models.md` ghi "gọi được").
 - `tally_votes.py`: ở mọi gate có hội đồng.
-- `check_workspace.py`: ở mọi gate. G10 chạy toàn bộ script.
+- `check_workspace.py --gate Gn`: ở mọi gate (không truyền `--gate` thì lấy "Giai đoạn hiện tại" của `state.md`). Kiểm: task có Gate ≤ Gn chưa đóng; quyết định có gate ≤ Gn chưa có quyết định của người dùng; rủi ro ≥ 15 điểm chưa xử lý (cảnh báo trước G9, lỗi từ G9); sổ rủi ro và `risks/acceptance.md` khớp hai chiều; model chưa thử hoặc không dùng được ở các dòng "Gán model" của task chưa đóng (dòng của task đã đóng là lịch sử); ở mức XL từ G4, mỗi lớp bắt buộc có spike `đạt`. Từ ngữ và ngưỡng: `core/data/workspace.yaml`. G10 chạy toàn bộ script.
 - **Hội đồng** chỉ dùng cho: kiểu kiến trúc (G3); stack từng lớp, phiên bản chốt, loại database (G4); ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại (G7). Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát.
 - **Số thành viên theo mức:** S 3 phiếu, chỉ cho kiểu kiến trúc (G3) và stack từng lớp (G4); M 3; L 3, và 5 cho quyết định khó đảo ngược (xem mục bên dưới); XL 5.
 

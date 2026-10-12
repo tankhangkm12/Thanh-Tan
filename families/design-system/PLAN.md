@@ -552,7 +552,7 @@ Yêu cầu:
 Chạy với: Claude Code · model Sonnet · effort medium
 
 Tiếp tục design-architecture ở repo này.
-(Tuỳ chọn) Tôi đã trả lời trong questions.md các mục: Q-03, Q-05.
+(Tuỳ chọn) Tôi đã trả lời trong questions.md các mục: CH-003, CH-005.
 ```
 
 **4. Duyệt gate và quyết định**
@@ -563,13 +563,13 @@ Chạy với: Claude Code · model Sonnet · effort medium
 Gate G4: duyệt.            (hoặc: chưa duyệt — lý do: …)
 D-007: chọn phương án B. Ghi chú: …
 R-04: chấp nhận rủi ro.
-Q-06: <câu trả lời>
+CH-006: <câu trả lời>
 ```
 
 Mẹo dùng hiệu quả:
 
 - Mỗi session làm trọn một giai đoạn, kết thúc ở gate.
-- Trả lời theo ID (`G`, `D`, `R`, `Q`) để Orchestrator ghi đúng chỗ.
+- Trả lời theo ID (`G`, `D`, `R`, `CH`) để Orchestrator ghi đúng chỗ.
 - Tài liệu BA càng có số (người dùng, tăng trưởng, ngưỡng hiệu năng) thì G1 càng ít câu hỏi.
 
 ## Thứ tự dựng plugin

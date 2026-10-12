@@ -65,6 +65,11 @@ CALC_BLOCK = re.compile(r"(<!--\s*BEGIN:calc:(\S+?)\s*-->)(.*?)(<!--\s*END:calc:
 PENDING = "chờ script"
 ASSUMPTION_ID = re.compile(r"A-[A-Za-z0-9][A-Za-z0-9_-]*")
 URL = re.compile(r"https?://\S+")
+# The six documents calc_capacity.py writes in full (relative to drafts/ or architecture/); the rest it writes only between calc markers.
+OUTPUT_FILES = (
+    "00-context/assumptions.md", "03-capacity/workload-model.md", "03-capacity/data-sizing.md", "03-capacity/storage-sizing.md",
+    "03-capacity/compute-sizing.md", "03-capacity/cost-model.md",
+)
 GENERATED = "<!-- Sinh bởi calc_capacity.py từ capacity/*.yaml. Không sửa tay: sửa yaml rồi chạy lại. -->"
 
 
@@ -808,8 +813,9 @@ def read_level(drafts: Path) -> str | None:
     return None
 
 
-def load_inputs(workspace: Path, constants_dir: Path, problems: Problems) -> Inputs | None:
-    capacity, drafts = workspace / "capacity", workspace / "drafts"
+def load_inputs(workspace: Path, constants_dir: Path, problems: Problems, drafts: Path | None = None) -> Inputs | None:
+    """`drafts` is where 00-context/project-profile.md is read from (default <workspace>/drafts)."""
+    capacity, drafts = workspace / "capacity", drafts or workspace / "drafts"
     level = read_level(drafts)
     raw = {n: load_yaml(capacity / f"{n}.yaml", problems, f"{n}.yaml") for n in ("assumptions", "tables", "storage", "compute", "pricing")}
     # Check everything that can be checked, so one run lists all the problems.

@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Soát bản nháp theo đủ 8 tiêu chí Q1-Q8 và checklist, chạy lại script kiểm tra, ghi báo cáo vào reviews/. Chỉ báo cáo, không sửa. Soát như người ngoài: không đọc brief hay lý luận của Designer. Luôn dùng model khác Designer.
+description: "Soát bản nháp theo đủ 8 tiêu chí Q1-Q8 và checklist, chạy lại script kiểm tra, ghi báo cáo vào reviews/. Chỉ báo cáo, không sửa. Soát như người ngoài, không đọc brief hay lý luận của Designer. Luôn dùng model khác Designer."
 tools: Read, Glob, Grep, Write, Bash
 model: inherit
 omitClaudeMd: true

@@ -29,7 +29,7 @@ cites: [<TC-xx>, <NFR-xx>, <R-xx>]
 > - `exclusions`: `pass` hoặc `fail` cho **mọi** TC loại trừ trong brief, với mọi phương án. Phương án có `fail` bị loại khỏi phiếu này: không được chọn, không tính tổng.
 > - `overreach`: điểm trừ "làm quá tay" cho từng phương án, số nguyên không âm, tính trên tổng quy về thang 100. `points > 0` thì `reason` bắt buộc, nêu cái thừa so với nhu cầu và trích hồ sơ, NFR hoặc `TC`. Phương án vượt xa nhu cầu mà tốn thêm chi phí hoặc độ phức tạp thì bị trừ.
 > - `choice`: ID phương án có tổng cao nhất **do script tính** (sau khi loại phương án vi phạm TC loại trừ và trừ điểm làm quá tay). Nếu `choice` lệch phương án đó, `tally_votes.py` báo lỗi phiếu.
-> - `tie_reason`: chỉ điền khi có từ hai phương án cùng tổng cao nhất. Thành viên chọn một và ghi lý do trích nguồn; để `""` khi không hòa.
+> - `tie_reason`: chỉ điền khi có từ hai phương án chênh nhau dưới 0,01 điểm (so giá trị chưa làm tròn), coi là hòa. Thành viên chọn một và ghi lý do trích nguồn; để `""` khi không hòa.
 > - `choice: none` ("không phương án nào phù hợp") hợp lệ khi (a) mọi phương án vi phạm ít nhất một TC loại trừ, hoặc (b) `cites` không rỗng và phần "Lý do" nêu vì sao không phương án nào đạt, có trích nguồn.
 > - `cites`: mọi ID `TC`, `NFR`, ràng buộc (`C-xx`), `R-xx` mà lý do bên dưới trích. Con số trong `03-capacity` thì ghi vào lý do kèm giá trị, không đưa vào `cites`. Phiếu chọn `none` theo (b) phải có `cites` không rỗng.
 > - `via`: `subagent` khi là subagent Claude Code, `cli` khi script gọi CLI ngoài.

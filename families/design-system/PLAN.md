@@ -320,6 +320,7 @@ Trước khi một quyết định lớn đến tay bạn, một hội đồng g
 
 - Brief do Designer viết trình bày các phương án trung lập, không kèm khuyến nghị.
 - Mỗi thành viên chấm từng phương án theo các `TC` và chỉ thấy brief, không thấy phiếu của người khác. Thành viên chỉ ghi điểm thô 0–5 theo từng TC (TC loại trừ ghi đạt hoặc không đạt) và điểm trừ làm quá tay kèm lý do; `tally_votes.py` tính tổng có trọng số từ brief, loại phương án vi phạm TC loại trừ khỏi phiếu đó, và báo lỗi phiếu nếu lựa chọn lệch phương án có tổng cao nhất.
+- **Công thức tổng** (do `tally_votes.py` tính, thành viên không ghi tổng): `tổng = Σ(điểm × trọng số) / (5 × Σ trọng số) × 100 − điểm trừ làm quá tay`, tính trên các TC có trọng số trong brief. Phương án vi phạm TC loại trừ bị loại khỏi phiếu đó. Script so sánh bằng giá trị chưa làm tròn, chỉ làm tròn 1 chữ số thập phân khi hiển thị. Hai phương án chênh nhau dưới 0,01 điểm coi là hòa: thành viên phải ghi `tie_reason`.
 - Mỗi lý do phải trích một `TC`, `NFR`, ràng buộc, con số trong `03-capacity` hoặc `R-xx`. Lý do kiểu "chuẩn ngành", "đang phổ biến" không được tính.
 - Phương án vượt xa nhu cầu mà tốn thêm chi phí hoặc độ phức tạp bị trừ điểm.
 - Luôn có lựa chọn "không phương án nào phù hợp".

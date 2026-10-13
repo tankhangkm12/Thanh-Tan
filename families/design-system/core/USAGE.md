@@ -128,3 +128,51 @@ Orchestrator chỉ ghi lời duyệt, quyết định và rủi ro chấp nhận
 ## Nhắc khi kiểm tra
 
 `check_profile.py` cần template: Orchestrator và Reviewer phải truyền `--templates` rõ ràng, trỏ tới `design-architecture/templates`. Không tìm thấy template là lỗi; `--no-templates` chỉ để thử, báo cáo ghi "Chưa kiểm mục bắt buộc" và không đủ để qua gate. Nếu thấy agent chạy `check_profile.py` mà không có `--templates`, nhắc nó.
+
+## Bản Antigravity
+
+Khuyến nghị dùng bản Claude Code cho dự án thật. Bản Antigravity (`core/agents/`, sinh từ bản Claude bằng `tools/gen_antigravity.py`) chạy được nhưng yếu hơn ở chỗ kiểm soát:
+
+- **Không có chặn ghi theo thư mục bằng máy.** Hook của Antigravity không biết agent nào đang gọi tool, nên không làm lại được `guard_write.py`. Quy tắc ai được ghi đâu chỉ nằm trong prompt của từng agent, và Reviewer soát lại.
+- **`commandExecutionPolicy: sandbox` không chặn ghi ra ngoài thư mục dự án** (đã thử: lệnh `echo` ghi được file ngoài thư mục làm việc). Đừng coi nó là lớp bảo vệ.
+- Giới hạn tool theo vai trò vẫn có: chỉ Orchestrator và Reviewer có `run_command`; hội đồng chỉ có `view_file` và `write_to_file`.
+
+Cài và chạy (chọn agent bằng tên trần, không có tiền tố plugin):
+
+```text
+agy plugin install <repo>/families/design-system/core
+agy plugin install <repo>/families/design-system/design-architecture
+agy --agent design-orchestrator
+```
+
+`design-architecture` cài được vì đã có `plugin.json` (đã thử: `agy plugin install` chép cả thư mục, gồm `templates/`, vào `~/.gemini/config/plugins/design-architecture`). Đường dẫn template cho `--templates` là trường `path` của plugin này trong `agy plugin list --json` cộng `/templates`; Orchestrator tự lấy và ghi vào lời giao cho agent con. Chưa thử chạy đủ một vòng G0–G2 trên Antigravity (xem 6B).
+
+Ở chế độ không tương tác (`-p`), mọi tool cần quyền sẽ bị từ chối nếu không có luật cho phép; chế độ tương tác thì được hỏi từng lần. Luật nằm trong `~/.gemini/antigravity-cli/settings.json` và áp cho **mọi dự án**, nên giữ hẹp. Mẫu theo tài liệu Antigravity (cú pháp `command(...)` khớp từng từ; chưa thử hết từng dòng), thay `<DESIGN_CORE_DIR>` bằng trường `path` của `design-core` trong `agy plugin list --json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "command(agy plugin list)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/init_workspace.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/detect_models.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/calc_capacity.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_links.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_profile.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_numbers.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_versions.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_trace.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/check_workspace.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/tally_votes.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/call_council_cli.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/run_spike.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/promote_drafts.py)",
+      "command(uv run <DESIGN_CORE_DIR>/scripts/archive_release.py)",
+      "write_file(.agent-workspace/)",
+      "read_url(<tên miền nguồn chính thức, mỗi nguồn một dòng>)"
+    ]
+  }
+}
+```
+
+Bỏ các dòng `promote_drafts` và `archive_release` nếu muốn duyệt từng lần hai bước phát hành (ghi vào `architecture/`). Luật `write_file(.agent-workspace/)` chỉ phủ phần workspace; mọi ghi ngoài đó Antigravity sẽ hỏi, hãy đọc kỹ từng lần.

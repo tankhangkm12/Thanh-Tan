@@ -104,7 +104,7 @@ architecture/
 │       └── folder-structure.md
 │
 ├── 06-backend/
-│   ├── overview.md                # bản đồ service, ranh giới, mức A/B
+│   ├── overview.md                # bản đồ service, ranh giới, mức tổ chức code A/B của từng service (định nghĩa dưới sơ đồ)
 │   ├── communication.md           # sync/async, gateway, timeout, retry
 │   ├── cross-cutting.md           # authN/Z, error model, logging, idempotency
 │   ├── repo-structure.md
@@ -160,6 +160,15 @@ architecture/
     ├── upgrade-roadmap.md         # nâng cấp theo ngày EOL
     └── implementation-plan.md     # gói docs giao cho từng agent dev
 ```
+
+**Mức tổ chức code A/B (`06-backend/overview.md`, mỗi service một mức).** Là cách tổ chức code bên trong service, không liên quan số file tài liệu.
+
+| Mức | Cách tổ chức | Dùng khi |
+| --- | --- | --- |
+| A (đơn giản) | Thư mục chia theo loại thành phần của framework (controller, service, repository, dto, entity…) | Service chủ yếu CRUD, logic mỏng |
+| B (phân lớp) | domain / application / infrastructure / presentation; phụ thuộc hướng vào domain, domain không phụ thuộc framework hay ORM; interface ở domain hoặc application, hiện thực ở infrastructure | Có quy tắc nghiệp vụ, trạng thái, tính toán; có tích hợp dịch vụ ngoài; hoặc sắp tách thành microservice |
+
+Nâng từ A lên B làm riêng từng service khi nó phình ra. `overview.md` ghi mức và cơ sở chọn (ID FR, NFR, D…); `folder-structure.md` của service phải khớp mức đã ghi. Không có script kiểm; Reviewer soát theo checklist 06-backend.
 
 ## Quy tắc số liệu và sizing
 

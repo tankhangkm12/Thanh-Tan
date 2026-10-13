@@ -1,9 +1,11 @@
 # Cấu trúc thư mục của service
 
-> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. Cây mã nguồn của service; quy ước chung cho cả repo ở [repo-structure.md](../../repo-structure.md).
+> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. Cây mã nguồn của service; quy ước chung cho cả repo ở [repo-structure.md](../../repo-structure.md). Cây phải khớp mức tổ chức code (A hoặc B) đã ghi cho service này ở [overview.md](../../overview.md): mức A chia thư mục theo loại thành phần của framework; mức B chia domain / application / infrastructure / presentation, domain không phụ thuộc framework hay ORM. Nâng A lên B thì cập nhật cả hai nơi.
 
 ## Cây thư mục
 <!-- required -->
+
+Mức tổ chức code của service này: <A | B>, theo overview.md.
 
 ```text
 <service>/

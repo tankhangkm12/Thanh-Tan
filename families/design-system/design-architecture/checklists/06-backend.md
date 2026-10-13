@@ -1,6 +1,6 @@
 # Xong khi: 06-backend (services/{service})
 
-Gate: G7. Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ thư mục `06-backend/services/<service>/`; các file chung của 06-backend (`overview`, `communication`, `cross-cutting`, `repo-structure`, `contracts/`) chưa có template ở giai đoạn này.
+Gate: G7. Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ `06-backend/services/<service>/` và các file chung của 06-backend (`overview`, `communication`, `cross-cutting`, `repo-structure`, `contracts/README.md`).
 
 ## Mỗi service (thư mục `services/<service>/`)
 
@@ -43,6 +43,20 @@ Gate: G7. Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ thư mục `06-
 ## folder-structure.md
 
 - [ ] Có cây thư mục và quy ước ranh giới module; không mâu thuẫn `repo-structure.md`.
+- [ ] Cây khớp mức tổ chức code (A hoặc B) ghi cho service ở `overview.md`: mức A chia theo loại thành phần framework; mức B có domain / application / infrastructure / presentation, domain không phụ thuộc framework hay ORM, interface ở domain hoặc application, hiện thực ở infrastructure. Không có script kiểm; Reviewer soát.
+
+## File chung (overview, communication, cross-cutting, repo-structure, contracts/)
+
+- [ ] `overview.md`: mỗi service có mức tổ chức code A hoặc B và cột "Cơ sở" với ID (FR, NFR, D…) hoặc link giải thích vì sao; mức B khi có quy tắc nghiệp vụ, trạng thái, tính toán, tích hợp ngoài hoặc sắp tách microservice; mức A chỉ khi chủ yếu CRUD (Q1, Q8).
+- [ ] `overview.md`: mỗi service có đúng một dòng, tên khớp thư mục `services/<service>/` và khóa trong `capacity/compute.yaml`; không có vòng phụ thuộc đồng bộ; "Scale, nâng cấp, bảo trì" dẫn link `scaling.md` từng service, không chép lại (Q3).
+- [ ] `overview.md` không định nghĩa `SVC-xx` (chỉ `responsibility.md` định nghĩa); có "Tối ưu" với chỉ số bằng số, đơn vị, NFR (Q2).
+- [ ] `communication.md`: quy tắc đồng bộ và bất đồng bộ truy về NFR hoặc C; thời gian chờ (ms), số lần thử lại, ngắt mạch, giới hạn kích thước có ô "Cơ sở"; thời gian chờ gọi giữa service nhỏ hơn thời gian chờ của bên gọi (Q1, Q4).
+- [ ] `communication.md`: quy tắc phiên bản và tương thích; "Tối ưu" có chỉ số bằng số.
+- [ ] `cross-cutting.md`: mô hình lỗi, idempotency, log, giới hạn tần suất, xác thực đủ; `api.md` và frontend dẫn tới đây, không định nghĩa lại; thời hạn token khớp `auth-session.md` của app.
+- [ ] `cross-cutting.md`: có "Tối ưu" và "Bảo trì" với giờ mỗi tháng kèm cơ sở (Q2, Q3).
+- [ ] `repo-structure.md`: mô hình repo có `D-xxx`; quy tắc phụ thuộc có cách bảo đảm tự động; không mâu thuẫn `folder-structure.md` của service và của app.
+- [ ] `contracts/README.md`: mỗi file hợp đồng trong thư mục có một dòng; `API-xx` chỉ định nghĩa ở `api.md` hoặc một file hợp đồng, không cả hai (`check_links.py` báo `duplicate-id`); file hợp đồng định nghĩa `API-xx` có "Được dùng bởi".
+- [ ] Có chính sách phiên bản và cách kiểm thay đổi phá vỡ trong CI.
 
 ## Chung
 

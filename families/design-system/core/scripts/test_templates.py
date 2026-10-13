@@ -263,8 +263,8 @@ def test_the_sample_has_no_check_reports_and_no_generated_file_is_stale(sample):
 
 
 @pytest.mark.parametrize("script,args", [
-    ("check_profile.py", ("--gate", "G6", "--templates", str(TEMPLATES))),
-    ("check_trace.py", ("--gate", "G7")),
+    ("check_profile.py", ("--gate", "G10", "--templates", str(TEMPLATES))),
+    ("check_trace.py", ("--gate", "G10")),
     ("check_links.py", ()),
     ("check_versions.py", ()),
     ("check_numbers.py", ()),
@@ -274,8 +274,14 @@ def test_scripts_run_clean_on_the_sample(sample, script, args):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_the_sample_has_the_frontend_and_system_parts_that_gate_g7_wants(sample):
-    """The sample gained 01-system and 05-frontend in Phase 5B; the parts still being added may fail G7, these two must not."""
-    result = run("check_profile.py", sample, "--gate", "G7", "--templates", str(TEMPLATES))
-    errors = [line for line in (result.stdout + result.stderr).splitlines() if line.startswith("error:")]
-    assert not [line for line in errors if "05-frontend" in line or "01-system" in line], errors
+def test_the_sample_has_all_13_parts_and_the_root_readme(sample):
+    """Phase 5B widened the sample to every part; G10 wants each of them plus README.md (CHANGELOG.md is written by archive_release.py)."""
+    for part in cp.PARTS:
+        assert any((sample / "drafts" / part).rglob("*.md")), part
+    assert (sample / "drafts" / "README.md").is_file()
+    assert not (sample / "drafts" / "CHANGELOG.md").exists()
+
+
+def test_the_sample_at_gate_g10_has_no_check_report_left_in_the_repo(sample):
+    run("check_profile.py", sample, "--gate", "G10", "--templates", str(TEMPLATES))
+    assert (sample / "checks").exists() and not (SAMPLE / "checks").exists()

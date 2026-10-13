@@ -1,6 +1,6 @@
 # Xong khi: 07-data (databases/{db})
 
-Gate: G7 (quay lại G5 tính lại capacity khi kiểu dữ liệu thật lộ ra). Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ thư mục `07-data/databases/<db>/`; các file chung của 07-data (`overview`, `object-storage`, `cache`, `messaging`, `consistency`, `backup-recovery`) chưa có template ở giai đoạn này.
+Gate: G7 (quay lại G5 tính lại capacity khi kiểu dữ liệu thật lộ ra). Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ `07-data/databases/<db>/` và các file chung của 07-data (`overview`, `object-storage`, `cache`, `messaging`, `consistency`, `backup-recovery`).
 
 ## Mỗi database (thư mục `databases/<db>/`)
 
@@ -31,6 +31,17 @@ Gate: G7 (quay lại G5 tính lại capacity khi kiểu dữ liệu thật lộ 
 - [ ] "Migration schema": công cụ, quy tắc an toàn, thời gian khóa tối đa (giây), rollback, backfill.
 - [ ] "Nâng cấp": phiên bản và ngày hết hỗ trợ khớp `versions-features.md`, đường nâng cấp, gián đoạn tối đa (Q3).
 - [ ] "Bảo trì": mỗi việc định kỳ có tần suất và giờ mỗi tháng kèm cơ sở ước tính (Q3).
+
+## File chung (overview, object-storage, cache, messaging, consistency, backup-recovery)
+
+- [ ] `object-storage.md`, `cache.md`, `messaging.md` chỉ vắng khi hồ sơ dự án ghi dòng cấp file `bỏ` kèm lý do (Q8); `overview.md` ghi "không có" ở dòng kho tương ứng. Không bỏ `messaging.md` mà `events.md` của service vẫn nhắc `EVT-`.
+- [ ] `overview.md`: mỗi kho có một dòng; mỗi loại dữ liệu có đúng một nguồn sự thật; không định nghĩa `TBL-`, `BKT-`, `EVT-` ở đây.
+- [ ] `object-storage.md`: mỗi bucket có heading `### BKT-…` (định nghĩa chỉ ở đây, khớp khóa trong `capacity/storage.yaml`), chủ sở hữu `SVC-…`, FR; số file, dung lượng, băng thông dẫn link `storage-sizing.md`, không chép số; vòng đời và thời hạn URL có cơ sở; có "Được dùng bởi" (`missing-backlink`).
+- [ ] `messaging.md`: mỗi event có heading `### EVT-…` (định nghĩa chỉ ở đây), bên phát và bên nhận `SVC-…`, đảm bảo giao, cách xử lý trùng và thứ tự, thử lại và hàng đợi lỗi bằng số có cơ sở; mọi `EVT-…` mà `events.md` hoặc luồng nhắc đều có ở đây (`check_trace.py` báo `data-ref-missing`); có "Được dùng bởi".
+- [ ] `cache.md`: mỗi mục cache có nguồn, thời gian sống (giây) kèm cơ sở, cách vô hiệu hóa; có hành vi khi cache trống và "Tối ưu" (tỉ lệ trúng cache) (Q2).
+- [ ] `consistency.md`: mức nhất quán theo nghiệp vụ truy về FR, NFR hoặc C; cửa sổ bất nhất tối đa là số; giao dịch xuyên kho có quyết định `D-xxx`.
+- [ ] `backup-recovery.md`: RPO và RTO bằng số truy về NFR và khớp `scaling-ha.md`; lịch sao lưu có thời gian giữ và nơi lưu khác vùng; diễn tập khôi phục có tiêu chí đạt bằng số; dung lượng sao lưu dẫn link `data-sizing.md` (Q4).
+- [ ] Mỗi file chung có "Tối ưu" hoặc "Scale, nâng cấp, bảo trì" như template đòi, với chỉ số bằng số, đơn vị, NFR (Q2, Q3).
 
 ## Chung
 

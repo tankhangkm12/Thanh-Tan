@@ -7,7 +7,7 @@
 | --- | --- | --- |
 | Đơn vị scale | instance | |
 | Có trạng thái trong bộ nhớ không | không | |
-| Giới hạn một instance (số + đơn vị) | 150 req/s | [benchmark](https://example.com/benchmarks/order-service-2026-10) |
+| Giới hạn một instance (số + đơn vị) | 100 req/s, đo khi PostgreSQL chạy cùng máy ảo | [benchmark](https://example.com/benchmarks/order-service-with-postgresql-2026-10) |
 | Số instance theo mốc | [compute-sizing.md](../../../03-capacity/compute-sizing.md) | |
 | Điểm nghẽn tiếp theo | database order-db, CPU primary trên 70% | NFR-001 |
 | Ngưỡng lên giai đoạn sau | req/s đỉnh vượt công suất 2 instance | [compute-sizing.md](../../../03-capacity/compute-sizing.md) |

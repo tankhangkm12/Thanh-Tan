@@ -24,16 +24,16 @@
 
 | Loại đo | Công cụ | Khi nào chạy | Ngưỡng lỗi |
 | --- | --- | --- | --- |
-| phòng thí nghiệm | Lighthouse CI trên thiết bị chuẩn | mỗi lần build | LCP trên 2,5 s hoặc JS tải ban đầu trên 170 KB (NFR-001) |
+| phòng thí nghiệm | bước đo hiệu năng trong CI, trên thiết bị chuẩn | mỗi lần build | LCP trên 2,5 s hoặc JS tải ban đầu trên 170 KB (NFR-001) |
 | thực tế người dùng | log truy cập của order-service (kích thước tải, mã lỗi) | liên tục | tỉ lệ lỗi tải file tĩnh trên 1% (NFR-002) |
 
 ## Thi hành
 <!-- required -->
 
-- Bước CI: `perf-budget` (Lighthouse CI so với bảng "Ngân sách tài nguyên")
+- Bước CI: `perf-budget` (bước đo hiệu năng so với bảng "Ngân sách tài nguyên")
 - Khi vượt: chặn merge
 
-Chi tiết pipeline ở [build-delivery.md](order-web/build-delivery.md) và `ci-cd.md`.
+Chi tiết pipeline ở [build-delivery.md](order-web/build-delivery.md) và [ci-cd.md](../09-infrastructure/ci-cd.md).
 
 ## Rủi ro
 <!-- required -->

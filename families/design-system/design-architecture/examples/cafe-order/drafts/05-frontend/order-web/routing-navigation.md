@@ -29,5 +29,5 @@ Không có.
 
 | Chỉ số | Mục tiêu (số + đơn vị) | NFR | Cách đo |
 | --- | --- | --- | --- |
-| thời gian chuyển route (p95) | 200 ms | NFR-001 | Lighthouse CI trên thiết bị chuẩn |
+| thời gian chuyển route (p95) | 200 ms | NFR-001 | bước đo hiệu năng trong CI, trên thiết bị chuẩn |
 | kích thước gói mã tải thêm khi vào route | 60 KB | NFR-001 | báo cáo kích thước gói của Vite |

@@ -7,6 +7,8 @@
 | --- | --- | --- | --- | --- |
 | Node.js | lập trình backend | 3 | 2 | 0 |
 | React và Vite | lập trình ứng dụng web | 2 | 2 | 0 |
+| Ubuntu Server | quản trị máy chủ Linux | 2 | 1 | 0 |
+| GitHub Actions | viết workflow CI/CD | 2 | 1 | 0 |
 | PostgreSQL | thiết kế lược đồ, vận hành | 2 | 1 | 0 |
 
 ## Kế hoạch lấp khoảng trống

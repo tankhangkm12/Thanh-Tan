@@ -59,6 +59,7 @@
 - [requirements-trace.md](../../../00-context/requirements-trace.md)
 - [data.md](data.md)
 - [cross-cutting.md](../../cross-cutting.md)
+- [authz-matrix.md](../../../08-security/authz-matrix.md)
 - [architecture.md](../../../05-frontend/order-web/architecture.md)
 - [auth-session.md](../../../05-frontend/order-web/auth-session.md)
 - [networking-offline.md](../../../05-frontend/order-web/networking-offline.md)

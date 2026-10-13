@@ -22,7 +22,7 @@ Khách không đăng nhập: khách đặt đơn ẩn danh và xem đơn bằng 
 | SCR-order-status | khách giữ mã tra cứu | mã sai trả lỗi không tìm thấy theo error model | kiểm chữ ký ở API-get-order |
 | SCR-staff-update | nhân viên | hỏi khóa nhân viên; khóa sai trả lỗi chưa xác thực theo error model | guard route phía client và kiểm lại ở API-update-status |
 
-Kiểm ở client chỉ để điều hướng; quyền thật luôn kiểm lại ở máy chủ. Ma trận đầy đủ ở `authz-matrix.md`.
+Kiểm ở client chỉ để điều hướng; quyền thật luôn kiểm lại ở máy chủ. Ma trận đầy đủ ở [authz-matrix.md](../../08-security/authz-matrix.md).
 
 ## Đăng xuất và thu hồi
 <!-- required -->
@@ -36,6 +36,6 @@ Kiểm ở client chỉ để điều hướng; quyền thật luôn kiểm lạ
 
 | Mối đe dọa | Biện pháp | Tham chiếu |
 | --- | --- | --- |
-| XSS | chính sách CSP chặn script ngoài, không chèn HTML thô | `threat-model.md` |
-| CSRF | khóa gửi bằng header tùy biến, không dùng cookie | `threat-model.md` |
-| lộ khóa hoặc mã tra cứu | không ghi khóa ra log, mã tra cứu không đưa vào tham chiếu gửi sang trang khác | `threat-model.md` |
+| XSS | chính sách CSP chặn script ngoài, không chèn HTML thô | [threat-model.md](../../08-security/threat-model.md) |
+| CSRF | khóa gửi bằng header tùy biến, không dùng cookie | [threat-model.md](../../08-security/threat-model.md) |
+| lộ khóa hoặc mã tra cứu | không ghi khóa ra log, mã tra cứu không đưa vào tham chiếu gửi sang trang khác | [threat-model.md](../../08-security/threat-model.md) |

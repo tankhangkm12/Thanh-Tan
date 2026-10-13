@@ -27,13 +27,13 @@ TODAY = "2026-10-13"  # the sample's end-of-support dates are checked against a 
 TEMPLATE_FILES = sorted(p for p in TEMPLATES.rglob("*.md"))
 RELS = [p.relative_to(TEMPLATES).as_posix() for p in TEMPLATE_FILES]
 # Written by calc_capacity.py: the template only describes the file, so it has no `<!-- required -->` section.
-GENERATED = {"00-context/assumptions.md", "03-capacity/workload-model.md", "03-capacity/data-sizing.md", "03-capacity/storage-sizing.md",
+GENERATED = {"CHANGELOG.md", "00-context/assumptions.md", "03-capacity/workload-model.md", "03-capacity/data-sizing.md", "03-capacity/storage-sizing.md",
              "03-capacity/compute-sizing.md", "03-capacity/cost-model.md"}
 # The parts that have templates in Phase 4, and the checklist file for each.
 CHECKLISTS_OF = {"00-context": "00-context.md", "01-system": "01-system.md", "02-tech-stack": "02-tech-stack.md", "03-capacity": "03-capacity.md",
                  "04-flows": "04-flows.md", "05-frontend": "05-frontend.md", "06-backend": "06-backend.md", "07-data": "07-data.md",
                  "08-security": "08-security.md", "09-infrastructure": "09-infrastructure.md", "10-process": "10-process.md", "11-risks": "11-risks.md",
-                 "12-roadmap": "12-roadmap.md"}
+                 "12-roadmap": "12-roadmap.md", "README.md": "readme.md", "CHANGELOG.md": "changelog.md"}
 
 
 def lines_of(path: Path) -> list[str]:

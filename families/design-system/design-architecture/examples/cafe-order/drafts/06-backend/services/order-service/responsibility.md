@@ -6,7 +6,7 @@
 Sở hữu nghiệp vụ nhận đơn, theo dõi và cập nhật trạng thái đơn.
 
 - Đơn vị triển khai: service riêng
-- Làm: nhận đơn, trả trạng thái, đổi trạng thái
+- Làm: nhận đơn, trả trạng thái, đổi trạng thái, phục vụ file tĩnh của order-web
 - Không làm: thanh toán (ngoài phạm vi sản phẩm)
 
 ## Yêu cầu liên quan

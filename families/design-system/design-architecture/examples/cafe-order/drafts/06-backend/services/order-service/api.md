@@ -58,3 +58,8 @@
 - [FL-003](../../../04-flows/FL-003-cap-nhat-trang-thai.md)
 - [requirements-trace.md](../../../00-context/requirements-trace.md)
 - [data.md](data.md)
+- [architecture.md](../../../05-frontend/order-web/architecture.md)
+- [auth-session.md](../../../05-frontend/order-web/auth-session.md)
+- [networking-offline.md](../../../05-frontend/order-web/networking-offline.md)
+- [routing-navigation.md](../../../05-frontend/order-web/routing-navigation.md)
+- [state-data.md](../../../05-frontend/order-web/state-data.md)

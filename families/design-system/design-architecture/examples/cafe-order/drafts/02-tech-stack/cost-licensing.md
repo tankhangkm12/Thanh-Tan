@@ -6,6 +6,8 @@
 | Công nghệ | Giấy phép | Giới hạn sử dụng thương mại | Nguồn |
 | --- | --- | --- | --- |
 | Node.js | MIT | không có | https://github.com/nodejs/node/blob/main/LICENSE |
+| React | MIT | không có | https://github.com/facebook/react/blob/main/LICENSE |
+| Vite | MIT | không có | https://github.com/vitejs/vite/blob/main/LICENSE |
 | PostgreSQL | PostgreSQL License | không có | https://www.postgresql.org/about/licence/ |
 
 ## Chi phí ngoài hạ tầng

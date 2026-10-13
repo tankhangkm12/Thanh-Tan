@@ -23,4 +23,4 @@ Không đặt `TC-xx` ở ô đầu dòng (chỉ hai bảng trên định nghĩa
 
 | Áp dụng cho | Tiêu chí |
 | --- | --- |
-| lớp backend, lớp data | TC-001, TC-002, TC-003, TC-004 |
+| lớp backend, lớp data, lớp frontend | TC-001, TC-002, TC-003, TC-004 |

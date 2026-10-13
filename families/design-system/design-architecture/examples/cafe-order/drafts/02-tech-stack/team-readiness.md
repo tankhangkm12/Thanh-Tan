@@ -6,6 +6,7 @@
 | Công nghệ | Kỹ năng cần | Số người đã có kỹ năng | Số người cần | Khoảng trống |
 | --- | --- | --- | --- | --- |
 | Node.js | lập trình backend | 3 | 2 | 0 |
+| React và Vite | lập trình ứng dụng web | 2 | 2 | 0 |
 | PostgreSQL | thiết kế lược đồ, vận hành | 2 | 1 | 0 |
 
 ## Kế hoạch lấp khoảng trống

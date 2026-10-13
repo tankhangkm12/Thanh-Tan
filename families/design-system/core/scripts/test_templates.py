@@ -274,7 +274,8 @@ def test_scripts_run_clean_on_the_sample(sample, script, args):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_the_sample_does_not_pass_gate_g7_for_the_parts_it_does_not_have(sample):
-    """The sample stops at the Phase 4 parts, so G7 wants 05-frontend. Phase 5 widens the sample to all 13 parts."""
+def test_the_sample_has_the_frontend_and_system_parts_that_gate_g7_wants(sample):
+    """The sample gained 01-system and 05-frontend in Phase 5B; the parts still being added may fail G7, these two must not."""
     result = run("check_profile.py", sample, "--gate", "G7", "--templates", str(TEMPLATES))
-    assert result.returncode == 1 and "05-frontend" in result.stdout + result.stderr
+    errors = [line for line in (result.stdout + result.stderr).splitlines() if line.startswith("error:")]
+    assert not [line for line in errors if "05-frontend" in line or "01-system" in line], errors

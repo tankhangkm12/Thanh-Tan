@@ -30,8 +30,8 @@ RELS = [p.relative_to(TEMPLATES).as_posix() for p in TEMPLATE_FILES]
 GENERATED = {"00-context/assumptions.md", "03-capacity/workload-model.md", "03-capacity/data-sizing.md", "03-capacity/storage-sizing.md",
              "03-capacity/compute-sizing.md", "03-capacity/cost-model.md"}
 # The parts that have templates in Phase 4, and the checklist file for each.
-CHECKLISTS_OF = {"00-context": "00-context.md", "02-tech-stack": "02-tech-stack.md", "03-capacity": "03-capacity.md", "04-flows": "04-flows.md",
-                 "06-backend": "06-backend.md", "07-data": "07-data.md"}
+CHECKLISTS_OF = {"00-context": "00-context.md", "01-system": "01-system.md", "02-tech-stack": "02-tech-stack.md", "03-capacity": "03-capacity.md",
+                 "04-flows": "04-flows.md", "06-backend": "06-backend.md", "07-data": "07-data.md"}
 
 
 def lines_of(path: Path) -> list[str]:

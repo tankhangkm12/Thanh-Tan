@@ -14,6 +14,8 @@
 
 Ràng buộc nào nới được nếu có lý do, và ai quyết. Không có thì ghi "không có ràng buộc nào nới được".
 
-| ID | Ai quyết | Điều kiện nới |
+Không đặt `C-xx` ở ô đầu dòng (ô đầu dòng là chỗ định nghĩa ID).
+
+| Điều kiện nới | Ai quyết | Ràng buộc |
 | --- | --- | --- |
-| <C-xx> | <người> | <điều kiện> |
+| <điều kiện> | <người> | <C-xx> |

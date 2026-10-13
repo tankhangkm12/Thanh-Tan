@@ -29,4 +29,4 @@ Không đặt `TC-xx` ở ô đầu dòng (chỉ hai bảng trên định nghĩa
 
 | Áp dụng cho | Tiêu chí |
 | --- | --- |
-| <lớp hoặc quyết định> | <TC-xx, TC-yy> |
+| <lớp hoặc quyết định> | <TC-xx, …> |

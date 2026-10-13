@@ -21,4 +21,4 @@
 ## Liên kết
 <!-- required -->
 
-Mỗi NFR truy về FR hoặc ràng buộc nào: xem [requirements-trace.md](requirements-trace.md) và [constraints.md](constraints.md).
+<mỗi NFR truy về FR hoặc ràng buộc nào, kèm link tới [requirements-trace.md](requirements-trace.md) hoặc [constraints.md](constraints.md)>

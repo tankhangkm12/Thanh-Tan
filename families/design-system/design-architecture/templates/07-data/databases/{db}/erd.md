@@ -7,7 +7,7 @@
 
 ```mermaid
 erDiagram
-    TBL-xxx ||--o{ TBL-yyy : "<quan hệ>"
+    TBL-xxx ||--o{ TBL-xxxx : "<quan hệ>"
 ```
 
 ## Khóa ngoại

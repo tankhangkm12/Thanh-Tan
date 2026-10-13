@@ -23,7 +23,7 @@ Bảng nào phân vùng, theo khóa nào, kích thước mỗi phân vùng. Khô
 
 | Mục | Giá trị |
 | --- | --- |
-| Đơn vị scale | <primary lớn hơn, bản sao đọc, shard> |
+| Đơn vị scale | <nâng cấu hình primary, thêm bản sao đọc, shard> |
 | Giới hạn trước khi phải đổi (số + đơn vị) | <dung lượng, req/s> |
 | Ngưỡng lên giai đoạn sau | <số kích hoạt, link scaling-stages.md nếu có> |
 | Số bản sao theo mốc | <link giả định trong assumptions.md> |

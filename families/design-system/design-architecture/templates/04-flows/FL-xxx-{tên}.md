@@ -5,7 +5,7 @@
 ## Yêu cầu liên quan
 <!-- required -->
 
-- FR: <FR-xx, FR-yy>
+- FR: <FR-xx, …>
 - NFR: <NFR-xx>
 - Ràng buộc: <C-xx, hoặc "không có">
 
@@ -61,4 +61,4 @@ Ngân sách thời gian của luồng, bằng số và đơn vị, truy về NFR
 ## Rủi ro
 <!-- required -->
 
-Rủi ro của luồng đã khai vào sổ rủi ro: <R-xx, R-yy>. Không có thì ghi "không có rủi ro mới" kèm lý do.
+Rủi ro của luồng đã khai vào sổ rủi ro: <R-xx, …>. Không có thì ghi "không có rủi ro mới" kèm lý do.

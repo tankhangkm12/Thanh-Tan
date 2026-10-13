@@ -15,10 +15,10 @@
 ## Yêu cầu liên quan
 <!-- required -->
 
-- FR: <FR-xx, FR-yy>
+- FR: <FR-xx, …>
 - NFR: <NFR-xx>
 - Ràng buộc: <C-xx, hoặc "không có">
-- Luồng: <FL-xx, FL-yy>
+- Luồng: <FL-xx, …>
 
 ## Ranh giới
 <!-- required -->

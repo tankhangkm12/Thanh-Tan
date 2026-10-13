@@ -7,7 +7,7 @@
 
 | Luồng | Tên | Tác nhân | Tần suất (số + đơn vị) | Dịch vụ tham gia |
 | --- | --- | --- | --- | --- |
-| [FL-xxx](FL-xxx-ten.md) | <tên luồng> | <người dùng, hệ thống ngoài> | <số lần/ngày, lấy từ A-xx> | <SVC-xxx, SVC-yyy hoặc "chưa thiết kế ở G6"> |
+| [FL-xxx](FL-xxx-{tên}.md) | <tên luồng> | <người dùng, hệ thống ngoài> | <số lần/ngày, lấy từ A-xx> | <SVC-xxx, … hoặc "chưa thiết kế ở G6"> |
 
 ## Yêu cầu chưa có luồng
 <!-- required -->

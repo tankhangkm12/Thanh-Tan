@@ -39,4 +39,4 @@ Mỗi công nghệ của lớp một dòng (Q3). Phiên bản và ngày hết h�
 ## Rủi ro
 <!-- required -->
 
-Rủi ro của lớp này đã khai trong [sổ rủi ro](../../11-risks/risk-register.md): <R-xx, R-yy>. Chưa có sổ ở gate hiện tại thì ghi rủi ro vào `risks/` của workspace và liệt kê ID ở đây.
+Rủi ro của lớp này đã khai trong [sổ rủi ro](../../11-risks/risk-register.md): <R-xx, …>. Chưa có sổ ở gate hiện tại thì ghi rủi ro vào `risks/` của workspace và liệt kê ID ở đây.

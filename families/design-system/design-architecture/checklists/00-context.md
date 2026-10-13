@@ -14,7 +14,7 @@ Gate: G0 (`project-profile.md`) và G1 (các file còn lại). Trọng tâm G1: 
 
 - [ ] Mọi FR của BA có một dòng, ID `FR-…` ở ô đầu dòng, nguồn BA ghi file và mục.
 - [ ] Mọi FR có ít nhất một NFR hoặc ràng buộc liên quan, hoặc ghi rõ "không có" kèm lý do (Q1).
-- [ ] Mọi NFR xuất hiện ở bảng "Phủ yêu cầu phi chức năng".
+- [ ] Mọi NFR xuất hiện ở mục "Phủ yêu cầu phi chức năng" (mỗi NFR một dòng gạch đầu dòng).
 - [ ] Cột FL, SVC, TBL/BKT: "—" ở G1; điền đủ ở G6 và G7 (không FR nào không có luồng ở G6).
 - [ ] Không định nghĩa `NFR-xx` hay `C-xx` ở ô đầu dòng bảng này.
 
@@ -30,7 +30,7 @@ Gate: G0 (`project-profile.md`) và G1 (các file còn lại). Trọng tâm G1: 
 
 - [ ] Mọi ràng buộc có `C-…` ở ô đầu dòng (chỉ file này định nghĩa `C-xx`), loại, giá trị kèm đơn vị và nguồn.
 - [ ] Ngân sách, team, hạ tầng, pháp lý, thời hạn đều có dòng, hoặc ghi "không có" kèm nguồn.
-- [ ] Mục "Ràng buộc có thể nới" có đủ hoặc ghi rõ không có.
+- [ ] Mục "Ràng buộc có thể nới" có đủ hoặc ghi rõ không có; ID `C-xx` không nằm ở ô đầu dòng của bảng này.
 
 ## assumptions.md
 

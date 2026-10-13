@@ -12,11 +12,9 @@
 ## Phủ yêu cầu phi chức năng
 <!-- required -->
 
-Mỗi NFR được ít nhất một FR hoặc một thành phần hạ tầng đáp ứng.
+Mỗi NFR được ít nhất một FR hoặc một thành phần hạ tầng đáp ứng. Mỗi NFR một dòng gạch đầu dòng (không dùng bảng có NFR ở ô đầu dòng: ô đầu dòng là chỗ định nghĩa ID, mà `NFR-xx` định nghĩa ở quality-attributes.md).
 
-| NFR | Được đáp ứng bởi (FR, SVC, mục tài liệu) |
-| --- | --- |
-| <NFR-xx> | <FR-xx, SVC-xxx hoặc link mục> |
+- <NFR-xx: được đáp ứng bởi FR-xx, SVC-xxx hoặc link mục>
 
 ## Yêu cầu chưa phủ
 

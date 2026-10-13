@@ -9,7 +9,7 @@ Tên công nghệ viết trước vai trò, cách nhau bằng " — " hoặc đ�
 
 | Lớp | Công nghệ | Phiên bản | TC đáp ứng | Chi tiết |
 | --- | --- | --- | --- | --- |
-| <lớp> | <Tên — vai trò> | <major.minor> | <TC-xx, TC-yy> | [<lớp>](layers/<lớp>.md) |
+| <lớp> | <Tên — vai trò> | <major.minor> | <TC-xx, …> | [<lớp>](layers/<lớp>.md) |
 
 ## Quyết định
 <!-- required -->

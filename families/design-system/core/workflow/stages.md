@@ -91,9 +91,9 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G1. Context
 
 - **Đầu vào:** `inputs/ba/`, hồ sơ dự án đã duyệt.
-- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Designer cũng mở sổ rủi ro `11-risks/risk-register.md` với các rủi ro sớm sinh ra từ NFR và ràng buộc (điểm, dấu hiệu sớm, giảm thiểu, dự phòng theo cột trong PLAN); cột "Thành phần liên quan" để trống đến khi có stack (script chưa đòi, xem `check_links.py`). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
+- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Designer cũng mở sổ rủi ro `drafts/11-risks/risk-register.md` (chưa tính vào danh sách file của gate; `check_profile.py` chỉ đòi phần này từ G9) với các rủi ro sớm sinh ra từ NFR và ràng buộc (điểm, dấu hiệu sớm, giảm thiểu, dự phòng theo cột trong PLAN); cột "Thành phần liên quan" để trống đến khi có stack (script chưa đòi, xem `check_links.py`). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
 - **Điều kiện qua gate:** FR, NFR có chỉ số bằng số, ràng buộc (`C-xx`, định nghĩa ở `00-context/constraints.md`) và giả định (`A-xx`, ở `00-context/assumptions.md`) đều có ID; không có từ mơ hồ thiếu số (Q1, Q4); người dùng duyệt. Trọng tâm: Q1, Q4, Q6, Q8.
-- **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `11-risks/risk-register.md` (mở sổ); `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
+- **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
 - **Script:** `calc_capacity.py --assumptions-only`, `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G2. Tiêu chí lựa chọn (TC)

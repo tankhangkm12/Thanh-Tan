@@ -9,7 +9,7 @@ Trung tâm của nhiều **nhóm plugin** cho Claude Code và Antigravity CLI. M
 | Nhóm | Trạng thái | Plugin |
 |---|---|---|
 | [software-dev](families/software-dev/README.md) ([hướng dẫn sử dụng](families/software-dev/USAGE.md)) | MVP (`dev-core` dùng được) | `dev-core`, `dev-design`, `dev-backend`, `dev-frontend`, `dev-infra` |
-| [design-system](families/design-system/README.md) ([hướng dẫn sử dụng](families/design-system/core/USAGE.md)) | Khung (Giai đoạn 1), chưa có nội dung | `design-core`, `design-architecture` |
+| [design-system](families/design-system/README.md) ([hướng dẫn sử dụng](families/design-system/core/USAGE.md)) | Dùng thử được (đã chạy thử G0–G2 trên dự án thật) | `design-core`, `design-architecture` |
 | [marketing](families/marketing/README.md) | Dự kiến, chưa xây | — |
 
 Kiến trúc và quy tắc phụ thuộc: [docs/architecture.md](docs/architecture.md).
@@ -89,6 +89,15 @@ agy plugin install "<repo>/families/software-dev/backend"
 ```
 
 Rồi trong dự án, **bạn** đăng ký extension và đặt cài đặt (xem [dev-backend](families/software-dev/backend/README.md)): `agentflow ext add`, `agentflow config set backend.*`, `agentflow config check`.
+
+### Cài design-system (design-core và design-architecture)
+
+```
+claude plugin install design-core@thanh-tan-plugins
+claude plugin install design-architecture@thanh-tan-plugins
+```
+
+Cần cả hai. Cách dùng, chạy không tương tác và bản Antigravity: [hướng dẫn sử dụng](families/design-system/core/USAGE.md).
 
 ### Thay đổi từ agentflow 0.5.0 (dev-core 0.4.0, dev-backend 0.2.0)
 

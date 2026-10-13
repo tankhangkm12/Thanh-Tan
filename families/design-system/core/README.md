@@ -9,3 +9,11 @@ Core của nhóm **design-system**. Giữ workflow G0–G10, 8 tiêu chí chất
 - **Dữ liệu** (`data/`): `numbers.yaml`, `versions.yaml`, `council.yaml`, `ids.yaml`, `cli.yaml`, `spike.yaml`, `trace.yaml`, `workspace.yaml`, `gates.yaml`, `archive.yaml`.
 
 Chạy test: `uv run --with pytest --with pyyaml pytest core/scripts`. Hiện xong Giai đoạn 1, 2 và 3 (3A, 3B); các giai đoạn sau chưa làm. Xem [PLAN.md](../PLAN.md).
+
+## Cài đặt
+
+```
+/plugin install design-core --marketplace tankhangkm12/Thanh-Tan-
+```
+
+Cần cài cả `design-core` và `design-architecture`; xem [hướng dẫn sử dụng](USAGE.md).

@@ -10,7 +10,17 @@ Chỉ nói cách dùng. Quy trình, quyền agent và tiêu chí nằm ở [PLAN
 
 ## Cài đặt
 
-Marketplace chưa có (làm sau chạy thử), nên nạp plugin từ thư mục repo. `--plugin-dir` lặp được (theo `claude --help`), mỗi plugin một cờ:
+Cài từ marketplace (một lần, dùng mọi dự án):
+
+```text
+claude plugin marketplace add tankhangkm12/Thanh-Tan-
+claude plugin install design-core@thanh-tan-plugins
+claude plugin install design-architecture@thanh-tan-plugins
+```
+
+Từ bản clone local thì thay dòng đầu bằng `claude plugin marketplace add "<repo>"`. Cập nhật: `claude plugin update design-core@thanh-tan-plugins` (và `design-architecture@...`). Đã kiểm: cả hai plugin cài được từ marketplace local ở trạng thái enabled.
+
+Hoặc nạp thẳng từ thư mục repo, không cài. `--plugin-dir` lặp được (theo `claude --help`), mỗi plugin một cờ:
 
 ```text
 claude --plugin-dir <repo>/families/design-system/core --plugin-dir <repo>/families/design-system/design-architecture

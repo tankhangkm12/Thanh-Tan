@@ -2,7 +2,7 @@
 
 Quy trình có 11 gate (G0–G10) theo thứ tự cố định. Một gate chỉ qua khi đủ điều kiện **và người dùng duyệt**; không agent nào được ghi trạng thái "Đã duyệt" (xem [permissions.md](permissions.md)). Tiêu chí chất lượng Q1–Q8 là checklist của Reviewer (xem [quality-criteria.md](quality-criteria.md)). Nguồn: [PLAN.md](../../PLAN.md).
 
-Đường dẫn dạng `NN-<phần>/...` là tương đối với `architecture/`. Trước khi gate được duyệt, file nằm ở `.agent-workspace/drafts/NN-<phần>/...` (bản nháp); sau khi người dùng duyệt, chỉ `promote_drafts.py` chép sang `architecture/NN-<phần>/...`. Đường dẫn bắt đầu bằng `.agent-workspace/` là file làm việc, không bao giờ vào `architecture/`.
+Đường dẫn dạng `NN-<phần>/...` là tương đối với `architecture/`. Trước khi gate được duyệt, file nằm ở `.agent-workspace/drafts/NN-<phần>/...` (bản nháp); sau khi người dùng duyệt, chỉ `promote_drafts.py` chép sang `architecture/NN-<phần>/...` (riêng `CHANGELOG.md` do `archive_release.py` thêm mục ở G10). Đường dẫn bắt đầu bằng `.agent-workspace/` là file làm việc, không bao giờ vào `architecture/`.
 
 ## Vòng làm việc trong mỗi giai đoạn
 
@@ -163,7 +163,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G10. Kiểm tra chéo và phát hành
 
 - **Đầu vào:** toàn bộ bản nháp đã qua G1–G9.
-- **Việc:** chạy toàn bộ script; `calc_capacity.py` tính lại lần cuối; Reviewer soát toàn bộ theo Q1–Q8; `promote_drafts.py` chép lại mọi phần cùng `README.md` sang `architecture/` (phần nào đổi sau gate của nó thì được cập nhật); `archive_release.py` chụp workspace vào `archive/vN/` và cập nhật `CHANGELOG.md`.
+- **Việc:** chạy toàn bộ script; `calc_capacity.py` tính lại lần cuối; Reviewer soát toàn bộ theo Q1–Q8; `promote_drafts.py` chép lại mọi phần cùng `README.md` sang `architecture/` (phần nào đổi sau gate của nó thì được cập nhật); `archive_release.py` chụp workspace vào `archive/vN/` và cập nhật `CHANGELOG.md`, chỉ khi `architecture/` còn đúng bản vừa promote G10 (báo cáo promote ghi hash từng file).
 - **Điều kiện qua gate:** tính lại toàn bộ số khớp, mọi script sạch, người dùng duyệt phát hành vN. Trọng tâm: cả Q1–Q8.
 - **File tạo ra:** `README.md` (mục lục, phiên bản, mức áp dụng) và `CHANGELOG.md` (chế độ nâng cấp: khác gì bản trước) của `architecture/`; `.agent-workspace/archive/vN/`, `checks/*-<ngày>.md`.
 - **Script:** toàn bộ: `calc_capacity.py`, `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_trace.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py`, `archive_release.py`.

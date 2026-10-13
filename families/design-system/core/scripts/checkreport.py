@@ -133,10 +133,10 @@ def parse(text: str) -> Block | None:
     return Block(fields["Script"], fields["Kết quả"] == CLEAN, fields.get("Gate"), fields.get("Chế độ"), files)
 
 
-def latest_report(checks_dir: Path, prefix: str) -> Path | None:
-    """`<prefix>-<date>.md` with the latest date in its name (the name, not the modification time)."""
+def dated_reports(checks_dir: Path, prefix: str) -> list[Path]:
+    """The `<prefix>-<date>.md` files, the latest date in the name first (the name, not the modification time)."""
     pattern = re.compile(REPORT_NAME.format(prefix=re.escape(prefix)))
-    best: tuple[datetime.date, Path] | None = None
+    found: list[tuple[datetime.date, Path]] = []
     for path in checks_dir.glob(f"{prefix}-*.md") if checks_dir.is_dir() else []:
         match = pattern.fullmatch(path.name)
         if not match:
@@ -145,9 +145,55 @@ def latest_report(checks_dir: Path, prefix: str) -> Path | None:
             day = datetime.date.fromisoformat(match.group(1))
         except ValueError:
             continue
-        if best is None or day > best[0]:
-            best = (day, path)
-    return best[1] if best else None
+        found.append((day, path))
+    return [path for _, path in sorted(found, key=lambda item: item[0], reverse=True)]
+
+
+def latest_report(checks_dir: Path, prefix: str) -> Path | None:
+    """`<prefix>-<date>.md` with the latest date in its name (the name, not the modification time)."""
+    found = dated_reports(checks_dir, prefix)
+    return found[0] if found else None
+
+
+# --- the block of a promote run --------------------------------------------------------------------------------------------
+# promote_drafts.py ends every run that copied with this block: the sha256 of each file now in architecture/ (path relative to
+# architecture/). archive_release.py releases only when architecture/ still equals the latest such block of G10.
+
+PROMOTED_BEGIN = "<!-- BEGIN:promoted -->"
+PROMOTED_END = "<!-- END:promoted -->"
+PROMOTED_RE = re.compile(re.escape(PROMOTED_BEGIN) + r"(.*?)" + re.escape(PROMOTED_END), re.DOTALL)
+
+
+@dataclass
+class Promoted:
+    gate: str
+    files: dict[str, str]
+
+
+def render_promoted(gate: int, files: dict[str, str]) -> str:
+    lines = ["", PROMOTED_BEGIN, "", "#### Đã chép (máy đọc: không sửa tay)", "", "- Script: promote_drafts.py", f"- Gate: G{gate}", f"- Số file: {len(files)}", "", "| File | sha256 |", "| --- | --- |"]
+    lines += [f"| `{escape(rel)}` | `{digest}` |" for rel, digest in sorted(files.items())]
+    lines += ["", PROMOTED_END, ""]
+    return "\n".join(lines)
+
+
+def parse_promoted(text: str) -> list[Promoted]:
+    """Every well-formed promoted block of a report, in the order written (one needs a gate and at least one file row)."""
+    blocks = []
+    for match in PROMOTED_RE.finditer(text):
+        fields: dict[str, str] = {}
+        files: dict[str, str] = {}
+        for line in match.group(1).splitlines():
+            row = ROW_RE.match(line.strip())
+            if row:
+                files[urllib.parse.unquote(row.group("path"))] = row.group("hash")
+                continue
+            field_match = FIELD_RE.match(line.strip())
+            if field_match and field_match.group("key") not in fields:
+                fields[field_match.group("key")] = field_match.group("value")
+        if GATE_RE.fullmatch(fields.get("Gate", "")) and files:
+            blocks.append(Promoted(fields["Gate"], files))
+    return blocks
 
 
 def stale_reasons(workspace: Path, block: Block, scope: Iterable[str]) -> list[str]:

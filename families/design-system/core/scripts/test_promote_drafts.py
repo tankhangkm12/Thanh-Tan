@@ -527,3 +527,75 @@ def test_g0_end_to_end_with_the_real_check_workspace(tmp_path):
     assert run(str(SCRIPT), "--gate", "G0").returncode == 0           # drafts are not in the workspace report's scope: only its own files count
     put(ws / "state.md", state_text(0) + "\nthêm\n")
     assert run(str(SCRIPT), "--gate", "G0").returncode == 1           # but state.md is
+
+
+# --- the block archive_release.py compares architecture/ with -------------------------------------------------------------------
+
+def promoted_blocks(project):
+    return cr.parse_promoted(project.log())
+
+
+def test_a_run_that_copied_records_the_hash_of_every_file_of_the_gate(g3):
+    assert g3.promote() == 0
+    blocks = promoted_blocks(g3)
+    assert len(blocks) == 1 and blocks[0].gate == "G3"
+    assert blocks[0].files == {rel: cr.sha256_file(g3.arch / rel) for rel in g3.copied()} and set(blocks[0].files) == {"01-system/a.md", "01-system/sub/b.md"}
+
+
+def test_files_that_did_not_change_are_in_the_block_too(g3):
+    g3.promote()
+    g3.promote()
+    blocks = promoted_blocks(g3)
+    assert len(blocks) == 2 and blocks[0].files == blocks[1].files and len(blocks[1].files) == 2
+
+
+def test_the_block_holds_what_architecture_has_not_the_draft_when_they_could_differ(g3):
+    g3.promote()
+    put(g3.draft("01-system/a.md"), "# changed draft\r\n")
+    g3.reports()
+    g3.promote()
+    last = promoted_blocks(g3)[-1].files["01-system/a.md"]
+    assert last == cr.sha256_file(g3.arch / "01-system" / "a.md") == cr.sha256_file(g3.draft("01-system/a.md"))
+
+
+def test_a_refused_run_and_a_dry_run_record_no_block(g3):
+    put(g3.ws / "state.md", state_text(1))
+    assert g3.promote() == 1
+    assert promoted_blocks(g3) == []
+    put(g3.ws / "state.md", state_text(3))
+    assert g3.promote("--dry-run") == 0
+    assert not (g3.ws / "checks" / f"promote-{DAY}.md").exists() or promoted_blocks(g3) == []
+
+
+def test_a_copy_failure_records_no_block(g3, monkeypatch):
+    real = Path.write_bytes
+    monkeypatch.setattr(Path, "write_bytes", lambda self, data: real(self, data + b"x" if self.name == "a.md" else data))
+    assert g3.promote() == 1
+    assert promoted_blocks(g3) == []
+
+
+def test_g10_records_every_part_and_the_readme(tmp_path):
+    project = Project(tmp_path, 10)
+    assert project.promote() == 0
+    files = promoted_blocks(project)[-1].files
+    assert "README.md" in files and set(files) == project.copied()
+
+
+def test_a_hash_that_cannot_be_read_back_is_a_failure_and_records_no_block(g3, monkeypatch, capsys):
+    real = cr.sha256_file
+
+    def fail(path):
+        if g3.arch in Path(path).parents:
+            raise OSError("cannot read")
+        return real(path)
+    monkeypatch.setattr(cr, "sha256_file", fail)
+    assert g3.promote() == 1
+    assert "đọc lại architecture/ để ghi hash: cannot read" in capsys.readouterr().out
+    assert promoted_blocks(g3) == []
+
+
+def test_a_refused_run_after_a_good_one_adds_no_block_even_though_architecture_holds_the_files(g3):
+    assert g3.promote() == 0
+    put(g3.ws / "state.md", state_text(1))
+    assert g3.promote() == 1
+    assert len(promoted_blocks(g3)) == 1 and "## G3: TỪ CHỐI" in g3.log()

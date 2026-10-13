@@ -422,3 +422,35 @@ def test_the_mode_names_of_gates_yaml_are_the_ones_the_scripts_write():
     for mode in {m for modes in CONFIG.reports["calc_capacity"].modes.values() for m in modes}:
         assert f'"{mode}"' in source
     assert '"templates"' in (Path(__file__).parent / "check_profile.py").read_text(encoding="utf-8")
+
+
+# --- dated reports and the promoted block ------------------------------------------------------------------------------------
+
+def test_dated_reports_come_latest_date_first_and_skip_odd_names(tmp_path):
+    for name in ("promote-2026-10-01.md", "promote-2026-12-01.md", "promote-2026-11-05.md", "promote-2026-13-40.md", "promote-x-2026-12-09.md", "promote-2026-12-09.txt"):
+        put(tmp_path / "checks" / name, "x")
+    assert [p.name for p in cr.dated_reports(tmp_path / "checks", "promote")] == ["promote-2026-12-01.md", "promote-2026-11-05.md", "promote-2026-10-01.md"]
+    assert cr.dated_reports(tmp_path / "none", "promote") == []
+
+
+def test_a_promoted_block_round_trips_with_awkward_paths():
+    files = {"README.md": "a" * 64, "01-system/sub dir/a `b`.md": "b" * 64, "x%41.md": "c" * 64}
+    parsed = cr.parse_promoted("# r\n\n## G10: đã chép\n" + cr.render_promoted(10, files))
+    assert len(parsed) == 1 and parsed[0].gate == "G10" and parsed[0].files == files
+
+
+def test_every_block_of_a_report_is_parsed_in_order_and_bad_ones_are_dropped():
+    one = cr.render_promoted(3, {"a.md": "a" * 64})
+    two = cr.render_promoted(10, {"b.md": "b" * 64})
+    empty = cr.render_promoted(5, {})
+    nogate = two.replace("- Gate: G10", "- Gate: X")
+    badhash = two.replace("b" * 64, "b" * 63)
+    parsed = cr.parse_promoted("\n".join([one, empty, nogate, badhash, two]))
+    assert [(b.gate, sorted(b.files)) for b in parsed] == [("G3", ["a.md"]), ("G10", ["b.md"])]
+    assert cr.parse_promoted("no block here") == [] and cr.parse_promoted(cr.PROMOTED_BEGIN + " unterminated") == []
+
+
+def test_a_promoted_block_is_not_mistaken_for_the_checked_block():
+    text = cr.render_promoted(10, {"a.md": "a" * 64})
+    assert cr.parse(text) is None
+    assert cr.parse_promoted(cr.render("check_links.py", True, {"a.md": "a" * 64}, "G3")) == []

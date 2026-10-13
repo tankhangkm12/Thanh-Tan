@@ -11,8 +11,8 @@ CORE = HERE.parent
 STAGES = (CORE / "workflow" / "stages.md").read_text(encoding="utf-8")
 PLAN = (CORE.parent / "PLAN.md").read_text(encoding="utf-8")
 
-# Phase 3A is done; these belong to phase 3B and have no file yet. Move a name out of PENDING when its script is written.
-PENDING = {"archive_release.py"}
+# Scripts named in the plan that have no file yet (none left: phases 3A and 3B are written). Add a name here while its script is pending.
+PENDING: set[str] = set()
 NOT_A_GATE_STEP = {"guard_write.py"}  # the PreToolUse hook runs on every call, it is not a step of a gate
 MODULES = {"idlist.py", "checkreport.py", "approvals.py"}  # imported by the scripts, never run on its own: neither a gate step nor a row of the script table
 SCRIPT_NAME = re.compile(r"`([a-z_]+\.py)")

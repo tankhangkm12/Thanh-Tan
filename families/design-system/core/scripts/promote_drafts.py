@@ -18,7 +18,8 @@ the gate of its part is updated, so architecture/ ends equal to the released dra
 longer in the drafts is only reported (never deleted). `architecture/` is next to the workspace by default.
 
 Exit 0 done (or --dry-run fine), 1 refused or a copy failed, 2 wrong arguments. The run is appended to
-`<workspace>/checks/promote-<date>.md` (not with --dry-run, which writes nothing).
+`<workspace>/checks/promote-<date>.md` (not with --dry-run, which writes nothing); a run that copied ends with a block listing the
+sha256 of every file architecture/ holds for the gate, which archive_release.py compares with architecture/ before it releases.
 
     uv run promote_drafts.py --gate Gn [--workspace DIR] [--architecture DIR] [--dry-run] [--config FILE]
 """
@@ -137,7 +138,7 @@ def copy_all(rows: list[tuple[str, str, Path]], architecture: Path) -> list[str]
     return failures
 
 
-def report_lines(gate: int, accepted: list[str], rows: list[tuple[str, str, Path]], problems: list[str], failures: list[str], warnings: list[str], notes: list[str], architecture: Path) -> list[str]:
+def report_lines(gate: int, accepted: list[str], rows: list[tuple[str, str, Path]], problems: list[str], failures: list[str], warnings: list[str], notes: list[str], architecture: Path, promoted: dict[str, str] | None = None) -> list[str]:
     done = not problems and not failures
     lines = [f"## G{gate}: " + ("đã chép" if done else "TỪ CHỐI" if problems else "LỖI khi chép"), "", f"Đích: `{architecture}`", ""]
     lines += ["### Lý do từ chối", ""] + [f"- {p}" for p in problems] + [""] if problems else []
@@ -148,6 +149,8 @@ def report_lines(gate: int, accepted: list[str], rows: list[tuple[str, str, Path
     lines += [f"- `{rel}`: {action}" for rel, action, _ in rows if action != "không đổi"] or ["- không có file đổi"]
     if warnings or notes:
         lines += ["", "### Ghi chú", ""] + [f"- cảnh báo: {w}" for w in warnings] + [f"- {n}" for n in notes]
+    if promoted:
+        lines += cr.render_promoted(gate, promoted).split("\n")
     return lines + [""]
 
 
@@ -204,7 +207,13 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[str] = []
     if not problems and not args.dry_run:
         failures = copy_all(rows, architecture)
-    lines = report_lines(gate, accepted, rows, problems, failures, warnings, plan.notes, architecture)
+    promoted: dict[str, str] = {}
+    if not problems and not failures and not args.dry_run:
+        try:
+            promoted = {rel: cr.sha256_file(architecture / rel) for rel, _, _ in rows}  # what architecture/ holds now: archive_release.py compares against it
+        except OSError as error:
+            failures.append(f"đọc lại architecture/ để ghi hash: {error}")
+    lines = report_lines(gate, accepted, rows, problems, failures, warnings, plan.notes, architecture, promoted)
     target = None if args.dry_run else append_report(workspace, today, lines)
 
     changed = [(rel, action) for rel, action, _ in rows if action != "không đổi"]

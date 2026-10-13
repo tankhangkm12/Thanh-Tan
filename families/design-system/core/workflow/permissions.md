@@ -19,7 +19,7 @@ Mỗi việc giao cho một agent chạy trong ngữ cảnh riêng, chỉ đư�
 
 ## Quy tắc
 
-1. **Chỉ script `promote_drafts.py` được ghi vào `architecture/`**, và chỉ chạy sau khi người dùng duyệt gate. Đầu ra nhờ vậy chỉ chứa nội dung đã chốt.
+1. **Chỉ script `promote_drafts.py` được ghi vào `architecture/`**, và chỉ chạy sau khi người dùng duyệt gate. Đầu ra nhờ vậy chỉ chứa nội dung đã chốt. Ngoại lệ duy nhất: `archive_release.py` thêm mục phát hành vào `architecture/CHANGELOG.md` sau khi người dùng duyệt G10 (không chép nội dung thiết kế).
 2. **Chỉ người dùng duyệt; Orchestrator chỉ ghi lại.** Orchestrator chỉ ghi trạng thái duyệt (gate, quyết định, chấp nhận rủi ro) khi người dùng nói rõ theo ID trong tin nhắn, ví dụ `G4: duyệt`, `D-007: chọn B`, `R-04: chấp nhận`, `S-02: chạy` (cho chạy một spike). Orchestrator trích nguyên văn câu đó kèm ngày vào nơi ghi: phần "Quyết định của người dùng" trong `decision.md`, `decisions/decision-log.md`, `risks/acceptance.md`, `state.md` (gate; spike thì mục "Spike được duyệt chạy", kèm sha256 của đề bài để đề bài sửa sau đó phải xin lại). "ok", "được", im lặng hay câu mơ hồ **không phải** duyệt; khi đó Orchestrator phải hỏi lại. Quyết định nói trong chat được ghi trước khi làm tiếp.
 3. **`decision.md` có hai phần.** Phần hội đồng (phương án đề xuất, tỉ lệ phiếu, ý kiến thiểu số) do `tally_votes.py` sinh từ `tally.md`, không agent nào viết tay. Phần "Quyết định của người dùng" do Orchestrator ghi theo quy tắc 2.
 4. **Không ghi chéo vùng.** Reviewer không sửa bản nháp; Designer không sửa `reviews/` hay `votes/`; hội đồng chỉ ghi phiếu của chính mình; script không viết lý luận.

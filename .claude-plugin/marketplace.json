@@ -29,6 +29,16 @@
       "name": "dev-infra",
       "source": "./families/software-dev/infra",
       "category": "software-dev"
+    },
+    {
+      "name": "design-core",
+      "source": "./families/design-system/core",
+      "category": "design-system"
+    },
+    {
+      "name": "design-architecture",
+      "source": "./families/design-system/design-architecture",
+      "category": "design-system"
     }
   ]
 }

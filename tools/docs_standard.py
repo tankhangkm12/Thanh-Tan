@@ -1,6 +1,7 @@
 """Check the plugin documentation standard (docs/architecture.md, "Chuẩn tài liệu của plugin").
 
-Every family that has a core needs `families/<family>/USAGE.md` with a `## Khuôn yêu cầu task` section holding a code
+Every family that has a core needs one USAGE.md, either `families/<family>/USAGE.md` or `families/<family>/core/USAGE.md`
+(not both), with a `## Khuôn yêu cầu task` section holding a code
 block, a `## Dùng cùng <core>` section in the README of each child plugin, and a link to its USAGE.md in the root
 README. Relative links in the files of the standard must point at something that exists.
 
@@ -42,6 +43,7 @@ class Rule(Enum):
     MISSING_CHILD_SECTION = "missing-child-section"
     MISSING_ROOT_LINK = "missing-root-link"
     BROKEN_LINK = "broken-link"
+    DUPLICATE_USAGE = "duplicate-usage"
 
 
 @dataclass(frozen=True)
@@ -76,13 +78,25 @@ def family_dirs(repo: Path) -> list[Path]:
     return sorted(path for path in root.iterdir() if path.is_dir()) if root.is_dir() else []
 
 
+def usage_files(family: Path) -> list[Path]:
+    """The USAGE.md files of a family: in its core and/or at the family level."""
+    return [path for path in (family / USAGE_FILE, family / CORE_DIR / USAGE_FILE) if path.is_file()]
+
+
+def usage_target(family: Path) -> str:
+    """Path of the family's USAGE.md from the family folder (the core's one when the family has none yet)."""
+    found = usage_files(family)
+    return found[0].relative_to(family).as_posix() if found else USAGE_FILE
+
+
+def has_core(family: Path) -> bool:
+    """A family is checked when it has a USAGE.md; a core with a workflow.yaml must have one too."""
+    return bool(usage_files(family)) or (family / CORE_DIR / WORKFLOW_FILE).is_file()
+
+
 def core_families(repo: Path) -> dict[str, str]:
     """Family name -> name of its core plugin, for the families that have a core (the ones the standard applies to)."""
-    return {
-        family.name: core_name(family / CORE_DIR)
-        for family in family_dirs(repo)
-        if (family / CORE_DIR / WORKFLOW_FILE).is_file()
-    }
+    return {family.name: core_name(family / CORE_DIR) for family in family_dirs(repo) if has_core(family)}
 
 
 def children(family: Path) -> list[Path]:
@@ -111,9 +125,13 @@ def section_has_code_block(text: str, heading: str) -> bool:
 
 
 def check_usage(repo: Path, family: Path) -> list[Finding]:
-    usage = family / USAGE_FILE
+    found = usage_files(family)
+    if len(found) > 1:
+        names = " and ".join(relative(repo, path) for path in found)
+        return [Finding(Rule.DUPLICATE_USAGE, relative(repo, found[0]), f"the family has two {USAGE_FILE} files: {names}")]
+    usage = found[0] if found else family / USAGE_FILE
     name = relative(repo, usage)
-    if not usage.is_file():
+    if not found:
         return [Finding(Rule.MISSING_USAGE, name, f"the family has a core but no {USAGE_FILE}")]
     text = read(usage)
     if not has_heading(text, TEMPLATE_HEADING):
@@ -143,7 +161,7 @@ def check_root_links(repo: Path, families: dict[str, str]) -> list[Finding]:
     targets = {link_path(target) for target in LINK.findall(text)}
     findings = []
     for family in families:
-        wanted = FAMILY_LINK.format(families=FAMILIES_DIR, family=family, usage=USAGE_FILE)
+        wanted = FAMILY_LINK.format(families=FAMILIES_DIR, family=family, usage=usage_target(repo / FAMILIES_DIR / family))
         if wanted not in targets:
             findings.append(Finding(Rule.MISSING_ROOT_LINK, name, f"no link to {wanted}"))
     return findings
@@ -156,7 +174,7 @@ def link_path(target: str) -> str:
 def files_with_links(repo: Path) -> list[Path]:
     files = [repo / ROOT_README]
     for family in family_dirs(repo):
-        files += [family / README_FILE, family / USAGE_FILE]
+        files += [family / README_FILE, *usage_files(family)]
         files += [path / README_FILE for path in sorted(family.iterdir()) if path.is_dir() and is_plugin(path)]
     return [path for path in files if path.is_file()]
 

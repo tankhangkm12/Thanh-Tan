@@ -28,7 +28,7 @@
 
 | Công nghệ | Đơn vị scale | Giới hạn (số + đơn vị) | Ngưỡng lên giai đoạn sau | Đường nâng cấp | Bảo trì mỗi tháng (giờ) | Cơ sở ước tính |
 | --- | --- | --- | --- | --- | --- | --- |
-| Ubuntu Server | máy ảo | theo [compute-sizing.md](../../03-capacity/compute-sizing.md) | mức dùng CPU trên 70% | bản LTS kế tiếp trước 2029-05-01 (ngày giả định, nguồn chỉ ghi tháng 5/2029) | 2 giờ | C-002 |
+| Ubuntu Server | máy ảo | theo [compute-sizing.md](../../03-capacity/compute-sizing.md) | mức dùng CPU trên 70% | bản LTS kế tiếp trước 2029-05-31 | 2 giờ | C-002 |
 
 ## Rủi ro
 <!-- required -->

@@ -56,7 +56,7 @@ flowchart LR
 
 | Thành phần | Phiên bản chốt | Ngày hết hỗ trợ gần nhất | Đường nâng cấp | Gián đoạn tối đa (giây) | Cơ sở |
 | --- | --- | --- | --- | --- | --- |
-| hệ điều hành của vm-a và vm-b | Ubuntu Server 24.04, xem [versions-features.md](../02-tech-stack/versions-features.md) | 2029-05-01 (giả định: nguồn chỉ ghi tháng 5/2029), [vòng đời](https://ubuntu.com/about/release-cycle) | dựng máy ảo mới bằng bản LTS kế tiếp, chuyển từng máy một | 0 | NFR-002 |
+| hệ điều hành của vm-a và vm-b | Ubuntu Server 24.04, xem [versions-features.md](../02-tech-stack/versions-features.md) | 2029-05-31, [ghi chú phát hành 24.04](https://documentation.ubuntu.com/release-notes/24.04/) | dựng máy ảo mới bằng bản LTS kế tiếp, chuyển từng máy một | 0 | NFR-002 |
 
 ## Bảo trì
 <!-- required -->

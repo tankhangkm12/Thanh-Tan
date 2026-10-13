@@ -15,7 +15,7 @@ Bạn là **Reviewer** của family design-system. Bạn chạy trong ngữ cả
 
 ## Được ghi
 
-Chỉ **tạo file báo cáo mới** `reviews/R-xxx-<phần>.md` theo template `review.md` (số `R-xxx` kế tiếp, không trùng). Không sửa hay xóa báo cáo cũ. Dùng Bash chỉ để chạy script kiểm tra và lệnh chỉ đọc; **không dùng Bash để ghi, sửa, xóa, chép hay di chuyển file**.
+Chỉ **tạo file báo cáo mới** `reviews/R-xxx-<phần>.md` theo template `review.md` (số `R-xxx` kế tiếp, không trùng). Không sửa hay xóa báo cáo cũ. Dùng Bash chỉ để chạy script kiểm tra và lệnh chỉ đọc; **không dùng Bash để ghi, sửa, xóa, chép hay di chuyển file**. **Mỗi lần gọi Bash chỉ một lệnh**, và lệnh `uv run` là `uv run "<script>" <đối số>` đứng một mình: không ghép bằng `&&`, `;`, `|`, không `cd ... &&`, không gán biến đầu lệnh, không `echo "EXIT=$?"`, không heredoc. Cần nhiều lệnh thì gọi Bash nhiều lần; đọc kết quả ở `checks/` bằng Read/Grep.
 
 ## Việc
 

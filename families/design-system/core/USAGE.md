@@ -36,6 +36,7 @@ claude -p "<prompt>" --plugin-dir <repo>/families/design-system/core --plugin-di
 
 - `Bash(uv run:*)` chỉ cho chạy script `uv run` (mọi script kiểm của Orchestrator và Reviewer), không mở Bash nói chung.
 - `cp`, `mv`, `rm` không nằm trong luật nên bị hỏi và, ở `-p`, bị từ chối. Đừng mở `Bash(cp:*)`: Orchestrator đã được dặn dùng Write để chép input vào `.agent-workspace/inputs/`. Thấy nó xin `cp` thì để nó dùng Write.
+- Luật `Bash(uv run:*)` chỉ khớp lệnh `uv run <script> ...` đứng một mình. Lệnh ghép (`&&`, `;`, `|`, `cd ... &&`, gán biến đầu lệnh, heredoc) bị từ chối, nên Orchestrator và Reviewer được dặn mỗi lần Bash chỉ một lệnh `uv run`; thấy chúng xin lệnh ghép thì chúng sẽ tự viết lại thành lệnh đơn, tốn thêm lượt.
 - Tự trả lời duyệt/chọn/chấp nhận vẫn là việc của bạn: mỗi lượt chuyển nguyên văn câu `Gn: duyệt`, `D-xxx: chọn …`, `CH-xxx: …` của bạn, không để script hay công cụ gửi thay.
 
 ## Luồng G0–G10

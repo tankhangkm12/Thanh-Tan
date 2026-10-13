@@ -86,7 +86,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Orchestrator chạy `init_workspace.py`, lưu input vào `inputs/` (`ba/`, `ui-design/`, `previous-design/`), chạy `detect_models.py` để lập danh mục model, rồi sau khi có mức dự án đề xuất, chạy `detect_models.py --probe <các model đã chọn trước>` một lần (model chưa thử chưa được dùng). Planner lập hồ sơ dự án (quy mô người dùng và dữ liệu, mức độ quan trọng, số người, ngân sách, thời hạn, tuân thủ), đề xuất mức S/M/L/XL và danh sách phần áp dụng/bỏ; lập `plan/plan.md` và task đầu; đề xuất bổ sung (nếu có) vào danh sách quyết định khó đảo ngược.
 - **Điều kiện qua gate:** người dùng duyệt mức, danh sách phần áp dụng và danh mục model (Q8). Đây là bước đầu tiên: chưa duyệt thì không làm gì khác.
 - **File tạo ra:** `00-context/project-profile.md`; `.agent-workspace/state.md`, `models.md`, `inputs/*`, `plan/plan.md`, `plan/tasks/*`, `questions.md`.
-- **Script:** `init_workspace.py`, `detect_models.py`, `check_workspace.py`.
+- **Script:** `init_workspace.py`, `detect_models.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G1. Context
 
@@ -94,7 +94,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
 - **Điều kiện qua gate:** FR, NFR có chỉ số bằng số, ràng buộc (`C-xx`, định nghĩa ở `00-context/constraints.md`) và giả định (`A-xx`, ở `00-context/assumptions.md`) đều có ID; không có từ mơ hồ thiếu số (Q1, Q4); người dùng duyệt. Trọng tâm: Q1, Q4, Q6, Q8.
 - **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
-- **Script:** `calc_capacity.py --assumptions-only`, `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py --assumptions-only`, `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G2. Tiêu chí lựa chọn (TC)
 
@@ -102,7 +102,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer đề xuất tiêu chí TC-xx (ghi `stack/criteria-draft.md`, không nêu tên công nghệ hay ứng viên nào) và trọng số cho stack và kiểu kiến trúc, mỗi TC truy về FR/NFR/ràng buộc; chấm theo hồ sơ dự án (làm quá tay bị trừ điểm). Phải xong **trước khi** có bất kỳ ứng viên nào.
 - **Điều kiện qua gate:** người dùng duyệt tiêu chí và trọng số; chưa có ứng viên nào trong `.agent-workspace/stack/`. Trọng tâm: Q1, Q5, Q6, Q8.
 - **File tạo ra:** `02-tech-stack/selection-criteria.md`; bản nháp trước duyệt: `.agent-workspace/stack/criteria-draft.md`.
-- **Script:** `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G3. Kiểu kiến trúc
 
@@ -110,7 +110,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết `brief.md` với phương án trung lập (kiểu kiến trúc và giai đoạn scale); hội đồng bỏ phiếu độc lập (3 hoặc 5 phiếu theo mức); `tally_votes.py` đếm; người dùng quyết; sau đó Designer viết `01-system`.
 - **Điều kiện qua gate:** quyết định có đủ phiếu đúng định dạng; `decision.md` ghi đề xuất, tỉ lệ, thiểu số, rủi ro và quyết định của người dùng; mỗi quyết định sinh rủi ro vào sổ rủi ro (Q6); người dùng duyệt. Trọng tâm: Q3, Q5, Q6, Q8.
 - **File tạo ra:** `01-system/system-context.md`, `containers.md`, `architecture-style.md`, `integrations.md` (mức S: tối thiểu `architecture-style.md` và `containers.md`); `.agent-workspace/decisions/D-xxx-<tên>/` (`brief.md`, `votes/`, `tally.md`, `decision.md`), `decisions/decision-log.md`.
-- **Script:** `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G4. Stack và phiên bản
 
@@ -118,7 +118,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** với từng lớp, Researcher lập longlist có nguồn → loại theo TC (knockout) → shortlist → chấm theo trọng số. Hội đồng quyết stack từng lớp, phiên bản chốt và loại database (mức S: chỉ stack từng lớp; phiên bản chốt không qua hội đồng nhưng vẫn phải có trong `versions-features.md` và được người dùng duyệt ở G4, Q5). Spike trong container khi mức dự án yêu cầu (XL bắt buộc, xem điều kiện bên dưới): Designer viết đề bài `stack/layers/<lớp>/spikes/S-xx-<tên>.md` (template `spike.md`: image ghim, lệnh, kết quả mong đợi kiểm được bằng máy); Orchestrator chạy `run_spike.py --spike S-xx --show`, trình người dùng, và chỉ khi người dùng nói đúng `S-xx: chạy` mới ghi dòng vào mục "Spike được duyệt chạy" của `state.md` (kèm sha256 đề bài) rồi chạy `run_spike.py --spike S-xx`, script ghi `S-xx-<tên>.result.md` (`đạt` / `không đạt` / `lỗi`); sửa đề bài thì phải xin lại. Sau khi chốt database, Researcher xác minh từng link nguồn của hằng số DB trong `~/knowledge/stacks/<db>/constants-<major>.yaml` (đúng phiên bản chốt) rồi chép vào `capacity/db-constants/<db>-<major>.yaml`. Cuối cùng kiểm tra chéo toàn stack và lập ma trận phiên bản và tính năng.
 - **Điều kiện qua gate:** từng lớp được người dùng duyệt; ma trận phiên bản đã duyệt (Q5); kiểm tra chéo không còn xung đột; mọi dữ kiện có link nguồn chính thức (Q4); mỗi database đã chốt có file hằng số `capacity/db-constants/<db>-<major>.yaml` với mọi hằng số có link nguồn. **Mức XL:** mỗi lớp trong `stack/layers/` thuộc danh sách bắt buộc có ít nhất một spike có kết quả `đạt` chạy trên đề bài hiện tại (`check_workspace.py` kiểm ở G4). Danh sách bắt buộc là `data`, `messaging`, `backend` (runtime, framework) và `infrastructure` (`core/data/spike.yaml`), cộng các lớp Planner đánh dấu thêm ở mục "Lớp cần spike" của `plan/plan.md` (mỗi lớp một dòng gạch đầu dòng, người dùng duyệt ở G0); `tooling` và `third-party` không bắt buộc. Trọng tâm: Q4, Q5, Q6, Q8.
 - **File tạo ra:** phần còn lại của `02-tech-stack/`: `README.md`, `layers/`, `versions-features.md`, `compatibility.md`, `cost-licensing.md`, `team-readiness.md`, `exit-strategy.md`; `.agent-workspace/stack/layers/<lớp>/` (`longlist.md`, `knockout.md`, `shortlist.md`, `scoring.md`, `spikes/S-xx-<tên>.md` và `spikes/S-xx-<tên>.result.md`), `stack/cross-check.md`, `capacity/db-constants/<db>-<major>.yaml`, `decisions/D-xxx-*`.
-- **Script:** `run_spike.py`, `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `run_spike.py`, `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G5. Capacity sơ bộ
 
@@ -126,7 +126,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer điền tham số capacity (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`, schema ở [capacity-schema.md](capacity-schema.md)) và đặt trong `tables.md` mỗi bảng một cặp dấu `<!-- BEGIN:calc:<bảng> -->` / `chờ script` / `<!-- END:calc:<bảng> -->`; Orchestrator chạy `calc_capacity.py` (Designer không có Bash), `calc_capacity.py` tính tải, dung lượng, chi phí theo từng mốc của mức dự án (S: ra mắt, 1 năm; M: thêm 3 năm; L: thêm 5 năm; XL: thêm đỉnh tải).
 - **Điều kiện qua gate:** mọi hằng số và đơn giá có nguồn và ngày tra cứu; mỗi database khai đủ giả định phình, WAL, bản sao, backup, TOAST và MAXALIGN; script tính lại khớp bản nháp (Q4); người dùng duyệt tải, dung lượng, chi phí từng mốc. Trọng tâm: Q2, Q4, Q6, Q8.
 - **File tạo ra:** `03-capacity/workload-model.md`, `data-sizing.md`, `storage-sizing.md`, `compute-sizing.md`, `cost-model.md`; `.agent-workspace/capacity/` (`assumptions.yaml`, `tables.yaml`, `storage.yaml`, `compute.yaml`, `pricing.yaml`), `checks/numbers-<ngày>.md`.
-- **Script:** `calc_capacity.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G6. Luồng chính
 
@@ -134,7 +134,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết các luồng chính (sơ đồ tuần tự, lỗi, dữ liệu chạm tới); chưa thiết kế chi tiết trước khi luồng được duyệt.
 - **Điều kiện qua gate:** mọi FR có ít nhất một luồng (Q1), `check_trace.py` sạch; người dùng duyệt luồng. Trọng tâm: Q1, Q6, Q8.
 - **File tạo ra:** `04-flows/flow-index.md`, `04-flows/FL-xxx-<tên>.md`; `.agent-workspace/checks/trace-<ngày>.md`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G7. Thiết kế chi tiết
 
@@ -142,7 +142,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer thiết kế chi tiết từng app frontend (kiến trúc và tối ưu cho thiết bị thật, không quyết định visual; Q7), từng service, từng database. Hội đồng quyết ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại. Khi kiểu dữ liệu thật lộ ra, **quay lại G5** tính lại capacity rồi mới đi tiếp.
 - **Điều kiện qua gate:** mỗi thành phần truy về FR/NFR/ràng buộc (Q1), có mục "Tối ưu" với chỉ số bằng số (Q2), có đường scale, nâng cấp và gánh nặng bảo trì (Q3); frontend có ma trận thiết bị và ngân sách hiệu năng (Q7); bảng, bucket, event nhắc trong luồng đều có ở phần data; từng service, database, app được người dùng duyệt. Trọng tâm: Q1, Q2, Q3, Q7 (frontend), Q6, Q8.
 - **File tạo ra:** `05-frontend/` (`overview.md`, `device-matrix.md`, `performance-budget.md`, `<app>/*`), `06-backend/` (`overview.md`, `communication.md`, `cross-cutting.md`, `repo-structure.md`, `contracts/`, `services/<service>/*`), `07-data/` (`overview.md`, `databases/<db>/*`, `object-storage.md`, `cache.md`, `messaging.md`, `consistency.md`, `backup-recovery.md`), theo phần hồ sơ giữ lại; `.agent-workspace/capacity/tables.yaml` cập nhật, `reviews/R-xxx-<phần>.md`.
-- **Script:** `calc_capacity.py`, `call_council_cli.py`, `tally_votes.py`, `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `calc_capacity.py`, `call_council_cli.py`, `tally_votes.py`, `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G8. Bảo mật, hạ tầng, quy trình
 
@@ -150,7 +150,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer viết từng phần bảo mật, hạ tầng, quy trình (chỉ phần mà hồ sơ dự án áp dụng).
 - **Điều kiện qua gate:** mỗi phần đạt Q1–Q3; chỉ có phần được hồ sơ cho phép (`check_profile.py` sạch); người dùng duyệt từng phần. Trọng tâm: Q2, Q3, Q6, Q8.
 - **File tạo ra:** `08-security/` (`authz-matrix.md`, `threat-model.md`, `secrets-compliance.md`), `09-infrastructure/` (`topology.md`, `environments.md`, `scaling-ha.md`, `observability.md`, `ci-cd.md`), `10-process/` (`delivery.md`, `data-change.md`, `maintenance.md`, `operations.md`); `.agent-workspace/reviews/*`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G9. Rủi ro và roadmap
 
@@ -158,7 +158,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Việc:** Designer hợp nhất sổ rủi ro và viết roadmap (mức S: sổ rủi ro rút gọn chỉ ghi rủi ro ≥ 8 điểm, roadmap chỉ `implementation-plan.md`); rủi ro từ 15 điểm trở lên phải được xử lý hoặc được người dùng chấp nhận rõ ràng.
 - **Điều kiện qua gate:** không còn rủi ro ≥ 15 điểm chưa xử lý; rủi ro ≥ 15 được chấp nhận thì ghi ở `risks/acceptance.md` (Q6); người dùng duyệt sổ rủi ro. Trọng tâm: Q3, Q6, Q8.
 - **File tạo ra:** `11-risks/risk-register.md`, `12-roadmap/` (`implementation-plan.md` mọi mức; `scaling-stages.md`, `upgrade-roadmap.md` từ mức M); `.agent-workspace/risks/acceptance.md`.
-- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`.
+- **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G10. Kiểm tra chéo và phát hành
 

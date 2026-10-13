@@ -212,7 +212,7 @@ ZONES = {
         ("drafts/03-capacity/**", "deny:do calc_capacity.py sinh"),
         ("drafts/07-data/databases/*/tables.md", calc_blocks_frozen),
         ("decisions/*/brief.md", ANY), ("drafts/**", ANY), ("capacity/**", ANY), ("questions.md", ANY),
-        ("stack/criteria-draft.md", ANY), ("stack/layers/*/spikes/S-*.md", ANY),
+        ("stack/layers/*/spikes/S-*.md", ANY),
     ],
 }
 

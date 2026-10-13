@@ -206,7 +206,7 @@ def test_orchestrator_may_write_only_the_user_block_of_decision_md(ws):
     ("researcher", "drafts/x.md", False), ("researcher", "decisions/D-001-x/brief.md", False), ("researcher", "state.md", False),
     ("researcher", "plan/plan.md", False), ("researcher", "reviews/R-005-x.md", False),
     ("designer", "decisions/D-001-x/brief.md", True), ("designer", "drafts/05-frontend/overview.md", True),
-    ("designer", "capacity/assumptions.yaml", True), ("designer", "questions.md", True), ("designer", "stack/criteria-draft.md", True),
+    ("designer", "capacity/assumptions.yaml", True), ("designer", "questions.md", True), ("designer", "stack/criteria-draft.md", False), ("designer", "drafts/02-tech-stack/selection-criteria.md", True),
     ("designer", "stack/layers/db/longlist.md", False), ("designer", "stack/cross-check.md", False),
     ("designer", "reviews/R-005-x.md", False), ("designer", "decisions/D-001-x/votes/r1-fit-a.md", False),
     ("designer", "decisions/D-001-x/tally.md", False), ("designer", "decisions/D-001-x/decision.md", False),

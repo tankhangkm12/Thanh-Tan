@@ -23,12 +23,12 @@
 
 | Cảnh báo | Điều kiện (ngưỡng + thời gian) | Mức | Ai nhận | Việc phải làm | Dấu hiệu sớm của |
 | --- | --- | --- | --- | --- | --- |
-| CPU máy ảo cao | CPU trên 70% trong 15 phút (NFR-001) | cảnh báo | nhân viên vận hành, kênh chat của team | theo `operations.md` | R-003 |
-| lỗi máy chủ tăng | tỉ lệ 5xx trên 1% trong 5 phút (NFR-002) | khẩn | nhân viên vận hành, kênh chat của team | theo `operations.md` | không |
-| ngân sách hiệu năng bị vượt | bước đo hiệu năng trong CI báo LCP trên 2,5 s ở mọi lần chạy trong 7 ngày liên tiếp (NFR-001) | cảnh báo | thành viên frontend | theo `operations.md` | R-001 |
-| dò mã tra cứu | một IP nhận trên 20 lỗi không tìm thấy trong 5 phút (NFR-003) | cảnh báo | nhân viên vận hành | theo `operations.md` | R-004 |
-| khôi phục thử quá chậm | thời gian khôi phục trong buổi diễn tập trên 240 phút (NFR-002) | cảnh báo | nhân viên vận hành | theo `operations.md` | R-002 |
-| khóa quá hạn xoay | một khóa nhân viên quá 90 ngày chưa xoay (C-002) | cảnh báo | nhân viên vận hành | theo `operations.md` | R-005 |
+| CPU máy ảo cao | CPU trên 70% trong 15 phút (NFR-001) | cảnh báo | nhân viên vận hành, kênh chat của team | theo [operations.md](../10-process/operations.md) | R-003 |
+| lỗi máy chủ tăng | tỉ lệ 5xx trên 1% trong 5 phút (NFR-002) | khẩn | nhân viên vận hành, kênh chat của team | theo [operations.md](../10-process/operations.md) | không |
+| ngân sách hiệu năng bị vượt | bước đo hiệu năng trong CI báo LCP trên 2,5 s ở mọi lần chạy trong 7 ngày liên tiếp (NFR-001) | cảnh báo | thành viên frontend | theo [operations.md](../10-process/operations.md) | R-001 |
+| dò mã tra cứu | một IP nhận trên 20 lỗi không tìm thấy trong 5 phút (NFR-003) | cảnh báo | nhân viên vận hành | theo [operations.md](../10-process/operations.md) | R-004 |
+| khôi phục thử vượt RTO | thời gian khôi phục trong buổi diễn tập trên 240 phút (NFR-002) | cảnh báo | nhân viên vận hành | theo [operations.md](../10-process/operations.md) | R-002 |
+| khóa quá hạn xoay | một khóa nhân viên quá 90 ngày chưa xoay (C-002) | cảnh báo | nhân viên vận hành | theo [operations.md](../10-process/operations.md) | R-005 |
 
 ## Báo lỗi và đo thực tế phía client
 <!-- required -->

@@ -100,3 +100,4 @@ Tính bởi `calc_capacity.py` (chi tiết và nguồn hằng số: [data-sizing
 - [access-patterns.md](access-patterns.md)
 - [indexing.md](indexing.md)
 - [partitioning-retention.md](partitioning-retention.md)
+- [implementation-plan.md](../../../12-roadmap/implementation-plan.md)

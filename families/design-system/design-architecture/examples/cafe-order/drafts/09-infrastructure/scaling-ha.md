@@ -18,9 +18,9 @@ Không autoscale: số instance cố định theo mốc ở [compute-sizing.md](
 
 | Kịch bản | RPO (phút) | RTO (phút) | NFR | Cách phục hồi | Diễn tập |
 | --- | --- | --- | --- | --- | --- |
-| mất một khu | 15 | 240 | NFR-002 | đưa standby ở khu còn lại lên primary | mỗi quý, theo `operations.md` |
-| mất cả vùng chính | 15 | 240 | NFR-002 | dựng hai máy ảo mới, khôi phục từ ổ sao lưu ở vùng khác, xem [backup-recovery.md](../07-data/backup-recovery.md) | mỗi quý, theo `operations.md` |
-| xóa hoặc sửa nhầm dữ liệu | 15 | 240 | NFR-002 | khôi phục tới thời điểm trước lỗi từ WAL | mỗi quý, theo `operations.md` |
+| mất một khu | 15 | 240 | NFR-002 | đưa standby ở khu còn lại lên primary | mỗi quý, theo [operations.md](../10-process/operations.md) |
+| mất cả vùng chính | 15 | 240 | NFR-002 | dựng hai máy ảo mới, khôi phục từ ổ sao lưu ở vùng khác, xem [backup-recovery.md](../07-data/backup-recovery.md) | mỗi quý, theo [operations.md](../10-process/operations.md) |
+| xóa hoặc sửa nhầm dữ liệu | 15 | 240 | NFR-002 | khôi phục tới thời điểm trước lỗi từ WAL | mỗi quý, theo [operations.md](../10-process/operations.md) |
 
 ## Tối ưu
 <!-- required -->

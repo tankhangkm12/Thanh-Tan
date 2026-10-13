@@ -21,7 +21,7 @@ Gate: G9 (cùng 11-risks). Trọng tâm: Q1, Q3, Q4, Q8. Mức S chỉ giữ `im
 - [ ] Mỗi service, app, database và phần hạ tầng cần dựng có ít nhất một gói; mỗi gói liệt kê tài liệu đầu vào bằng link tới file thật trong `architecture/` (Q1).
 - [ ] Mỗi FR trong `requirements-trace.md` thuộc ít nhất một gói.
 - [ ] Phụ thuộc giữa gói không có vòng; tiêu chí hoàn thành kiểm được và truy về NFR.
-- [ ] Có nguyên tắc cho agent dev: tài liệu là nguồn sự thật, mâu thuẫn thì hỏi, không đổi phiên bản.
+- [ ] Mục "Nguyên tắc cho agent dev" giữ nguyên bốn quy tắc cố định của template (tài liệu là nguồn sự thật, mâu thuẫn thì hỏi, không đổi phiên bản, giao diện theo designer); mục con "Áp dụng cho dự án" đã viết riêng (câu hỏi ghi ở đâu và ai trả lời, ai duyệt đổi phiên bản, tài liệu designer ở đâu), không còn dòng giữ chỗ (`check_profile.py` báo `unfilled-required-section`).
 
 ## Chung
 

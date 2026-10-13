@@ -28,6 +28,7 @@
 | --- | --- | --- | --- | --- |
 | ra mắt | một service, một database | từ ngày ra mắt | không có | NFR-003 |
 | mở rộng | thêm instance của order-service | req/s đỉnh vượt công suất 2 instance | thêm instance theo [compute-sizing.md](../03-capacity/compute-sizing.md) | [compute-sizing.md](../03-capacity/compute-sizing.md) |
+| tách PostgreSQL | chuyển PostgreSQL sang máy ảo riêng | CPU máy ảo trên 70% trong 15 phút | dựng hai máy ảo riêng, xem [scaling-stages.md](../12-roadmap/scaling-stages.md) | NFR-001 |
 
 ## Gánh nặng vận hành
 <!-- required -->
@@ -39,4 +40,4 @@
 ## Rủi ro
 <!-- required -->
 
-Không có rủi ro mới từ kiểu kiến trúc.
+Order-service và PostgreSQL dùng chung máy ảo đã khai trong [sổ rủi ro](../11-risks/risk-register.md): R-003.

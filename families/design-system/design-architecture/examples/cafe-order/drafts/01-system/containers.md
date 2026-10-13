@@ -29,4 +29,4 @@ flowchart LR
 ## Rủi ro
 <!-- required -->
 
-Không có rủi ro mới từ cách chia container.
+Order-service và order-db dùng chung máy ảo đã khai trong [sổ rủi ro](../11-risks/risk-register.md): R-003.

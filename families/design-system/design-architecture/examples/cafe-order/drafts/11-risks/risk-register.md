@@ -30,4 +30,4 @@
 ## Rà soát
 <!-- required -->
 
-- Lần rà gần nhất: G5, 2026-10-13
+- Lần rà gần nhất: G9, 2026-10-13

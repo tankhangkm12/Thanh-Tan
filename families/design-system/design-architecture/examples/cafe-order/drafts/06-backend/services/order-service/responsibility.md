@@ -38,4 +38,5 @@ Một service vì một team 3 người (C-002) và một database duy nhất; q
 - [scaling.md](scaling.md)
 - [containers.md](../../../01-system/containers.md)
 - [overview.md](../../../07-data/overview.md)
+- [implementation-plan.md](../../../12-roadmap/implementation-plan.md)
 - [tables.md](../../../07-data/databases/order-db/tables.md)

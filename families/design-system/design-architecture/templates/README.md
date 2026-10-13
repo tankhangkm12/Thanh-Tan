@@ -38,14 +38,14 @@ Mọi file liên kết hai chiều với nhau qua ID. Mỗi loại ID được �
 
 | Tiền tố | Nghĩa | Định nghĩa ở |
 | --- | --- | --- |
-| `FR-xx`, `NFR-xx` | yêu cầu chức năng, phi chức năng | `00-context/` |
-| `C-xx`, `A-xx` | ràng buộc, giả định | `00-context/constraints.md`, `00-context/assumptions.md` |
-| `TC-xx` | tiêu chí chọn công nghệ | `02-tech-stack/selection-criteria.md` |
-| `FL-xx` | luồng | `04-flows/` |
-| `SCR-xx` | màn hình (của designer) | tài liệu của designer, không định nghĩa ở đây |
-| `SVC-xx`, `API-xx` | service, API | `06-backend/` |
-| `EVT-xx`, `TBL-xx`, `BKT-xx` | event, bảng, bucket | `07-data/` |
-| `R-xx` | rủi ro | `11-risks/risk-register.md` |
+| `FR`, `NFR` | yêu cầu chức năng, phi chức năng | `00-context/` |
+| `C`, `A` | ràng buộc, giả định | `00-context/constraints.md`, `00-context/assumptions.md` |
+| `TC` | tiêu chí chọn công nghệ | `02-tech-stack/selection-criteria.md` |
+| `FL` | luồng | `04-flows/` |
+| `SCR` | màn hình (của designer) | tài liệu của designer, không định nghĩa ở đây |
+| `SVC`, `API` | service, API | `06-backend/` |
+| `EVT`, `TBL`, `BKT` | event, bảng, bucket | `07-data/` |
+| `R` | rủi ro | `11-risks/risk-register.md` |
 
 ## Còn mở
 <!-- required -->

@@ -16,7 +16,7 @@ No `05-frontend/` (the project profile dropped it) skips the API check; `07-data
 (the sequence diagrams of the flows are where tables, buckets and events are named); link targets and file names do not.
 Paths, kinds and gates are in data/trace.yaml; the ID prefixes in data/ids.yaml.
 
-The report is also written to `<workspace>/checks/trace-<date>.md`.
+The report is also written to `<workspace>/checks/trace-<date>.md`, ending with the sha256 of every file checked (checkreport.py).
 
     uv run check_trace.py --gate Gn [--workspace DIR] [--root DIR] [--config FILE]
 """
@@ -33,6 +33,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_links as cl  # noqa: E402
+import checkreport as cr  # noqa: E402
 import idlist  # noqa: E402
 
 ENCODING = "utf-8"
@@ -160,6 +161,15 @@ def defined_in(definitions: dict, ident: str, folder: str) -> bool:
     return any(under(doc, folder) for doc, _ in definitions.get(ident, []))
 
 
+def source_files(workspace: Path, config: Config) -> list[Path]:
+    """The files of `sources`: a folder means every file inside it."""
+    found = []
+    for rel, _ in config.sources:
+        target = workspace / rel
+        found += sorted(p for p in target.rglob("*") if p.is_file()) if target.is_dir() else ([target] if target.is_file() else [])
+    return found
+
+
 def external_definitions(workspace: Path | None, config: Config) -> set[str]:
     """IDs the files listed under `sources` define by mentioning them."""
     found: set[str] = set()
@@ -277,8 +287,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     today = args.date or datetime.date.today().isoformat()
     docs = cl.load(root)
+    files = cr.hash_files(workspace, [*sorted(root.rglob("*.md")), *(source_files(workspace, config) if workspace.is_dir() else [])])  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     result = check(docs, config, gate, workspace if workspace.is_dir() else None)
-    text = report(root, gate, result, len(docs), today)
+    text = report(root, gate, result, len(docs), today) + cr.render("check_trace.py", not result.errors, files, f"G{gate}")
     target = workspace / "checks" / f"trace-{today}.md"
     if workspace.is_dir():
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -20,7 +20,7 @@ Blocking errors (exit 1):
 
 Warnings (never block): an ID that is defined but mentioned in no other file (an orphan).
 
-The report is also written to `<workspace>/checks/links-<date>.md`.
+The report is also written to `<workspace>/checks/links-<date>.md`, ending with the sha256 of every file checked (checkreport.py).
 
     uv run check_links.py [--workspace DIR] [--root DIR]
 """
@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
+import checkreport as cr
 import idlist
 
 ENCODING = "utf-8"
@@ -404,8 +405,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"not a folder: {root}", file=sys.stderr)
         return 2
     today = args.date or datetime.date.today().isoformat()
+    files = cr.hash_files(workspace, sorted(root.rglob("*.md")))  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     errors, warnings, count = run(root)
-    text = report(root, errors, warnings, count, today)
+    text = report(root, errors, warnings, count, today) + cr.render("check_links.py", not errors, files)
     target = workspace / "checks" / f"links-{today}.md"
     if workspace.is_dir():
         target.parent.mkdir(parents=True, exist_ok=True)

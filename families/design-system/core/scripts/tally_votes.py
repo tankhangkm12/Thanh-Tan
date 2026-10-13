@@ -21,7 +21,8 @@ Per decision it reads `brief.md` (frontmatter: decision, gate, council_size, cri
 
 It writes `tally.md` and ONLY the block between `<!-- BEGIN:council ... -->` and `<!-- END:council -->` of `decision.md` (created
 from the template when missing). Nothing is written for a decision that has a blocking error. Needing round 2, no consensus
-and "none" are results, not errors (exit 0). The report is also written to `<workspace>/checks/tally-<date>.md`.
+and "none" are results, not errors (exit 0). The report is also written to `<workspace>/checks/tally-<date>.md`, ending with
+the sha256 of the files of every decision counted (checkreport.py).
 
     uv run tally_votes.py [--workspace DIR] [--gate Gn] [--decision D-xxx-name] [--config FILE]
 
@@ -42,6 +43,7 @@ from pathlib import Path
 
 import yaml
 
+import checkreport as cr
 import idlist
 
 IDS = idlist.load()  # the ID prefixes shared with check_links / check_numbers / check_trace: core/data/ids.yaml
@@ -996,7 +998,9 @@ def main(argv: list[str] | None = None) -> int:
         if result is not None:
             results.append(result)
     target = workspace / "checks" / f"tally-{today}.md"
-    write_text(target, report(results, today, args.gate))
+    folders = {d.name: d for d in directories}
+    files = cr.hash_files(workspace, [p for r in results if r.name in folders for p in sorted(folders[r.name].rglob("*"))])  # after the tally wrote its files
+    write_text(target, report(results, today, args.gate) + cr.render("tally_votes.py", not any(r.problems for r in results), files, args.gate or cr.ALL_GATES))
     errors = [(r.name, p) for r in results for p in r.problems]
     print(f"tally_votes: {len(results)} quyết định, {len(errors)} lỗi chặn; báo cáo: {target}")
     for result in results:

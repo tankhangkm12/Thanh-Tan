@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml"]
+# ///
 """Check a design against its project profile and its templates (default: `.agent-workspace/drafts/`).
 
 The profile is `00-context/project-profile.md`: a line `Mức: S|M|L|XL` and a table `| Phần | Áp dụng |` with one row per
@@ -30,6 +34,9 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import checkreport as cr  # noqa: E402
 
 ENCODING = "utf-8"
 PROFILE = "00-context/project-profile.md"
@@ -362,10 +369,11 @@ def main(argv: list[str] | None = None) -> int:
     elif templates is not None and not any(templates.rglob("*.md")):
         extra.append(Finding(str(templates), 1, "templates-empty", "thư mục template không có file .md nào; kiểm --templates trỏ đúng chưa"))
         templates = None
+    files = cr.hash_files(workspace, sorted(root.rglob("*.md")))  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     findings, notes = run(root, gate, templates)
     findings += extra
     findings.sort(key=lambda f: (f.path, f.line, f.code))
-    text = report(root, gate, findings, notes, today)
+    text = report(root, gate, findings, notes, today) + cr.render("check_profile.py", not findings, files, f"G{gate}", "no-templates" if templates is None else "templates")
     target = workspace / "checks" / f"profile-{today}.md"
     if workspace.is_dir():
         target.parent.mkdir(parents=True, exist_ok=True)

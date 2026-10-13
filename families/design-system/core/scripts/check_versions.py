@@ -26,7 +26,7 @@ Blocking errors (exit 1):
 Warnings (never block): an end-of-support date within `eol_warning_months` (the row also needs the R-xx link above), a row in
 versions-features.md for a technology README.md does not list.
 
-The report is also written to `<workspace>/checks/versions-<date>.md`.
+The report is also written to `<workspace>/checks/versions-<date>.md`, ending with the sha256 of every file checked (checkreport.py).
 
     uv run check_versions.py [--workspace DIR] [--root DIR] [--config FILE]
 """
@@ -44,6 +44,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_links as cl  # noqa: E402
+import checkreport as cr  # noqa: E402
 
 ENCODING = "utf-8"
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "data" / "versions.yaml"
@@ -427,9 +428,10 @@ def main(argv: list[str] | None = None) -> int:
         today = datetime.date.fromisoformat(today_text)
     except ValueError:
         parser.error("--date phải là YYYY-MM-DD")
+    files = cr.hash_files(workspace, [root / README, root / VERSIONS])  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     findings, stats = run(root, cfg, today)
     findings.sort(key=lambda f: (not f.blocking, f.path, f.line, f.code))
-    text = report(root, findings, stats, today_text)
+    text = report(root, findings, stats, today_text) + cr.render("check_versions.py", not any(f.blocking for f in findings), files)
     target = workspace / "checks" / f"versions-{today_text}.md"
     if workspace.is_dir():
         target.parent.mkdir(parents=True, exist_ok=True)

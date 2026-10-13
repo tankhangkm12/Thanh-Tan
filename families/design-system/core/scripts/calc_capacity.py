@@ -31,6 +31,7 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import checkreport as cr  # noqa: E402
 from check_profile import LEVEL_RE  # noqa: E402
 
 ENCODING = "utf-8"
@@ -1302,7 +1303,7 @@ def apply(outputs: Outputs, drafts: Path, check: bool, problems: Problems) -> tu
     return changed, same, notes
 
 
-def write_report(workspace: Path, today: str, problems: Problems, changed: list[str], same: list[str], notes: list[str], check: bool) -> Path:
+def write_report(workspace: Path, today: str, problems: Problems, changed: list[str], same: list[str], notes: list[str], check: bool, block: str = "") -> Path:
     lines = [f"# calc_capacity {today}", "", f"Chế độ: {'--check (chỉ so sánh, không ghi)' if check else 'ghi'}. {len(problems.items)} lỗi chặn.", "", "## Lỗi chặn", ""]
     lines += [f"- {p}" for p in problems.items] or ["- không có"]
     lines += ["", "## " + ("Khác kết quả tính lại" if check else "Đã ghi"), ""] + ([f"- `{c}`" for c in changed] or ["- không có"])
@@ -1311,7 +1312,7 @@ def write_report(workspace: Path, today: str, problems: Problems, changed: list[
         lines += ["", "## Ghi chú", ""] + [f"- {n}" for n in notes]
     path = workspace / "checks" / f"capacity-{today}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", encoding=ENCODING, newline="\n")
+    path.write_text("\n".join(lines) + "\n" + block, encoding=ENCODING, newline="\n")
     return path
 
 
@@ -1331,6 +1332,8 @@ def main(argv: list[str] | None = None) -> int:
     today = args.date or datetime.date.today().isoformat()
     problems, notes, changed, same = Problems(), [], [], []
     drafts = workspace / "drafts"
+    inputs = cr.expand(workspace, ["capacity/**/*"]) + ([p for p in constants_dir.rglob("*") if p.is_file()] if constants_dir.is_dir() else [])
+    input_hashes = cr.hash_files(workspace, inputs)  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     outputs = None
     if args.assumptions_only:
         data = load_yaml(workspace / "capacity" / "assumptions.yaml", problems, "assumptions.yaml")
@@ -1346,7 +1349,10 @@ def main(argv: list[str] | None = None) -> int:
     if outputs is not None:
         changed, same, extra = apply(outputs, drafts, args.check, problems)
         notes += extra
-    report = write_report(workspace, today, problems, changed, same, notes, args.check)
+    outputs_written = [drafts / rel.removesuffix(" (khối calc)") for rel in [*changed, *same]]
+    mode = "assumptions-only" if args.assumptions_only else ("check" if args.check else "write")
+    files = {**cr.hash_files(workspace, outputs_written), **input_hashes}  # outputs after the write, inputs from before
+    report = write_report(workspace, today, problems, changed, same, notes, args.check, cr.render("calc_capacity.py", not problems.items, files, None, mode))
     print(f"calc_capacity: {len(problems.items)} lỗi chặn; {len(changed)} file {'khác' if args.check else 'đã ghi'}, {len(same)} không đổi; báo cáo: {report}")
     for item in problems.items[:25]:
         print(f"error: {item}")

@@ -19,7 +19,7 @@ Blocking errors (exit 1):
   "scale tốt", ...). The list of words, of units and of evidence columns is in `core/data/numbers.yaml`, not in this script.
 - `00-context/assumptions.md` differs from what `capacity/assumptions.yaml` generates (or one of the two is missing or invalid).
 
-The report is also written to `<workspace>/checks/numbers-<date>.md`.
+The report is also written to `<workspace>/checks/numbers-<date>.md`, ending with the sha256 of every file checked (checkreport.py).
 
     uv run check_numbers.py [--workspace DIR] [--root DIR] [--config FILE] [--constants-dir DIR]
 """
@@ -36,6 +36,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import calc_capacity as cc  # noqa: E402
+import checkreport as cr  # noqa: E402
 import idlist  # noqa: E402
 
 IDS = idlist.load()  # the ID prefixes shared with check_links / tally_votes / check_trace: core/data/ids.yaml
@@ -405,9 +406,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"config error: {error}", file=sys.stderr)
         return 2
     today = args.date or datetime.date.today().isoformat()
+    # the drafts and the capacity inputs it recomputes from; hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
+    inputs = cr.expand(workspace, ["capacity/**/*"]) + ([p for p in args.constants_dir.resolve().rglob("*") if p.is_file()] if args.constants_dir else [])
+    files = cr.hash_files(workspace, [*sorted(root.rglob("*.md")), *inputs])
     findings, stats = run(root, workspace, cfg, args.constants_dir.resolve() if args.constants_dir else None)
     findings.sort(key=lambda f: (f.path, f.line, f.code))
-    text = report(root, findings, stats, today)
+    text = report(root, findings, stats, today) + cr.render("check_numbers.py", not findings, files)
     target = workspace / "checks" / f"numbers-{today}.md"
     if workspace.is_dir():
         target.parent.mkdir(parents=True, exist_ok=True)

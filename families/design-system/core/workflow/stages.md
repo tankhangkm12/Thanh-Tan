@@ -35,7 +35,8 @@ Chế độ nâng cấp: G0 đọc `inputs/previous-design/` trước, và mỗi
 - `detect_models.py`: ở G0, lập danh mục model; `--probe <danh sách>` chỉ thử đúng các model đã chọn trước, một lần. `guard_write.py` là hook `PreToolUse` luôn chạy, không phải bước của gate.
 - `run_spike.py`: ở G4 khi có spike (XL bắt buộc), chỉ Orchestrator chạy, chỉ khi `state.md` có dòng người dùng đồng ý đúng `S-xx: chạy` kèm sha256 của đề bài hiện tại; kết quả `.result.md` chỉ do script ghi.
 - `call_council_cli.py`: ở mọi gate có hội đồng, cho từng thành viên chạy qua CLI ngoài (thành viên là subagent Claude thì Orchestrator gọi bằng Agent tool, không qua script); chỉ gọi model đã `--probe` đạt (`models.md` ghi "gọi được").
-- `tally_votes.py`: ở mọi gate có hội đồng.
+- `tally_votes.py`: ở mọi gate có hội đồng; `--gate Gn` đếm các quyết định của gate đó (ở G10 chạy không có `--gate`, đếm tất cả); báo cáo `checks/tally-<ngày>.md` ghi gate để `promote_drafts.py` kiểm.
+- `promote_drafts.py --gate Gn`: chạy sau khi người dùng duyệt gate (`Gn: duyệt`, quy tắc 2). Chỉ chép khi mọi script của gate (danh sách trong `core/data/gates.yaml`, bằng dòng "Script" của gate trừ các script không để lại báo cáo) có báo cáo mới nhất sạch, đúng gate và không cũ (mỗi báo cáo ghi sha256 của các file đã kiểm; file đổi hoặc thêm sau lúc kiểm thì báo cáo cũ và phải chạy lại script). Thiếu gì thì từ chối và nêu rõ. G10 chép lại mọi phần cùng `README.md`.
 - `check_workspace.py --gate Gn`: ở mọi gate (không truyền `--gate` thì lấy "Giai đoạn hiện tại" của `state.md`). Kiểm: task có Gate ≤ Gn chưa đóng; quyết định có gate ≤ Gn chưa có quyết định của người dùng; rủi ro ≥ 15 điểm chưa xử lý (cảnh báo trước G9, lỗi từ G9); sổ rủi ro và `risks/acceptance.md` khớp hai chiều; model chưa thử hoặc không dùng được ở các dòng "Gán model" của task chưa đóng (dòng của task đã đóng là lịch sử); ở mức XL từ G4, mỗi lớp bắt buộc có spike `đạt`. Từ ngữ và ngưỡng: `core/data/workspace.yaml`. G10 chạy toàn bộ script.
 - **Hội đồng** chỉ dùng cho: kiểu kiến trúc (G3); stack từng lớp, phiên bản chốt, loại database (G4); ranh giới service, chiến lược nhất quán dữ liệu, kiểu dữ liệu của các bảng tăng nhanh nhất, đặc biệt khóa chính và khóa ngoại (G7). Chi tiết nhỏ hơn do Designer viết thẳng, Reviewer soát.
 - **Số thành viên theo mức:** S 3 phiếu, chỉ cho kiểu kiến trúc (G3) và stack từng lớp (G4); M 3; L 3, và 5 cho quyết định khó đảo ngược (xem mục bên dưới); XL 5.
@@ -162,7 +163,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G10. Kiểm tra chéo và phát hành
 
 - **Đầu vào:** toàn bộ bản nháp đã qua G1–G9.
-- **Việc:** chạy toàn bộ script; `calc_capacity.py` tính lại lần cuối; Reviewer soát toàn bộ theo Q1–Q8; `promote_drafts.py` chép phần còn lại sang `architecture/`; `archive_release.py` chụp workspace vào `archive/vN/` và cập nhật `CHANGELOG.md`.
+- **Việc:** chạy toàn bộ script; `calc_capacity.py` tính lại lần cuối; Reviewer soát toàn bộ theo Q1–Q8; `promote_drafts.py` chép lại mọi phần cùng `README.md` sang `architecture/` (phần nào đổi sau gate của nó thì được cập nhật); `archive_release.py` chụp workspace vào `archive/vN/` và cập nhật `CHANGELOG.md`.
 - **Điều kiện qua gate:** tính lại toàn bộ số khớp, mọi script sạch, người dùng duyệt phát hành vN. Trọng tâm: cả Q1–Q8.
 - **File tạo ra:** `README.md` (mục lục, phiên bản, mức áp dụng) và `CHANGELOG.md` (chế độ nâng cấp: khác gì bản trước) của `architecture/`; `.agent-workspace/archive/vN/`, `checks/*-<ngày>.md`.
 - **Script:** toàn bộ: `calc_capacity.py`, `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_trace.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py`, `archive_release.py`.

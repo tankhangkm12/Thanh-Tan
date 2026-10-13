@@ -22,7 +22,8 @@ Blocking errors (exit 1), for the gate Gn being checked (default: "Giai đoạn 
   current spec. Required layers: `data/spike.yaml` (data, messaging, backend, infrastructure) plus the layers under "Lớp cần spike"
   of `plan/plan.md`; tooling and third-party never. A required layer with no folder is a warning.
 
-The report is also written to `<workspace>/checks/workspace-<date>.md`. Words and thresholds: data/workspace.yaml.
+The report is also written to `<workspace>/checks/workspace-<date>.md`, ending with the sha256 of the workspace files it judges
+(scope in data/gates.yaml). Words and thresholds: data/workspace.yaml.
 
     uv run check_workspace.py [--workspace DIR] [--gate Gn] [--config FILE]
 """
@@ -37,6 +38,7 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import checkreport as cr  # noqa: E402
 import detect_models as dm  # noqa: E402
 import idlist  # noqa: E402
 import run_spike as rs  # noqa: E402
@@ -561,10 +563,16 @@ def main(argv: list[str] | None = None) -> int:
             print("không có --gate và state.md không có dòng \"Giai đoạn hiện tại: Gn\"", file=sys.stderr)
             return 2
         gate = int(match.group(1))
+    gates, gate_errors = cr.load_config()
+    if gates is None:
+        for error in gate_errors:
+            print(f"config error: {error}", file=sys.stderr)
+        return 2
     today = args.date or datetime.date.today().isoformat()
+    files = cr.hash_files(workspace, cr.expand(workspace, gates.reports["check_workspace"].scope))  # hashed before the run: an edit during or after it makes the report stale (promote_drafts.py)
     result = run(workspace, cfg, gate, level)
     target = workspace / "checks" / f"workspace-{today}.md"
-    tv.write_text(target, report(workspace, gate, level, result, today))
+    tv.write_text(target, report(workspace, gate, level, result, today) + cr.render("check_workspace.py", not result.errors, files, f"G{gate}"))
     print(f"check_workspace G{gate}: {len(result.errors)} lỗi chặn, {len(result.warnings)} cảnh báo; báo cáo: {target}")
     for note in result.notes:
         print(f"  {note}")

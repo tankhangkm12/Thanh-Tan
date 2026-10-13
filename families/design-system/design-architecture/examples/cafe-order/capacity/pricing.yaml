@@ -15,9 +15,3 @@ items:
     unit_price: 0.115
     source: https://example.com/pricing/block-storage
     looked_up: 2026-10-12
-  object-storage:
-    description: Object storage tiêu chuẩn
-    unit: GB-month
-    unit_price: 0.023
-    source: https://example.com/pricing/object-storage
-    looked_up: 2026-10-12

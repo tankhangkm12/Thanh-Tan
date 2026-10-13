@@ -14,27 +14,33 @@
 
 ### API-create-order: POST /orders
 
-- Yêu cầu vào: danh sách món (mã món, số lượng), ghi chú tối đa 200 byte
-- Phản hồi thành công: 201, mã đơn
-- Lỗi: 400 khi danh sách rỗng, theo error model chung
-- Idempotency: khóa do client gửi, giữ 86.400 giây
-- Giới hạn tần suất: 5 request/giây/người dùng
+| Mục | Giá trị | Cơ sở |
+| --- | --- | --- |
+| Yêu cầu vào | danh sách món (mã món, số lượng), ghi chú tối đa 200 byte | A-note-bytes |
+| Phản hồi thành công | 201, mã đơn | |
+| Lỗi | 400 khi danh sách rỗng, theo error model chung | |
+| Idempotency | khóa do client gửi, giữ 86.400 giây | D-001 |
+| Giới hạn tần suất | 5 request/giây/người dùng | NFR-003 |
 
 ### API-get-order: GET /orders/{id}
 
-- Yêu cầu vào: mã đơn
-- Phản hồi thành công: 200, trạng thái và các món
-- Lỗi: 404 khi không có đơn
-- Idempotency: không áp dụng (chỉ đọc)
-- Giới hạn tần suất: 5 request/giây/người dùng
+| Mục | Giá trị | Cơ sở |
+| --- | --- | --- |
+| Yêu cầu vào | mã đơn | |
+| Phản hồi thành công | 200, trạng thái và các món | |
+| Lỗi | 404 khi không có đơn | |
+| Idempotency | không áp dụng (chỉ đọc) | |
+| Giới hạn tần suất | 5 request/giây/người dùng | NFR-003 |
 
 ### API-update-status: PATCH /orders/{id}/status
 
-- Yêu cầu vào: trạng thái mới
-- Phản hồi thành công: 200
-- Lỗi: 409 khi chuyển trạng thái không hợp lệ
-- Idempotency: đặt cùng trạng thái hai lần cho cùng kết quả
-- Giới hạn tần suất: 10 request/giây/nhân viên
+| Mục | Giá trị | Cơ sở |
+| --- | --- | --- |
+| Yêu cầu vào | trạng thái mới | |
+| Phản hồi thành công | 200 | |
+| Lỗi | 409 khi chuyển trạng thái không hợp lệ | |
+| Idempotency | đặt cùng trạng thái hai lần cho cùng kết quả | |
+| Giới hạn tần suất | 10 request/giây/nhân viên | NFR-003 |
 
 ## Tối ưu
 <!-- required -->

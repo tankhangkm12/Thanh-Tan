@@ -1,6 +1,0 @@
-buckets:
-  menu-images:
-    id: BKT-menu-images
-    files_per_day: A-menu-images-per-day
-    avg_file_bytes: A-image-bytes
-    storage_price_item: object-storage

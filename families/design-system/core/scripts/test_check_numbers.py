@@ -19,12 +19,12 @@ CFG, ERRORS = cn.load_config(cn.DEFAULT_CONFIG)
 assert CFG is not None, ERRORS
 
 
-def check(text: str, defined: set[str] | None = None, cfg: cn.Config = CFG, blocks: dict[str, str] | None = None) -> list[cn.Finding]:
-    return cn.check_text("a.md", text, cfg, defined, cn.Stats(), blocks)
+def check(text: str, defined: set[str] | None = None, cfg: cn.Config = CFG, blocks: dict[str, str] | None = None, known: set[str] | None = None) -> list[cn.Finding]:
+    return cn.check_text("a.md", text, cfg, defined, cn.Stats(), blocks, known)
 
 
-def codes(text: str, defined: set[str] | None = None, cfg: cn.Config = CFG) -> list[str]:
-    return [f.code for f in check(text, defined, cfg)]
+def codes(text: str, defined: set[str] | None = None, cfg: cn.Config = CFG, known: set[str] | None = None) -> list[str]:
+    return [f.code for f in check(text, defined, cfg, known=known)]
 
 
 # --- the data file ---------------------------------------------------------------------------------------------------------------------
@@ -187,6 +187,129 @@ def test_a_cell_in_another_column_filled_does_not_count():
 def test_short_rows_and_tables_without_a_separator():
     assert [(f.code, f.line) for f in check("| a | b |\n| tải 450 req/s |\n")] == [("number-without-evidence", 2)]  # no separator: every line is a row
     assert codes("| Chỉ số | Nguồn |\n| --- | --- |\n| tải 450 req/s |\n") == ["number-without-evidence"]
+
+
+# --- exact phrases that contain a vague word ---------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text", [
+    "Đơn có ít nhất một dòng món.", "Ít nhất 2 món mỗi đơn.", "Dùng kiểu nhỏ nhất đủ cho mốc xa nhất.", "Chọn bảng lớn nhất trước.", "Nhiều nhất một lần thử lại.",
+    "- Cần ít  nhất một FR.", "## Ít nhất một luồng",
+])
+def test_an_exact_phrase_with_a_vague_word_is_not_vague(text):
+    assert codes(text) == [], text
+
+
+@pytest.mark.parametrize("text", ["Có ít món.", "Bảng lớn hơn.", "Hệ thống nhanh nhất.", "Ít nhất một món nhưng hệ thống nhanh.", "Nhiều khách."])
+def test_the_bare_word_and_other_superlatives_stay_vague(text):
+    assert codes(text) == ["vague-word"], text
+
+
+def test_the_exempt_phrases_come_from_the_data_file(tmp_path):
+    data = yaml.safe_load(cn.DEFAULT_CONFIG.read_text(encoding="utf-8"))
+    assert {"ít nhất", "nhiều nhất", "lớn nhất", "nhỏ nhất"} <= set(data["exempt_phrases"])
+    cfg, _ = cn.load_config(write_config(tmp_path, exempt_phrases=[]))
+    assert codes("Đơn có ít nhất một dòng món.", cfg=cfg) == ["vague-word"]
+    cfg, _ = cn.load_config(write_config(tmp_path, exempt_phrases=["nhanh nhất"]))
+    assert codes("Hệ thống nhanh nhất.", cfg=cfg) == []
+
+
+# --- an NFR or a constraint in the same sentence, item or row is evidence ---------------------------------------------------------------
+
+KNOWN = {"NFR-001", "C-001", "TC-001", "R-01"}
+
+
+@pytest.mark.parametrize("text", [
+    "p95 dưới 300 ms (NFR-001).", "Ngân sách 300 USD theo C-001.", "- Mục tiêu 300 ms, truy về NFR-001.", "## p95 dưới 300 ms, NFR-001",
+    "| Chỉ số | Mục tiêu | NFR |\n| --- | --- | --- |\n| p95 | dưới 300 ms | NFR-001 |\n",
+])
+def test_a_defined_nfr_or_constraint_is_evidence_for_a_number(text):
+    assert codes(text, known=KNOWN) == [], text
+
+
+@pytest.mark.parametrize("text", [
+    "p95 dưới 300 ms (NFR-009).", "p95 dưới 300 ms. Xem NFR-001.", "p95 dưới 300 ms theo TC-001.", "p95 dưới 300 ms theo R-01.", "p95 dưới 300 ms theo D-001.",
+    "| Chỉ số | Mục tiêu |\n| --- | --- |\n| p95 | dưới 300 ms |\n| p99 | NFR-001 |\n",
+])
+def test_an_undefined_or_other_id_or_one_in_another_sentence_or_row_is_not(text):
+    assert codes(text, known=KNOWN) == ["number-without-evidence"], text
+
+
+def test_without_the_set_of_defined_ids_any_nfr_counts():
+    assert codes("p95 dưới 300 ms (NFR-009).", known=None) == []
+
+
+def test_the_kinds_that_count_come_from_the_data_file(tmp_path):
+    cfg, _ = cn.load_config(write_config(tmp_path, evidence_id_kinds=[]))
+    assert codes("p95 dưới 300 ms (NFR-001).", cfg=cfg, known=KNOWN) == ["number-without-evidence"]
+    cfg, _ = cn.load_config(write_config(tmp_path, evidence_id_kinds=["TC"]))
+    assert codes("p95 dưới 300 ms (TC-001).", cfg=cfg, known=KNOWN) == []
+
+
+# --- the basis ("cơ sở") column: only an ID or a link counts -----------------------------------------------------------------------------
+
+BASIS = "| Mục | Giá trị | {col} |\n| --- | --- | --- |\n| chờ | 2 giây | {cell} |\n"
+
+
+@pytest.mark.parametrize("col", ["Cơ sở", "Cơ sở ước tính", "**Cơ sở**", "cơ sở thiết kế"])
+@pytest.mark.parametrize("cell", ["NFR-001", "C-001", "TC-001", "R-01", "D-001", "A-peak", "NFR-001, kinh nghiệm team", "[tài liệu](https://example.com/docs)",
+                                  "https://example.com/docs", "`C-001`"])
+def test_a_basis_cell_with_an_id_or_a_link_makes_the_row_pass(col, cell):
+    assert codes(BASIS.format(col=col, cell=cell), defined={"A-peak"}, known=KNOWN) == [], (col, cell)
+
+
+@pytest.mark.parametrize("cell", ["kinh nghiệm team", "ước tính của BA", "theo tài liệu", "", "-", "—", "chưa có", "FR-001", "T-003", "NFR-009", "C-009", "A-other"])
+def test_a_basis_cell_with_words_only_or_an_undefined_id_does_not(cell):
+    assert codes(BASIS.format(col="Cơ sở", cell=cell), defined={"A-peak"}, known=KNOWN) == ["number-without-evidence"], cell
+    assert codes(BASIS.format(col="Cơ sở ước tính", cell=cell), defined={"A-peak"}, known=KNOWN) == ["number-without-evidence"], cell
+
+
+def test_a_free_text_evidence_column_still_takes_words_and_the_basis_column_is_not_one_of_them():
+    both = "| Mục | Giá trị | Nguồn | Cơ sở |\n| --- | --- | --- | --- |\n| chờ | 2 giây | BA mục 3 | kinh nghiệm team |\n"
+    assert codes(both, known=KNOWN) == []
+    assert codes(TABLE.format(col="Nguồn", cell="BA mục 3"), known=KNOWN) == []
+
+
+def test_a_basis_cell_is_not_shared_with_the_next_row():
+    text = "| Mục | Giá trị | Cơ sở |\n| --- | --- | --- |\n| a | 2 giây | NFR-001 |\n| b | 3 giây | |\n"
+    assert [f.line for f in check(text, known=KNOWN)] == [4]
+
+
+def test_the_basis_columns_and_kinds_come_from_the_data_file(tmp_path):
+    cfg, _ = cn.load_config(write_config(tmp_path, basis_columns=["lý do"], basis_id_kinds=["NFR"], evidence_id_kinds=[]))
+    assert codes(BASIS.format(col="Lý do", cell="NFR-001"), cfg=cfg, known=KNOWN) == []
+    assert codes(BASIS.format(col="Lý do", cell="C-001"), cfg=cfg, known=KNOWN) == ["number-without-evidence"]
+    assert codes(BASIS.format(col="Lý do", cell="kinh nghiệm"), cfg=cfg, known=KNOWN) == ["number-without-evidence"]
+    assert codes(BASIS.format(col="Cơ sở", cell="kinh nghiệm"), cfg=cfg, known=KNOWN) == ["number-without-evidence"]
+
+
+def test_an_old_data_file_without_the_new_keys_still_loads(tmp_path):
+    data = yaml.safe_load(cn.DEFAULT_CONFIG.read_text(encoding="utf-8"))
+    for key in ("exempt_phrases", "evidence_id_kinds", "basis_columns", "basis_id_kinds"):
+        data.pop(key)
+    path = tmp_path / "old.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    cfg, errors = cn.load_config(path)
+    assert cfg is not None and not errors
+    assert codes("Đơn có ít nhất một món.", cfg=cfg) == ["vague-word"]
+    assert codes("p95 dưới 300 ms (NFR-001).", cfg=cfg) == ["number-without-evidence"]
+
+
+@pytest.mark.parametrize("override", [{"evidence_id_kinds": ["XYZ"]}, {"basis_id_kinds": ["NFR", "XYZ"]}, {"exempt_phrases": "ít nhất"}, {"basis_columns": [1]}])
+def test_a_bad_new_key_is_reported(tmp_path, override):
+    cfg, errors = cn.load_config(write_config(tmp_path, **override))
+    assert cfg is None and errors
+
+
+def test_end_to_end_ids_are_checked_against_what_the_drafts_define(tmp_path):
+    workspace = make_workspace(tmp_path)
+    drafts = workspace / "drafts"
+    (drafts / "00-context" / "quality-attributes.md").write_text("# NFR\n\n| ID | Chỉ tiêu | Nguồn |\n| --- | --- | --- |\n| NFR-001 | p95 dưới 300 ms | BA |\n", encoding="utf-8")
+    (drafts / "x.md").write_text("Mục tiêu p95 dưới 300 ms (NFR-001).\n\n| Mục | Giá trị | Cơ sở |\n| --- | --- | --- |\n| chờ | 2 giây | NFR-001 |\n", encoding="utf-8")
+    result = run_cli("--workspace", str(workspace), "--date", "2026-10-12")
+    assert result.returncode == 0, result.stdout
+    (drafts / "y.md").write_text("Mục tiêu p95 dưới 300 ms (NFR-777).\n\n| Mục | Giá trị | Cơ sở |\n| --- | --- | --- |\n| chờ | 2 giây | NFR-777 |\n", encoding="utf-8")
+    result = run_cli("--workspace", str(workspace), "--date", "2026-10-12")
+    assert result.returncode == 1 and result.stdout.count("y.md") == 2
 
 
 # --- what is not checked -----------------------------------------------------------------------------------------------------------------

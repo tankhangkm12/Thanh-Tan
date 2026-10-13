@@ -34,6 +34,7 @@ Gate: G7 (quay lại G5 tính lại capacity khi kiểu dữ liệu thật lộ 
 
 ## Chung
 
+- [ ] Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" với ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần không đạt (`check_numbers.py`).
 - [ ] `calc_capacity.py` đầy đủ chạy sạch và `calc_capacity.py --check` khớp; `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_trace.py --gate G7` (mọi `TBL-`/`BKT-`/`EVT-` luồng nhắc có định nghĩa), `check_profile.py --gate G7 --templates …`, `check_workspace.py` sạch.
 - [ ] Mỗi database có `capacity/db-constants/<db>-<major>.yaml` với mọi hằng số có link nguồn; mỗi database khai đủ giả định phình, WAL, bản sao, backup, TOAST, MAXALIGN.
 - [ ] Quyết định và rủi ro mới (kiểu dữ liệu sắp tràn, dung lượng sát ngân sách) đã khai vào sổ rủi ro (Q6).

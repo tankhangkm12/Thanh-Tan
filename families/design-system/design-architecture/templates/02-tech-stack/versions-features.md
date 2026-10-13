@@ -1,6 +1,6 @@
 # Ma trận phiên bản và tính năng
 
-> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. `check_versions.py` đọc bảng có cột "Công nghệ": **chỉ giữ một bảng như vậy trong file này** (bảng phụ không được có cột tên "Công nghệ"). Mỗi công nghệ của [README.md](README.md) một dòng. Mọi dữ kiện kèm link nguồn chính thức; thiếu nguồn là lỗi chặn (Q4, Q5).
+> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. `check_versions.py` đọc bảng có cột "Công nghệ": **chỉ giữ một bảng như vậy trong file này** (bảng phụ không được có cột tên "Công nghệ"). Mỗi công nghệ của [README.md](README.md) một dòng. Mọi dữ kiện kèm link nguồn chính thức; thiếu nguồn là lỗi chặn (Q4, Q5). Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" hoặc "Cơ sở ước tính": ô đó chỉ tính là bằng chứng khi có ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần ("kinh nghiệm team") thì `check_numbers.py` vẫn báo lỗi.
 
 ## Ma trận phiên bản
 <!-- required -->
@@ -17,6 +17,6 @@
 ## Chính sách bản vá
 <!-- required -->
 
-| Lớp | Cách nhận bản vá | Tần suất kiểm tra (ngày) | Người chịu trách nhiệm |
-| --- | --- | --- | --- |
-| <lớp> | <tự động / thủ công, kênh thông báo> | <số ngày> | <vai trò> |
+| Lớp | Cách nhận bản vá | Tần suất kiểm tra (ngày) | Người chịu trách nhiệm | Cơ sở |
+| --- | --- | --- | --- | --- |
+| <lớp> | <tự động / thủ công, kênh thông báo> | <số ngày> | <vai trò> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |

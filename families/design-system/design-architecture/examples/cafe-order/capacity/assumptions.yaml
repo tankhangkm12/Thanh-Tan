@@ -7,8 +7,6 @@ assumptions:
   - {id: A-safety-margin, description: Biên an toàn cộng lên tải đỉnh, unit: tỉ lệ, value: 0.3, source: người dùng duyệt ở G1}
   - {id: A-orders-per-day, description: Đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc), unit: dòng/ngày, by_milestone: {launch: 0, 1y: 1500, 3y: 5000}, source: inputs/ba/prd.md mục 4.3}
   - {id: A-order-items-per-day, description: Dòng món trong đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc), unit: dòng/ngày, by_milestone: {launch: 0, 1y: 4500, 3y: 15000}, source: "ước lượng của BA: 3 món mỗi đơn, inputs/ba/prd.md mục 4.3"}
-  - {id: A-menu-images-per-day, description: Ảnh thực đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc), unit: file/ngày, by_milestone: {launch: 0, 1y: 2, 3y: 5}, source: inputs/ba/prd.md mục 4.5}
-  - {id: A-image-bytes, description: Kích thước trung bình một ảnh thực đơn, unit: byte, value: 300000, source: ước lượng của BA, inputs/ba/prd.md mục 4.5}
   - {id: A-note-bytes, description: Độ dài trung bình ghi chú đơn, unit: byte, value: 30, source: ước lượng của BA, inputs/ba/prd.md mục 4.4}
   - {id: A-maxalign, description: MAXALIGN của PostgreSQL trên máy chủ triển khai, unit: byte, value: 8, platform: x86_64, source: "đo bằng pg_controldata trên máy đích, https://www.postgresql.org/docs/16/app-pgcontroldata.html"}
   - {id: A-heap-bloat, description: Hệ số phình heap, unit: lần, value: 1.2, source: "ước lượng mẫu, vacuum tự động bình thường"}

@@ -8,7 +8,8 @@ Nothing here is a constant of a database or a price: row header, alignment, page
 `capacity/db-constants/<engine>-<major>.yaml` (a `value` with a `source` link each), prices from `pricing.yaml` (a `source`
 link and the date looked up each). A constant, price or benchmark without a source is an error, and so is a missing file.
 
-Reads  (`<workspace>/capacity/`): assumptions.yaml, tables.yaml, storage.yaml, compute.yaml, pricing.yaml, db-constants/
+Reads  (`<workspace>/capacity/`): assumptions.yaml, tables.yaml, storage.yaml (optional: none, or `buckets: {}`, means no object storage),
+        compute.yaml, pricing.yaml, db-constants/
 Writes (`<workspace>/drafts/`): 03-capacity/{workload-model,data-sizing,storage-sizing,compute-sizing,cost-model}.md,
         00-context/assumptions.md, and the numbers of each table in 07-data/databases/<db>/tables.md, only between
         `<!-- BEGIN:calc:<table> -->` and `<!-- END:calc:<table> -->` (the Designer puts an empty pair, "chờ script", in the file).
@@ -703,9 +704,14 @@ def parse_storage(data: dict, assumptions: Assumptions, problems: Problems) -> l
     name = "storage.yaml"
     time_ms = [m for m in assumptions.milestones if MILESTONES[m][1] is not None]
     buckets = []
-    raw = data.get("buckets")
-    if not isinstance(raw, dict) or not raw:
-        problems.add(name, "buckets phải là mapping không rỗng")
+    if "buckets" not in data:
+        problems.add(name, "thiếu khóa buckets (không có object storage thì ghi `buckets: {}` hoặc bỏ cả file storage.yaml)")
+        return buckets
+    raw = data["buckets"]
+    if raw is None or raw == {}:
+        return buckets  # no object storage: storage-sizing.md says so, and the object storage and egress costs are 0
+    if not isinstance(raw, dict):
+        problems.add(name, "buckets phải là mapping (rỗng nếu không có object storage)")
         return buckets
     for b_name, b in raw.items():
         where = f"{name}: buckets.{b_name}"
@@ -818,7 +824,9 @@ def load_inputs(workspace: Path, constants_dir: Path, problems: Problems, drafts
     """`drafts` is where 00-context/project-profile.md is read from (default <workspace>/drafts)."""
     capacity, drafts = workspace / "capacity", drafts or workspace / "drafts"
     level = read_level(drafts)
-    raw = {n: load_yaml(capacity / f"{n}.yaml", problems, f"{n}.yaml") for n in ("assumptions", "tables", "storage", "compute", "pricing")}
+    raw = {n: load_yaml(capacity / f"{n}.yaml", problems, f"{n}.yaml") for n in ("assumptions", "tables", "compute", "pricing")}
+    # storage.yaml is optional: a project with no object storage has no such file (or has `buckets: {}`)
+    raw["storage"] = load_yaml(capacity / "storage.yaml", problems, "storage.yaml") if (capacity / "storage.yaml").is_file() else {"buckets": {}}
     # Check everything that can be checked, so one run lists all the problems.
     assumptions = parse_assumptions(raw["assumptions"], level, problems) if raw["assumptions"] is not None else None
     pricing = parse_pricing(raw["pricing"], problems) if raw["pricing"] is not None else None
@@ -1160,6 +1168,8 @@ def render_storage(inputs: Inputs, storage: dict) -> str:
     lines = head("Dung lượng object storage", inputs,
                  "Công thức: `file đang giữ = min(file đã tải lên, file/ngày × số ngày giữ)`; `dung lượng = file đang giữ × kích thước trung bình`; `băng thông ra/tháng = lượt xem/ngày × kích thước × (365/12)`.",
                  "Giả định xem [assumptions.md](../00-context/assumptions.md).", "")
+    if not inputs.buckets:
+        lines += ["Không có object storage: `storage.yaml` không khai bucket nào (hoặc không có file). Dung lượng lưu, băng thông ra và chi phí của chúng bằng 0.", ""]
     for b in inputs.buckets:
         lines += [f"## {b.name} ({b.id})", "", f"File/ngày: {b.files}; kích thước trung bình: {b.avg_bytes}; giữ lại: {'mãi mãi' if b.retention_days is None else f'{b.retention_days} ngày'}; lượt xem/ngày: {b.views or 'không có'}.", ""]
         rows = []
@@ -1193,6 +1203,8 @@ def render_cost(inputs: Inputs, cost: dict) -> str:
     names = [("compute", "Compute (instance × đơn giá)"), ("db", "Lưu trữ database (GB cần cấp × đơn giá)"), ("object", "Object storage (GB × đơn giá)"), ("egress", "Băng thông ra (GB × đơn giá)"), ("total", "**Tổng**")]
     rows = [[label, *[(f"{cost[m][key]:,.2f}" if key in cost[m] else "—") for m in a.milestones]] for key, label in names]
     lines += table_md(["Khoản", *milestone_header(a)], rows) + [""]
+    if not inputs.buckets:
+        lines += ["Không có object storage: khoản object storage và băng thông ra bằng 0.", ""]
     return "\n".join(lines).rstrip("\n") + "\n"
 
 

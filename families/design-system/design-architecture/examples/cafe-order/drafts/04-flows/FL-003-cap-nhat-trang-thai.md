@@ -31,9 +31,9 @@ sequenceDiagram
 ## Lỗi và xử lý
 <!-- required -->
 
-| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) |
-| --- | --- | --- | --- |
-| 2 | chuyển trạng thái không hợp lệ | nhân viên thấy lỗi | từ chối, trả mã 409 |
+| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) | Cơ sở |
+| --- | --- | --- | --- | --- |
+| 2 | chuyển trạng thái không hợp lệ | nhân viên thấy lỗi | từ chối, trả mã 409 | |
 
 ## Dữ liệu chạm tới
 <!-- required -->

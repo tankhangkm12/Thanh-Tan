@@ -203,6 +203,57 @@ def test_storage_retention_and_egress(tmp_path):
     assert f"({24_000 * 500_000 * 365 / 12:,.0f} byte)" in text
 
 
+def no_object_storage(files):
+    files["storage"]["buckets"] = {}
+    for item in ("object-storage", "egress"):  # no bucket, so no object storage price is needed either
+        files["pricing"]["items"].pop(item)
+
+
+def test_a_project_with_no_object_storage_runs_and_says_so(tmp_path):
+    workspace = make(tmp_path, mutate=no_object_storage)
+    assert run(workspace) == 0
+    storage = draft(workspace, "03-capacity/storage-sizing.md")
+    assert "Không có object storage" in storage and "##" not in storage.replace("# Dung lượng object storage", "")
+    cost = draft(workspace, "03-capacity/cost-model.md")
+    assert "| Object storage (GB × đơn giá) | 0.00 | 0.00 | 0.00 |" in cost and "| Băng thông ra (GB × đơn giá) | 0.00 | 0.00 | 0.00 |" in cost
+    assert "Không có object storage: khoản object storage và băng thông ra bằng 0." in cost
+    assert run(workspace, "--check") == 0
+
+
+def test_no_storage_yaml_is_the_same_as_empty_buckets(tmp_path):
+    empty = make(tmp_path / "a", mutate=no_object_storage)
+    missing = make(tmp_path / "b", mutate=no_object_storage)
+    (missing / "capacity" / "storage.yaml").unlink()
+    assert run(empty) == 0 and run(missing) == 0
+    for rel in OUTPUTS:
+        assert draft(empty, rel) == draft(missing, rel), rel
+
+
+def test_the_total_without_object_storage_is_compute_plus_database(tmp_path):
+    with_bucket = make(tmp_path / "a")
+    without = make(tmp_path / "b", mutate=no_object_storage)
+    assert run(with_bucket) == 0 and run(without) == 0
+    def row(workspace, label):
+        line = next(l for l in draft(workspace, "03-capacity/cost-model.md").splitlines() if l.startswith(f"| {label}"))
+        return [c.strip() for c in line.split("|")[2:-1]]
+    for label in ("Compute", "Lưu trữ database"):
+        assert row(with_bucket, label) == row(without, label)
+    total = [float(c.strip("*").replace(",", "")) for c in row(without, "**Tổng**")[1:]]
+    parts = [float(a.replace(",", "")) + float(b.replace(",", "")) for a, b in zip(row(without, "Compute")[1:], row(without, "Lưu trữ database")[1:])]
+    assert total == parts
+
+
+@pytest.mark.parametrize("storage,message", [
+    ({}, "thiếu khóa buckets"),
+    ({"buckets": ["uploads"]}, "buckets phải là mapping"),
+    ({"buckets": "uploads"}, "buckets phải là mapping"),
+])
+def test_storage_yaml_that_is_neither_buckets_nor_empty_is_an_error(tmp_path, storage, message):
+    workspace = make(tmp_path, mutate=lambda f: f.update(storage=storage))
+    assert run(workspace) == 1
+    assert message in report(workspace)
+
+
 def test_the_database_cost_uses_the_storage_to_provision_not_the_logical_size(tmp_path):
     """1 year, from the hand calculation above: heap 427,155,456 + index 228,999,168 byte (logical 656,154,624).
     data after bloat = 427,155,456 x 1.2 + 228,999,168 x 1.3 = 810,285,465.6; + WAL 1,073,741,824 = 1,884,027,289.6; x (1 + 1 replica) = 3,768,054,579.2;
@@ -734,6 +785,8 @@ def test_assumptions_validation(tmp_path, name, mutate, expected):
 
 def test_missing_input_file_is_an_error(tmp_path):
     for name in FILES:
+        if name == "storage":
+            continue  # optional: no storage.yaml means no object storage (test_no_storage_yaml_is_the_same_as_empty_buckets)
         workspace = make(tmp_path / name)
         (workspace / "capacity" / f"{name}.yaml").unlink()
         assert run(workspace) == 1 and f"{name}.yaml" in report(workspace), name

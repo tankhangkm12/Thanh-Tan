@@ -100,6 +100,18 @@ def test_a_template_with_a_placeholder_folder_matches_an_object_folder():
     assert cp.match_template("02-tech-stack/layers/data.md", RELS) == "02-tech-stack/layers/{layer}.md"
 
 
+@pytest.mark.parametrize("rel", RELS)
+def test_a_template_with_a_basis_column_says_what_counts_as_a_basis(rel):
+    text = (TEMPLATES / rel).read_text(encoding="utf-8")
+    if re.search(r"^\|.*Cơ sở", text, re.MULTILINE):
+        assert "Mỗi tham số thiết kế" in text.split("\n## ", 1)[0], "the note at the top must say a Cơ sở cell needs an ID or a link"
+
+
+def test_the_sample_has_no_object_storage_and_says_so():
+    assert not (SAMPLE / "capacity" / "storage.yaml").exists() and not (SAMPLE / "drafts" / "07-data" / "object-storage.md").exists()
+    assert "Không có object storage" in (SAMPLE / "drafts" / "03-capacity" / "storage-sizing.md").read_text(encoding="utf-8")
+
+
 # --- the checklists and profiles.md --------------------------------------------------------------------------------------------
 
 def test_every_templated_part_has_a_checklist_and_there_is_no_other():
@@ -182,6 +194,7 @@ def test_the_sample_has_no_check_reports_and_no_generated_file_is_stale(sample):
     ("check_trace.py", ("--gate", "G7")),
     ("check_links.py", ()),
     ("check_versions.py", ()),
+    ("check_numbers.py", ()),
 ])
 def test_scripts_run_clean_on_the_sample(sample, script, args):
     result = run(script, sample, *args)

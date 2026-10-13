@@ -11,7 +11,7 @@
 ## Chính sách bản vá
 <!-- required -->
 
-| Lớp | Cách nhận bản vá | Tần suất kiểm tra (ngày) | Người chịu trách nhiệm |
-| --- | --- | --- | --- |
-| backend | cập nhật bản vá theo thông báo bảo mật | 30 ngày | thành viên vận hành |
-| data | cập nhật bản vá nhỏ theo lịch của PostgreSQL | 30 ngày | thành viên vận hành |
+| Lớp | Cách nhận bản vá | Tần suất kiểm tra (ngày) | Người chịu trách nhiệm | Cơ sở |
+| --- | --- | --- | --- | --- |
+| backend | cập nhật bản vá theo thông báo bảo mật | 30 ngày | thành viên vận hành | D-002 |
+| data | cập nhật bản vá nhỏ theo lịch của PostgreSQL | 30 ngày | thành viên vận hành | D-002 |

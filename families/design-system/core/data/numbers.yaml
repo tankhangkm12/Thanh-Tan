@@ -138,3 +138,23 @@ empty_cells:
   - tbd
   - chưa có
   - không có
+
+# Exact phrases that contain a vague word: "ít nhất một" (at least one), "nhỏ nhất" (the smallest) say a precise thing. They are
+# removed before the vague words are looked for. The bare word ("ít", "lớn") stays vague.
+exempt_phrases:
+  - ít nhất
+  - nhiều nhất
+  - lớn nhất
+  - nhỏ nhất
+
+# An ID of these kinds, defined in the drafts (heading or first table cell), in the same sentence, list item or table row is evidence for
+# a number: the definition of an NFR or a constraint (quality-attributes.md, constraints.md) carries its own source column.
+evidence_id_kinds: [NFR, C]
+
+# A table column whose header contains one of these words is a basis ("cơ sở") column. It is NOT a free-text evidence column: a filled
+# cell counts only if it holds a link or an ID of basis_id_kinds. An A-xx must be declared in assumptions.yaml; an NFR, C, TC or R must
+# be defined in the drafts; a D-xx is defined in decisions/decision-log.md, so only its shape is checked here (check_trace.py reports
+# a D-xx defined nowhere). A cell with words only ("kinh nghiệm team") is still an error. This covers "Cơ sở" and "Cơ sở ước tính".
+basis_columns:
+  - cơ sở
+basis_id_kinds: [NFR, C, A, D, R, TC]

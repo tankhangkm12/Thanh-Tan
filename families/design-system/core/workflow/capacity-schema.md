@@ -68,6 +68,8 @@ databases:
 
 ## `storage.yaml`
 
+Tùy chọn. Dự án không có object storage thì bỏ file này hoặc ghi `buckets: {}`: `storage-sizing.md` ghi "Không có object storage", khoản object storage và băng thông ra của `cost-model.md` bằng 0, và `pricing.yaml` không cần mục giá object storage hay egress. File có mặt mà thiếu khóa `buckets` hoặc `buckets` không phải mapping là lỗi.
+
 ```yaml
 buckets:
   uploads:

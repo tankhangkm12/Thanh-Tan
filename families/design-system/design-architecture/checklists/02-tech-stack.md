@@ -46,6 +46,7 @@ Gate: G2 (`selection-criteria.md`) và G4 (các file còn lại). Trọng tâm G
 
 ## Chung cho cả phần
 
+- [ ] Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" với ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần không đạt (`check_numbers.py`).
 - [ ] `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py --gate G4 --templates …`, `check_workspace.py` sạch.
 - [ ] Mỗi quyết định và mỗi dòng phiên bản đã sinh rủi ro vào sổ (Q6).
 - [ ] Mức XL: mỗi lớp bắt buộc có spike `đạt` trên đề bài hiện tại.

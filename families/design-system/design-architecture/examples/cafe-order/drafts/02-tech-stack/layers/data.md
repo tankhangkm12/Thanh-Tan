@@ -27,7 +27,7 @@
 
 | Công nghệ | Đơn vị scale | Giới hạn (số + đơn vị) | Ngưỡng lên giai đoạn sau | Đường nâng cấp | Bảo trì mỗi tháng (giờ) | Cơ sở ước tính |
 | --- | --- | --- | --- | --- | --- | --- |
-| PostgreSQL | primary cộng bản sao đọc | dung lượng theo [data-sizing.md](../../03-capacity/data-sizing.md) | CPU primary trên 70% | bản 17 trước 2028-11-09 | 3 giờ | vacuum, kiểm tra backup theo lịch |
+| PostgreSQL | primary cộng bản sao đọc | dung lượng theo [data-sizing.md](../../03-capacity/data-sizing.md) | CPU primary trên 70% | bản 17 trước 2028-11-09 | 3 giờ | D-002 |
 
 ## Rủi ro
 <!-- required -->

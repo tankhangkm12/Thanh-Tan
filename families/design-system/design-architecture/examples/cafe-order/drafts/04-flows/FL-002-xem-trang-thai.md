@@ -31,9 +31,9 @@ sequenceDiagram
 ## Lỗi và xử lý
 <!-- required -->
 
-| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) |
-| --- | --- | --- | --- |
-| 2 | không có đơn | khách thấy thông báo không tìm thấy | trả mã 404, không thử lại |
+| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) | Cơ sở |
+| --- | --- | --- | --- | --- |
+| 2 | không có đơn | khách thấy thông báo không tìm thấy | trả mã 404, không thử lại | |
 
 ## Dữ liệu chạm tới
 <!-- required -->

@@ -13,6 +13,6 @@
 
 Không có khoảng trống.
 
-| Công nghệ | Cách lấp (đào tạo, thuê, đổi công nghệ) | Chi phí (giờ hoặc tiền) | Hạn | Rủi ro |
-| --- | --- | --- | --- | --- |
-| không có | không cần | không có | không có | không có |
+| Công nghệ | Cách lấp (đào tạo, thuê, đổi công nghệ) | Chi phí (giờ hoặc tiền) | Hạn | Rủi ro | Cơ sở |
+| --- | --- | --- | --- | --- | --- |
+| không có | không cần | không có | không có | không có | không có |

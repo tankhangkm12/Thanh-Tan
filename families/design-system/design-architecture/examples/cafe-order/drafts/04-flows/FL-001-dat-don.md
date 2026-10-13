@@ -33,9 +33,9 @@ sequenceDiagram
 ## Lỗi và xử lý
 <!-- required -->
 
-| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) |
-| --- | --- | --- | --- |
-| 2 | ghi database lỗi | khách thấy lỗi và đặt lại | thử lại 2 lần, mỗi lần chờ 1 giây, rồi trả lỗi |
+| Bước | Lỗi | Hậu quả cho người dùng | Xử lý (thử lại, thời gian chờ, bù trừ) | Cơ sở |
+| --- | --- | --- | --- | --- |
+| 2 | ghi database lỗi | khách thấy lỗi và đặt lại | thử lại 2 lần, mỗi lần chờ 1 giây, rồi trả lỗi | NFR-001 |
 
 ## Dữ liệu chạm tới
 <!-- required -->

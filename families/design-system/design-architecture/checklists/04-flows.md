@@ -20,5 +20,6 @@ Gate: G6. Trọng tâm: Q1, Q6, Q8. Luồng được duyệt trước khi thiế
 
 ## Chung cho cả phần
 
+- [ ] Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" với ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần không đạt (`check_numbers.py`).
 - [ ] `check_trace.py --gate G6`, `check_links.py`, `check_numbers.py`, `check_profile.py --gate G6 --templates …`, `check_workspace.py` sạch.
 - [ ] Người dùng duyệt luồng (`G6: duyệt`) trước khi thiết kế chi tiết.

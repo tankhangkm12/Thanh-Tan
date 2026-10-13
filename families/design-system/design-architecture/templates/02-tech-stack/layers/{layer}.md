@@ -1,6 +1,6 @@
 # Lớp <tên lớp>
 
-> Template của design-architecture, một file mỗi lớp dùng trong stack (frontend, backend, data, messaging, infrastructure, tooling, third-party); lớp không dùng thì không có file. Tên file là tên lớp. Mục có `<!-- required -->` là bắt buộc. Nhắc `TC-xx` bằng ID, **không** đặt `TC-xx` ở ô đầu dòng bảng (chỉ [selection-criteria.md](../selection-criteria.md) định nghĩa TC).
+> Template của design-architecture, một file mỗi lớp dùng trong stack (frontend, backend, data, messaging, infrastructure, tooling, third-party); lớp không dùng thì không có file. Tên file là tên lớp. Mục có `<!-- required -->` là bắt buộc. Nhắc `TC-xx` bằng ID, **không** đặt `TC-xx` ở ô đầu dòng bảng (chỉ [selection-criteria.md](../selection-criteria.md) định nghĩa TC). Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" hoặc "Cơ sở ước tính": ô đó chỉ tính là bằng chứng khi có ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần ("kinh nghiệm team") thì `check_numbers.py` vẫn báo lỗi.
 
 ## Lựa chọn
 <!-- required -->
@@ -34,7 +34,7 @@ Mỗi công nghệ của lớp một dòng (Q3). Phiên bản và ngày hết h�
 
 | Công nghệ | Đơn vị scale | Giới hạn (số + đơn vị) | Ngưỡng lên giai đoạn sau | Đường nâng cấp | Bảo trì mỗi tháng (giờ) | Cơ sở ước tính |
 | --- | --- | --- | --- | --- | --- | --- |
-| <Tên> | <instance, shard, partition…> | <số> | <số kích hoạt, link scaling-stages nếu có> | <bản kế tiếp, khi nào, việc phải làm> | <giờ> | <vì sao ước tính như vậy> |
+| <Tên> | <instance, shard, partition…> | <số> | <số kích hoạt, link scaling-stages nếu có> | <bản kế tiếp, khi nào, việc phải làm> | <giờ> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |
 
 ## Rủi ro
 <!-- required -->

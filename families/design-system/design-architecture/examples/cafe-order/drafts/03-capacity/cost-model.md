@@ -13,7 +13,6 @@ Lưu trữ database tính theo **dung lượng cần cấp** (sau phình, cộng
 | --- | --- | --- | --- | --- | --- |
 | compute-instance | VM 2 vCPU, 4 GB RAM | instance-month | 40 | [nguồn](https://example.com/pricing/compute) | 2026-10-12 |
 | db-storage | Ổ đĩa cho database | GB-month | 0.115 | [nguồn](https://example.com/pricing/block-storage) | 2026-10-12 |
-| object-storage | Object storage tiêu chuẩn | GB-month | 0.023 | [nguồn](https://example.com/pricing/object-storage) | 2026-10-12 |
 
 ## Chi phí mỗi tháng
 
@@ -21,6 +20,8 @@ Lưu trữ database tính theo **dung lượng cần cấp** (sau phình, cộng
 | --- | --- | --- | --- |
 | Compute (instance × đơn giá) | 80.00 | 80.00 | 80.00 |
 | Lưu trữ database (GB cần cấp × đơn giá) | 0.23 | 0.35 | 1.12 |
-| Object storage (GB × đơn giá) | 0.00 | 0.00 | 0.03 |
+| Object storage (GB × đơn giá) | 0.00 | 0.00 | 0.00 |
 | Băng thông ra (GB × đơn giá) | 0.00 | 0.00 | 0.00 |
-| **Tổng** | 80.23 | 80.35 | 81.15 |
+| **Tổng** | 80.23 | 80.35 | 81.12 |
+
+Không có object storage: khoản object storage và băng thông ra bằng 0.

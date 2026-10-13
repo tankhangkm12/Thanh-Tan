@@ -7,4 +7,4 @@
 - Công thức: `file đang giữ = min(file đã tải lên, file/ngày × số ngày giữ)`; `dung lượng = file đang giữ × kích thước trung bình`; `băng thông ra/tháng = lượt xem/ngày × kích thước × (365/12)`.
 - Mỗi bucket một mục `<bucket> (BKT-xx)`: tham số (file/ngày, kích thước trung bình, thời gian giữ, lượt xem/ngày) và bảng theo mốc (file đã tải lên, file đang giữ, dung lượng lưu, lượt xem, băng thông ra/tháng).
 
-Đầu vào: `storage.yaml` và `assumptions.yaml`. Không có bucket thì file chỉ có đầu file.
+Đầu vào: `storage.yaml` và `assumptions.yaml`. Dự án không có object storage (không có `storage.yaml`, hoặc `buckets: {}`) thì file ghi "Không có object storage" và chi phí object storage, băng thông ra bằng 0.

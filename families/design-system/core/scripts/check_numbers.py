@@ -36,6 +36,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import calc_capacity as cc  # noqa: E402
+import check_links as cl  # noqa: E402
 import checkreport as cr  # noqa: E402
 import idlist  # noqa: E402
 
@@ -69,6 +70,9 @@ ASSUMPTION_REF = IDS.id_re(["A"])  # A-xx
 NUMBER = r"\d[\d.,]*\d|\d"
 
 
+NEVER = re.compile(r"(?!x)x")  # matches nothing
+
+
 @dataclass
 class Config:
     vague: re.Pattern
@@ -78,6 +82,11 @@ class Config:
     source_markers: tuple[str, ...]
     empty_cells: frozenset[str]
     vague_words: tuple[str, ...]
+    exempt: re.Pattern = NEVER  # exact phrases that contain a vague word ("ít nhất")
+    evidence_id: re.Pattern = NEVER  # an ID of these kinds, defined in the drafts, is evidence in its sentence / item / row
+    basis_columns: tuple[str, ...] = ()  # a filled cell of such a column is evidence only with a link or a basis_id
+    basis_id: re.Pattern = NEVER
+    basis_id_kinds: tuple[str, ...] = ()
 
 
 @dataclass
@@ -117,7 +126,8 @@ def load_config(path: Path) -> tuple[Config | None, list[str]]:
     if not isinstance(data, dict):
         return None, [f"{path.name}: gốc phải là mapping"]
     lists: dict[str, list[str]] = {}
-    for key, required in (("vague_words", True), ("units", True), ("unit_prefixes", False), ("evidence_columns", True), ("source_markers", False), ("empty_cells", False)):
+    optional = ("unit_prefixes", "source_markers", "empty_cells", "exempt_phrases", "evidence_id_kinds", "basis_columns", "basis_id_kinds")
+    for key, required in (("vague_words", True), ("units", True), ("evidence_columns", True), *((k, False) for k in optional)):
         value = data.get(key, [] if not required else None)
         if not isinstance(value, list) or (required and not value) or any(not isinstance(v, str) for v in value):
             errors.append(f"{path.name}: {key} phải là danh sách chuỗi" + (" không rỗng" if required else ""))
@@ -125,6 +135,10 @@ def load_config(path: Path) -> tuple[Config | None, list[str]]:
         if required and any(not v.strip() for v in value):
             errors.append(f"{path.name}: {key} có phần tử rỗng")
         lists[key] = [nfc(v) for v in value]
+    for key in ("evidence_id_kinds", "basis_id_kinds"):
+        unknown = [k for k in lists.get(key, []) if k not in IDS.kinds]
+        if unknown:
+            errors.append(f"{path.name}: {key} có tiền tố không có trong ids.yaml: {', '.join(unknown)}")
     if errors:
         return None, errors
 
@@ -140,6 +154,11 @@ def load_config(path: Path) -> tuple[Config | None, list[str]]:
         source_markers=tuple(lists["source_markers"]),
         empty_cells=frozenset(v.casefold() for v in lists["empty_cells"]) | {""},
         vague_words=tuple(lists["vague_words"]),
+        exempt=re.compile(r"(?<!\w)(?:" + alternation(lists["exempt_phrases"]) + r")(?!\w)", re.IGNORECASE) if lists["exempt_phrases"] else NEVER,
+        evidence_id=IDS.id_re(lists["evidence_id_kinds"]) if lists["evidence_id_kinds"] else NEVER,
+        basis_columns=tuple(v.casefold() for v in lists["basis_columns"]),
+        basis_id=IDS.id_re(lists["basis_id_kinds"]) if lists["basis_id_kinds"] else NEVER,
+        basis_id_kinds=tuple(lists["basis_id_kinds"]),
     )
     return config, []
 
@@ -184,7 +203,7 @@ class Context:
     evidence_cell: bool = False  # a table row whose evidence column is filled
 
 
-def contexts(lines: list[str], cfg: Config) -> list[Context]:
+def contexts(lines: list[str], cfg: Config, defined: set[str] | None = None, known: set[str] | None = None) -> list[Context]:
     out: list[Context] = []
     paragraph: list[tuple[int, str]] = []
     item: list[tuple[int, str]] = []
@@ -202,7 +221,7 @@ def contexts(lines: list[str], cfg: Config) -> list[Context]:
     def flush_table() -> None:
         nonlocal table
         if table:
-            out.extend(table_contexts(table, cfg))
+            out.extend(table_contexts(table, cfg, defined, known))
         table = []
 
     for number, line in enumerate(lines, 1):
@@ -239,16 +258,31 @@ def contexts(lines: list[str], cfg: Config) -> list[Context]:
     return out
 
 
-def table_contexts(rows: list[tuple[int, str]], cfg: Config) -> list[Context]:
+def basis_holds(cell: str, cfg: Config, defined: set[str] | None, known: set[str] | None) -> bool:
+    """A "Cơ sở" cell is evidence only with a link or an ID of basis_id_kinds. An A-xx must be declared in assumptions.yaml and an
+    NFR / C / TC / R must be defined in the drafts (when those sets are known); a D-xx is defined outside the drafts (decision-log.md),
+    so its shape is enough here and check_trace.py reports it when it is defined nowhere."""
+    if LINK_EVIDENCE.search(cell):
+        return True
+    for m in cfg.basis_id.finditer(cell):
+        kind = IDS.kind_of(m.group(1))
+        if kind == "D" or (kind == "A" and (defined is None or m.group(1) in defined)) or (kind not in ("A", "D") and (known is None or m.group(1) in known)):
+            return True
+    return False
+
+
+def table_contexts(rows: list[tuple[int, str]], cfg: Config, defined: set[str] | None = None, known: set[str] | None = None) -> list[Context]:
     header_at = next((i for i in range(len(rows) - 1) if SEPARATOR.match(rows[i + 1][1])), None)
     if header_at is None:
         return [Context("row", [row]) for row in rows if not SEPARATOR.match(row[1])]
     header = [re.sub(r"[`*_]", "", cell).casefold() for cell in split_cells(rows[header_at][1])]
-    evidence_at = [i for i, cell in enumerate(header) if any(word in cell for word in cfg.evidence_columns)]
+    basis_at = [i for i, cell in enumerate(header) if any(word in cell for word in cfg.basis_columns)]
+    evidence_at = [i for i, cell in enumerate(header) if i not in basis_at and any(word in cell for word in cfg.evidence_columns)]
     result = []
     for number, line in rows[header_at + 2 :]:
         cells = split_cells(line)
         filled = any(i < len(cells) and re.sub(r"[`*_]", "", cells[i]).strip().casefold() not in cfg.empty_cells for i in evidence_at)
+        filled = filled or any(i < len(cells) and basis_holds(cells[i], cfg, defined, known) for i in basis_at)
         result.append(Context("row", [(number, line)], evidence_cell=filled))
     return result
 
@@ -275,13 +309,18 @@ def spans(context: Context) -> list[tuple[str, int]]:
 
 # --- the rules ----------------------------------------------------------------------------------------------------------------------
 
-def has_evidence(raw: str, cfg: Config, defined: set[str] | None) -> bool:
+def has_evidence(raw: str, cfg: Config, defined: set[str] | None, known: set[str] | None = None) -> bool:
     if LINK_EVIDENCE.search(raw) or FORMULA_EVIDENCE.search(raw) or any(marker in raw for marker in cfg.source_markers):
+        return True
+    if any(known is None or m.group(1) in known for m in cfg.evidence_id.finditer(raw)):  # NFR-xx / C-xx: their definition carries the source
         return True
     return any(defined is None or m.group(0) in defined for m in ASSUMPTION_REF.finditer(raw))
 
 
-def check_text(rel: str, text: str, cfg: Config, defined: set[str] | None, stats: Stats, blocks: dict[str, str] | None = None) -> list[Finding]:
+def check_text(rel: str, text: str, cfg: Config, defined: set[str] | None, stats: Stats, blocks: dict[str, str] | None = None,
+               known: set[str] | None = None) -> list[Finding]:
+    """`defined`: the A-xx declared in assumptions.yaml (None: unknown, any A-xx counts). `known`: every ID defined in the drafts
+    (None: unknown, any NFR / C / TC / R counts)."""
     findings: list[Finding] = []
     unproven: list[tuple[str, int, bool]] = []
     lines = prepare(text, blocks, unproven)
@@ -289,19 +328,20 @@ def check_text(rel: str, text: str, cfg: Config, defined: set[str] | None, stats
         findings.append(Finding(rel, line, "calc-block-edited" if verifiable else "calc-block-unverified",
                                 f"khối calc:{name} " + ("không khớp kết quả calc_capacity.py tính lại (khối sinh bị sửa tay, hoặc không phải khối script sinh); nội dung được kiểm như văn bản thường"
                                                           if verifiable else "không xác minh được vì calc_capacity.py không tính lại được (xem lỗi của nó); nội dung được kiểm như văn bản thường")))
-    for context in contexts(lines, cfg):
+    for context in contexts(lines, cfg, defined, known):
         for raw, line in spans(context):
             masked = mask(raw)
             found = [m for pattern in (cfg.units, cfg.prefixed) for m in pattern.finditer(masked)]
             if found:
                 stats.numbers += len(found)
-                if context.evidence_cell or has_evidence(raw, cfg, defined):
+                if context.evidence_cell or has_evidence(raw, cfg, defined, known):
                     stats.numbers_with_evidence += len(found)
                 else:
                     shown = ", ".join(dict.fromkeys(f"{m.group('num')} {m.group('unit')}".strip() for m in sorted(found, key=lambda m: m.start())))
                     findings.append(Finding(rel, line, "number-without-evidence",
                                             f"số có đơn vị ({shown}) không có công thức, giả định (A-xx đã khai) hay nguồn (link, inputs/) trong cùng câu / mục / dòng bảng"))
-            words = sorted({nfc(m.group(0)).casefold() for m in cfg.vague.finditer(masked)})
+            vague_text = cfg.exempt.sub(lambda m: " " * len(m.group(0)), masked)  # "ít nhất", "lớn nhất": exact, not vague
+            words = sorted({nfc(m.group(0)).casefold() for m in cfg.vague.finditer(vague_text)})
             if words:
                 stats.vague_words += len(words)
                 if not re.search(r"\d", masked):
@@ -361,6 +401,7 @@ def run(root: Path, workspace: Path, cfg: Config, constants_dir: Path | None = N
     if files is None and expected_assumptions is not None:
         files = {ASSUMPTIONS_MD: cc.normalize(expected_assumptions)}
     stats = Stats()
+    known = set(cl.effective_definitions(cl.load(root)))  # every ID the drafts define
     for path in sorted(root.rglob("*.md")):
         if not path.is_file():
             continue
@@ -376,7 +417,7 @@ def run(root: Path, workspace: Path, cfg: Config, constants_dir: Path | None = N
                                         "file sinh bị sửa tay: khác kết quả calc_capacity.py tính lại; được kiểm như file thường. Sinh lại bằng `calc_capacity.py`" if want is not None
                                         else "không xác minh được file do calc_capacity.py sinh vì không tính lại được (xem lỗi của nó); được kiểm như file thường"))
         stats.files += 1
-        findings += check_text(rel, raw, cfg, defined, stats, None if blocks is None else blocks.get(rel, {}))
+        findings += check_text(rel, raw, cfg, defined, stats, None if blocks is None else blocks.get(rel, {}), known)
     return findings, stats
 
 

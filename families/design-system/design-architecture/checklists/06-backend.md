@@ -46,6 +46,7 @@ Gate: G7. Trọng tâm: Q1, Q2, Q3, Q6, Q8. Checklist này phủ thư mục `06-
 
 ## Chung
 
+- [ ] Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" với ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần không đạt (`check_numbers.py`).
 - [ ] `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_trace.py --gate G7`, `check_profile.py --gate G7 --templates …`, `check_workspace.py` sạch; `calc_capacity.py --check` khớp.
 - [ ] Quyết định và khoảng trống mới (ranh giới, phụ thuộc, nghẽn) đã khai vào sổ rủi ro (Q6).
 - [ ] Người dùng duyệt từng service.

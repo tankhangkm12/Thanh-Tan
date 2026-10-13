@@ -11,7 +11,7 @@
 ## Điều kiện kích hoạt
 <!-- required -->
 
-| Công nghệ | Điều kiện (số + đơn vị) | Cách phát hiện | Rủi ro |
-| --- | --- | --- | --- |
-| Node.js | hết hỗ trợ trong 6 tháng | lịch trong versions-features.md | không có |
-| PostgreSQL | chi phí lưu trữ trên 100 USD mỗi tháng | cost-model.md | không có |
+| Công nghệ | Điều kiện (số + đơn vị) | Cách phát hiện | Rủi ro | Cơ sở |
+| --- | --- | --- | --- | --- |
+| Node.js | hết hỗ trợ trong 6 tháng | lịch trong versions-features.md | không có | [versions-features.md](versions-features.md) |
+| PostgreSQL | chi phí lưu trữ trên 100 USD mỗi tháng | cost-model.md | không có | C-001 |

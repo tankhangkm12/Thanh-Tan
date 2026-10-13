@@ -1,6 +1,6 @@
 # API của service
 
-> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. Mỗi API một heading cấp 3 `### API-xxx: <phương thức đường dẫn>`: `API-xx` được định nghĩa ở heading đó, chỉ ở đây hoặc ở `06-backend/contracts/`. Frontend và luồng nhắc API bằng ID, không bằng đường dẫn thô. Schema đầy đủ có thể nằm ở `06-backend/contracts/` và được link tới. Không đặt `FR-` ở ô đầu dòng bảng.
+> Template của design-architecture. Mục có `<!-- required -->` là bắt buộc. Mỗi API một heading cấp 3 `### API-xxx: <phương thức đường dẫn>`: `API-xx` được định nghĩa ở heading đó, chỉ ở đây hoặc ở `06-backend/contracts/`. Frontend và luồng nhắc API bằng ID, không bằng đường dẫn thô. Schema đầy đủ có thể nằm ở `06-backend/contracts/` và được link tới. Không đặt `FR-` ở ô đầu dòng bảng. Mỗi tham số thiết kế (số có đơn vị: thời gian chờ, giới hạn, ngưỡng, giờ bảo trì…) có ô "Cơ sở" hoặc "Cơ sở ước tính": ô đó chỉ tính là bằng chứng khi có ID (NFR, C, A, D, R, TC) hoặc link; chữ thuần ("kinh nghiệm team") thì `check_numbers.py` vẫn báo lỗi.
 
 ## Danh sách API
 <!-- required -->
@@ -14,11 +14,13 @@
 
 ### API-xxx: <phương thức đường dẫn>
 
-- Yêu cầu vào: <trường, kiểu, bắt buộc hay không, giới hạn kích thước (byte)>
-- Phản hồi thành công: <mã, trường>
-- Lỗi: <mã, điều kiện, thông điệp theo error model của cross-cutting.md>
-- Idempotency: <khóa, thời gian giữ (giây)>
-- Giới hạn tần suất: <số request / giây / người dùng>
+| Mục | Giá trị | Cơ sở |
+| --- | --- | --- |
+| Yêu cầu vào | <trường, kiểu, bắt buộc hay không, giới hạn kích thước (byte)> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |
+| Phản hồi thành công | <mã, trường> | |
+| Lỗi | <mã, điều kiện, thông điệp theo error model của cross-cutting.md> | |
+| Idempotency | <khóa, thời gian giữ (giây)> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |
+| Giới hạn tần suất | <số request / giây / người dùng> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |
 
 ## Tối ưu
 <!-- required -->

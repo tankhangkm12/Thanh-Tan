@@ -12,8 +12,6 @@ Mức dự án: M. Mốc: Ra mắt (launch), 1 năm (1y), 3 năm (3y).
 | A-safety-margin | Biên an toàn cộng lên tải đỉnh | tỉ lệ | 0.3 | 0.3 | 0.3 | người dùng duyệt ở G1 |
 | A-orders-per-day | Đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc) | dòng/ngày | 0 | 1,500 | 5,000 | inputs/ba/prd.md mục 4.3 |
 | A-order-items-per-day | Dòng món trong đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc) | dòng/ngày | 0 | 4,500 | 15,000 | ước lượng của BA: 3 món mỗi đơn, inputs/ba/prd.md mục 4.3 |
-| A-menu-images-per-day | Ảnh thực đơn mới mỗi ngày (trung bình trong giai đoạn kết thúc ở mốc) | file/ngày | 0 | 2 | 5 | inputs/ba/prd.md mục 4.5 |
-| A-image-bytes | Kích thước trung bình một ảnh thực đơn | byte | 300,000 | 300,000 | 300,000 | ước lượng của BA |
 | A-note-bytes | Độ dài trung bình ghi chú đơn | byte | 30 | 30 | 30 | ước lượng của BA |
 | A-maxalign | MAXALIGN của PostgreSQL trên máy chủ triển khai (nền tảng: x86_64) | byte | 8 | 8 | 8 | đo bằng pg_controldata trên máy đích, https://www.postgresql.org/docs/16/app-pgcontroldata.html |
 | A-heap-bloat | Hệ số phình heap | lần | 1.2 | 1.2 | 1.2 | ước lượng mẫu, vacuum tự động bình thường |

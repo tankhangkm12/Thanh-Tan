@@ -26,14 +26,26 @@ TODAY = "2026-10-13"  # the sample's end-of-support dates are checked against a 
 
 TEMPLATE_FILES = sorted(p for p in TEMPLATES.rglob("*.md"))
 RELS = [p.relative_to(TEMPLATES).as_posix() for p in TEMPLATE_FILES]
-# Written by calc_capacity.py: the template only describes the file, so it has no `<!-- required -->` section.
+# Written by a script (calc_capacity.py; archive_release.py for CHANGELOG.md): the template only describes the file, so it has no `<!-- required -->` section.
 GENERATED = {"CHANGELOG.md", "00-context/assumptions.md", "03-capacity/workload-model.md", "03-capacity/data-sizing.md", "03-capacity/storage-sizing.md",
              "03-capacity/compute-sizing.md", "03-capacity/cost-model.md"}
-# The parts that have templates in Phase 4, and the checklist file for each.
+# The 13 parts and the two root files of architecture/, and the checklist file for each.
 CHECKLISTS_OF = {"00-context": "00-context.md", "01-system": "01-system.md", "02-tech-stack": "02-tech-stack.md", "03-capacity": "03-capacity.md",
                  "04-flows": "04-flows.md", "05-frontend": "05-frontend.md", "06-backend": "06-backend.md", "07-data": "07-data.md",
                  "08-security": "08-security.md", "09-infrastructure": "09-infrastructure.md", "10-process": "10-process.md", "11-risks": "11-risks.md",
                  "12-roadmap": "12-roadmap.md", "README.md": "readme.md", "CHANGELOG.md": "changelog.md"}
+# Templates whose file must have a required "Tối ưu" section (Q2: a number-valued target per tier).
+OPTIMISE = [
+    "01-system/integrations.md", "05-frontend/device-matrix.md", "05-frontend/performance-budget.md", "05-frontend/{app}/routing-navigation.md",
+    "05-frontend/{app}/state-data.md", "05-frontend/{app}/networking-offline.md", "05-frontend/{app}/build-delivery.md",
+    "06-backend/overview.md", "06-backend/communication.md", "06-backend/cross-cutting.md",
+    "07-data/overview.md", "07-data/object-storage.md", "07-data/cache.md", "07-data/messaging.md", "07-data/consistency.md", "07-data/backup-recovery.md",
+    "08-security/authz-matrix.md", "08-security/secrets-compliance.md",
+    "09-infrastructure/topology.md", "09-infrastructure/environments.md", "09-infrastructure/scaling-ha.md", "09-infrastructure/observability.md",
+    "09-infrastructure/ci-cd.md", "10-process/delivery.md", "10-process/data-change.md", "10-process/maintenance.md", "10-process/operations.md",
+]
+# What the frontend (Q7) must not decide: no heading of a 05-frontend template names it.
+VISUAL_WORDS = ("màu", "font", "bố cục", "khoảng cách", "icon", "hiệu ứng", "animation", "chuyển động", "minh họa")
 
 
 def lines_of(path: Path) -> list[str]:
@@ -44,7 +56,7 @@ def lines_of(path: Path) -> list[str]:
 
 def test_there_are_templates():
     assert TEMPLATE_FILES, "design-architecture/templates is empty"
-    assert {rel.split("/")[0] for rel in RELS} == set(CHECKLISTS_OF)
+    assert {rel.split("/")[0] for rel in RELS} == set(CHECKLISTS_OF)  # the 13 part folders, README.md and CHANGELOG.md
 
 
 @pytest.mark.parametrize("rel", RELS)
@@ -107,6 +119,65 @@ def test_a_template_with_a_basis_column_says_what_counts_as_a_basis(rel):
     text = (TEMPLATES / rel).read_text(encoding="utf-8")
     if re.search(r"^\|.*Cơ sở", text, re.MULTILINE):
         assert "Mỗi tham số thiết kế" in text.split("\n## ", 1)[0], "the note at the top must say a Cơ sở cell needs an ID or a link"
+
+
+def test_an_app_folder_matches_the_frontend_templates():
+    assert cp.match_template("05-frontend/web/state-data.md", RELS) == "05-frontend/{app}/state-data.md"
+    app_files = sorted(r.rsplit("/", 1)[1] for r in RELS if r.startswith("05-frontend/{app}/"))
+    assert app_files == sorted(["architecture.md", "routing-navigation.md", "state-data.md", "networking-offline.md", "auth-session.md",
+                                "build-delivery.md", "folder-structure.md"])
+
+
+@pytest.mark.parametrize("rel", [r for r in RELS if r.startswith("05-frontend/")])
+def test_frontend_headings_decide_nothing_visible(rel):
+    headings = [m.group(2).casefold() for line in lines_of(TEMPLATES / rel) if (m := cp.HEADING_RE.match(line))]
+    assert [h for h in headings if any(w in h for w in VISUAL_WORDS)] == []
+
+
+@pytest.mark.parametrize("rel", OPTIMISE)
+def test_these_templates_have_a_required_optimise_section(rel):
+    keys = cp.required_headings(lines_of(TEMPLATES / rel))
+    assert any(k.startswith("tối ưu") for k in keys), rel
+
+
+def test_optimise_list_names_real_templates():
+    assert set(OPTIMISE) <= set(RELS)
+
+
+@pytest.mark.parametrize("rel", RELS)
+def test_a_template_that_defines_a_backlink_id_has_a_required_backlink_section(rel):
+    """A heading `### API-xxx`, `# SVC-xxx` ... defines the ID, so the file needs "Được dùng bởi" (check_links.py: missing-backlink)."""
+    lines = lines_of(TEMPLATES / rel)
+    defines = any((m := cp.HEADING_RE.match(line)) and re.match(rf"(?:{'|'.join(IDS.backlink_kinds)})-", m.group(2)) for line in cp.mask_fences(lines))
+    if defines:
+        assert any(k.startswith("được dùng bởi") for k in cp.required_headings(lines))
+
+
+def test_ids_are_defined_in_their_home_templates_only():
+    """EVT in 07-data/messaging.md, BKT in 07-data/object-storage.md, API in api.md, SVC in responsibility.md, TBL in tables.md."""
+    homes = {"EVT": "07-data/messaging.md", "BKT": "07-data/object-storage.md", "API": "06-backend/services/{service}/api.md",
+             "SVC": "06-backend/services/{service}/responsibility.md", "TBL": "07-data/databases/{db}/tables.md"}
+    for kind, home in homes.items():
+        owners = [rel for rel in RELS if any((m := cp.HEADING_RE.match(line)) and m.group(2).startswith(f"{kind}-") for line in cp.mask_fences(lines_of(TEMPLATES / rel)))]
+        assert owners == [home], f"{kind}: {owners}"
+
+
+def test_risk_register_template_is_one_table_the_scripts_can_read():
+    import check_workspace as cw
+
+    text = (TEMPLATES / "11-risks" / "risk-register.md").read_text(encoding="utf-8")
+    assert sum(1 for line in text.splitlines() if line.startswith("|")) == 3, "check_links.py wants every table here to have the components column"
+    header, rows = cw.table(text)
+    assert None not in (cw.column(header, "ID"), cw.column(header, "Khả năng", "Điểm"), cw.column(header, "Trạng thái"))
+    assert cw.column(header, "Thành phần liên quan") is not None
+    assert len(rows) == 1 and cw.clean(rows[0][1][0]).startswith("R-xxx")  # the placeholder row, which check_workspace.py skips
+
+
+@pytest.mark.parametrize("part,name", [(p, n) for p, n in CHECKLISTS_OF.items() if p[0].isdigit()])
+def test_checklist_names_the_gate_that_reaches_its_part(part, name):
+    gate = next(g for g, entries in cp.GATE_ENTRIES.items() if part in entries)
+    first = next(line for line in (CHECKLISTS / name).read_text(encoding="utf-8").splitlines() if line.startswith("Gate:"))
+    assert f"G{gate}" in re.findall(r"G\d+", first), f"{name}: {first[:80]}"
 
 
 def test_the_sample_has_no_object_storage_and_says_so():

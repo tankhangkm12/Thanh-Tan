@@ -193,6 +193,7 @@ class Assumption:
     by_milestone: dict[str, float]
     reason: str = ""
     platform: str = ""
+    factors: tuple[str, ...] = ()  # derived assumption: value(s) are the product of these A-xx (already resolved into value/by_milestone)
 
 
 @dataclass
@@ -209,6 +210,60 @@ class Assumptions:
         """Like `at`, but a milestone the assumption does not cover gives `default` (e.g. a rate at launch)."""
         item = self.items[ident]
         return item.value if item.value is not None else item.by_milestone.get(milestone, default)
+
+
+def parse_derived(raw, where: str, problems: Problems) -> tuple[str, ...]:
+    """`derived: {product: [A-xx, A-yy, ...]}`: the only form. Every factor is a declared A-xx (checked later), never a bare number."""
+    if not isinstance(raw, dict) or set(raw) != {"product"}:
+        problems.add(where, "derived phải là {product: [A-xx, A-yy, ...]} (chỉ có product, không có biểu thức khác)")
+        return ()
+    factors = raw["product"]
+    if not isinstance(factors, list) or len(factors) < 2:
+        problems.add(where, "derived.product phải là danh sách từ 2 giả định A-xx trở lên")
+        return ()
+    bad = [f for f in factors if not isinstance(f, str) or not ASSUMPTION_ID.fullmatch(f)]
+    if bad:
+        problems.add(where, f"derived.product chỉ nhận ID giả định A-xx đã khai, không nhận {', '.join(repr(f) for f in bad)}"
+                     + " (hằng số phải khai thành giả định A-xx riêng, có source)")
+        return ()
+    return tuple(factors)
+
+
+def resolve_derived(items: dict[str, Assumption], milestones: list[str], name: str, problems: Problems) -> None:
+    """Fill value / by_milestone of every derived assumption with the product of its factors (no rounding), nested allowed, no cycles."""
+    state: dict[str, str] = {}  # ident -> "busy" | "done"
+
+    def visit(ident: str, trail: list[str]) -> bool:
+        item = items[ident]
+        if not item.factors or state.get(ident) == "done":
+            return True
+        if state.get(ident) == "busy":
+            problems.add(f"{name}: {ident}", "vòng tham chiếu giữa các giả định dẫn xuất: " + " → ".join(trail + [ident]))
+            return False
+        state[ident] = "busy"
+        ok = True
+        for f in item.factors:
+            if f not in items:
+                problems.add(f"{name}: {ident}", f"derived.product: {f!r} không phải giả định đã khai")
+                ok = False
+            elif f == ident:
+                problems.add(f"{name}: {ident}", "giả định dẫn xuất không được dùng chính nó làm thừa số")
+                ok = False
+            elif not visit(f, trail + [ident]):
+                ok = False
+        state[ident] = "done"
+        if not ok:
+            return False
+        parts = [items[f] for f in item.factors]
+        if all(p.value is not None for p in parts):
+            item.value = math.prod(p.value for p in parts)
+        else:
+            covered = [m for m in milestones if all(p.value is not None or m in p.by_milestone for p in parts)]
+            item.by_milestone = {m: math.prod(p.value if p.value is not None else p.by_milestone[m] for p in parts) for m in covered}
+        return True
+
+    for ident in list(items):
+        visit(ident, [])
 
 
 def parse_assumptions(data: dict, level: str | None, problems: Problems) -> Assumptions | None:
@@ -245,13 +300,22 @@ def parse_assumptions(data: dict, level: str | None, problems: Problems) -> Assu
             problems.add(where, "id trùng")
             continue
         for key in ("description", "unit", "source"):
+            if key == "source" and "derived" in entry:
+                continue
             if not isinstance(entry.get(key), str) or not entry[key].strip():
                 problems.add(where, f"thiếu {key}" + (" (nguồn của giả định)" if key == "source" else ""))
-        has_value, has_by = "value" in entry, "by_milestone" in entry
-        if has_value == has_by:
-            problems.add(where, "phải có đúng một trong value hoặc by_milestone")
+        has_value, has_by, has_derived = "value" in entry, "by_milestone" in entry, "derived" in entry
+        if has_value + has_by + has_derived != 1:
+            problems.add(where, "phải có đúng một trong value, by_milestone hoặc derived")
             continue
         value, by = None, {}
+        if has_derived:
+            factors = parse_derived(entry["derived"], where, problems)
+            if "source" not in entry:  # the formula is the source; a free-text `source` is only a note
+                entry = {**entry, "source": ""}
+            items[ident] = Assumption(ident, str(entry.get("description", "")), str(entry.get("unit", "")), str(entry["source"]).strip() if isinstance(entry["source"], str) else "",
+                                      None, {}, "", "", factors)
+            continue
         if has_value:
             if not is_number(entry["value"]) or entry["value"] < 0:
                 problems.add(where, "value phải là số không âm")
@@ -275,6 +339,7 @@ def parse_assumptions(data: dict, level: str | None, problems: Problems) -> Assu
             problems.add(where, f"platform phải là một trong {', '.join(PLATFORMS)}")
         items[ident] = Assumption(ident, str(entry.get("description", "")), str(entry.get("unit", "")), str(entry.get("source", "")), value, by,
                                   str(entry.get("reason", "")).strip(), str(entry.get("platform", "")).strip())
+    resolve_derived(items, listed, name, problems)
     workload = data.get("workload")
     wanted = ("dau", "requests_per_user_per_day", "peak_factor", "safety_margin")
     if not isinstance(workload, dict) or any(k not in workload for k in wanted):
@@ -328,6 +393,9 @@ def parse_database_assumptions(data: dict, assumptions: Assumptions, databases: 
             if not need_coverage(assumptions, ident, time_ms, kw, problems):
                 continue
             item = assumptions.items[ident]
+            if item.factors:
+                problems.add(kw, f"{ident} là giả định dẫn xuất (derived); giả định của database phải khai bằng value hoặc by_milestone")
+                continue
             if item.value is None and not by_ms:
                 problems.add(kw, f"{ident} phải là giả định hằng (value), không đổi theo mốc")
                 continue
@@ -1012,13 +1080,18 @@ def head(title: str, inputs: Inputs, *intro: str) -> list[str]:
 def render_assumptions(a: Assumptions, level: str | None) -> str:
     cols = a.milestones
     rows = []
+    has_formula = any(item.factors for item in a.items.values())  # the "Công thức" column exists only when something is derived
     for item in a.items.values():
         values = [item.value if item.value is not None else item.by_milestone.get(m) for m in cols]
         description = item.description + (f" (nền tảng: {item.platform})" if item.platform else "")
         source = item.source + (f"; lý do: {item.reason}" if item.reason else "")
-        rows.append([item.id, description, item.unit, *["—" if v is None else plain(v) for v in values], source])
+        if has_formula:
+            rows.append([item.id, description, item.unit, *["—" if v is None else plain(v) for v in values],
+                         " × ".join(item.factors) if item.factors else "—", source or "—"])
+        else:
+            rows.append([item.id, description, item.unit, *["—" if v is None else plain(v) for v in values], source])
     lines = ["# Giả định", "", GENERATED, "", (f"Mức dự án: {level}. " if level else "") + "Mốc: " + ", ".join(f"{MILESTONES[m][0]} ({m})" for m in cols) + ".", ""]
-    lines += table_md(["ID", "Mô tả", "Đơn vị", *[MILESTONES[m][0] for m in cols], "Nguồn"], rows)
+    lines += table_md(["ID", "Mô tả", "Đơn vị", *[MILESTONES[m][0] for m in cols], *(["Công thức"] if has_formula else []), "Nguồn"], rows)
     return "\n".join(lines) + "\n"
 
 

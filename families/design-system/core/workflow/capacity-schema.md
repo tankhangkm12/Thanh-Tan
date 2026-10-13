@@ -36,6 +36,35 @@ database_assumptions:               # BẮT BUỘC: một khối cho mỗi datab
     toast_column_ratio: A-toast-ratio # 0..1, giả định hằng (0 cần reason); TOAST chưa được mô hình
 ```
 
+### Giả định dẫn xuất (`derived`)
+
+Một giả định là tích của các giả định khác (ví dụ người dùng hoạt động mỗi ngày = số người dùng × tỉ lệ hoạt động) khai bằng `derived` **thay cho** `value` / `by_milestone` (đúng một trong ba):
+
+```yaml
+  - id: A-users
+    description: Số người dùng đã đăng ký
+    unit: người dùng
+    by_milestone: {launch: 1000, 1y: 10000, 3y: 50000}
+    source: inputs/ba/prd.md mục 3.1
+  - id: A-active-ratio
+    description: Tỉ lệ người dùng đăng ký hoạt động mỗi ngày
+    unit: tỉ lệ
+    value: 0.2
+    source: ước lượng của Designer, chờ người dùng duyệt ở G1
+  - id: A-dau
+    description: Người dùng hoạt động mỗi ngày
+    unit: người dùng
+    derived: {product: [A-users, A-active-ratio]}
+    # source: tùy chọn, chỉ là ghi chú; nguồn của con số là công thức script ghi vào cột "Công thức"
+```
+
+- Dạng duy nhất là `product`: danh sách từ 2 ID `A-xx` đã khai. **Không có số trần** và không có biểu thức khác: một hằng số (ví dụ số ảnh tối đa mỗi ghi chú) khai thành giả định `A-xx` riêng, có `value` và `source` đúng với nguồn (ví dụ FR-005), rồi đưa vào `product`.
+- Giả định dẫn xuất có thể là thừa số của giả định dẫn xuất khác; vòng tham chiếu, thừa số chưa khai, thừa số là chính nó là lỗi chặn.
+- Giá trị mỗi mốc = tích các giá trị cùng mốc của thừa số (thừa số `value` áp mọi mốc); mốc mà một thừa số không có thì giả định dẫn xuất cũng không có. Không làm tròn khi tính, chỉ khi hiển thị như các số khác.
+- `00-context/assumptions.md` thêm cột "Công thức" (`A-users × A-active-ratio`) khi có ít nhất một giả định dẫn xuất; `check_numbers` coi công thức đó là nguồn của con số.
+- `database_assumptions` không dùng giả định dẫn xuất (khai bằng `value` hoặc `by_milestone`).
+- Dùng được cho `workload.*` và mọi giả định khác trong bảng, trừ `database_assumptions`.
+
 Các giả định của `database_assumptions` (trừ `maxalign` và `toast_column_ratio`, phải là `value` hằng) có thể đổi theo mốc. Giá trị "không có" (0, hoặc 1 cho hệ số phình) phải kèm `reason` vì đó là một khẳng định cần lý do; thiếu khóa, thiếu nguồn hoặc lý do là lỗi chặn.
 
 Giả định theo mốc là **trung bình mỗi ngày trong giai đoạn kết thúc ở mốc đó** khi dùng làm tốc độ (dòng/ngày, file/ngày); ở `launch` tốc độ không dùng. Từ file này `00-context/assumptions.md` được sinh, không sửa tay.

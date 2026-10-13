@@ -1113,3 +1113,146 @@ def test_runs_under_uv_with_its_own_dependencies(tmp_path):
     result = subprocess.run([uv, "run", "--quiet", "--no-project", str(SCRIPT), "--workspace", str(workspace), "--date", "2026-10-12"], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr
     assert "0 lỗi chặn" in result.stdout and (workspace / "drafts" / "03-capacity" / "data-sizing.md").is_file()
+
+
+# --- derived assumptions (derived: {product: [A-xx, ...]}) ---------------------------------------------------------------------------
+
+def base_item(ident, **kw):
+    return {"id": ident, "description": ident, "unit": "x", "source": "test", **kw}
+
+
+def with_derived(*extra, workload_dau=None):
+    def mutate(files):
+        files["assumptions"]["assumptions"] += list(extra)
+        if workload_dau:
+            files["assumptions"]["workload"]["dau"] = workload_dau
+    return mutate
+
+
+def parse(files_mutate):
+    problems = cc.Problems()
+    data = sample("assumptions")
+    files = {"assumptions": data}
+    files_mutate(files)
+    return cc.parse_assumptions(data, "M", problems), problems.items
+
+
+def test_derived_by_milestone_is_the_unrounded_product_of_its_factors():
+    parsed, problems = parse(with_derived(
+        base_item("A-users", by_milestone={"launch": 1000, "1y": 10000, "3y": 50000}),
+        base_item("A-ratio", value=0.2),
+        {"id": "A-dau2", "description": "d", "unit": "người", "derived": {"product": ["A-users", "A-ratio"]}}))
+    assert problems == []
+    item = parsed.items["A-dau2"]
+    assert item.factors == ("A-users", "A-ratio") and item.value is None
+    assert item.by_milestone == {"launch": 1000 * 0.2, "1y": 10000 * 0.2, "3y": 50000 * 0.2}
+
+
+def test_derived_of_constants_is_a_constant_and_derived_may_nest():
+    parsed, problems = parse(with_derived(
+        {"id": "A-top", "description": "d", "unit": "x", "derived": {"product": ["A-mid", "A-b"]}},  # declared before its factors
+        {"id": "A-mid", "description": "d", "unit": "x", "derived": {"product": ["A-a", "A-b"]}},
+        base_item("A-a", value=0.2), base_item("A-b", value=3)))
+    assert problems == []
+    assert parsed.items["A-mid"].value == 0.2 * 3 and parsed.items["A-top"].value == 0.2 * 3 * 3
+
+
+def test_derived_covers_only_the_milestones_all_factors_cover():
+    parsed, problems = parse(with_derived(
+        base_item("A-r", by_milestone={"1y": 10, "3y": 20}), base_item("A-c", value=2),
+        {"id": "A-d", "description": "d", "unit": "x", "derived": {"product": ["A-r", "A-c"]}}))
+    assert problems == [] and parsed.items["A-d"].by_milestone == {"1y": 20, "3y": 40}
+
+
+@pytest.mark.parametrize("derived, message", [
+    ({"product": ["A-a", 2]}, "chỉ nhận ID giả định"),
+    ({"product": ["A-a", "0.5"]}, "chỉ nhận ID giả định"),
+    ({"product": ["A-a"]}, "từ 2"),
+    ({"product": "A-a"}, "từ 2"),
+    ({"sum": ["A-a", "A-b"]}, "chỉ có product"),
+    ({"product": ["A-a", "A-b"], "extra": 1}, "chỉ có product"),
+    ("A-a * A-b", "chỉ có product"),
+    ({"product": ["A-a", "A-missing"]}, "không phải giả định đã khai"),
+    ({"product": ["A-a", "A-d"]}, "chính nó"),
+])
+def test_bad_derived_forms_are_blocking(derived, message):
+    _, problems = parse(with_derived(base_item("A-a", value=1), base_item("A-b", value=2),
+                                     {"id": "A-d", "description": "d", "unit": "x", "derived": derived}))
+    assert any(message in p for p in problems), problems
+
+
+def test_a_reference_cycle_is_blocking_and_names_the_cycle():
+    _, problems = parse(with_derived(
+        base_item("A-a", value=1),
+        {"id": "A-x", "description": "d", "unit": "x", "derived": {"product": ["A-a", "A-y"]}},
+        {"id": "A-y", "description": "d", "unit": "x", "derived": {"product": ["A-a", "A-x"]}}))
+    assert any("vòng tham chiếu" in p and "A-x" in p and "A-y" in p for p in problems), problems
+
+
+def test_derived_cannot_be_combined_with_value_or_by_milestone():
+    _, problems = parse(with_derived(base_item("A-a", value=1), base_item("A-b", value=2),
+                                     {"id": "A-d", "description": "d", "unit": "x", "value": 2, "derived": {"product": ["A-a", "A-b"]}}))
+    assert any("đúng một trong value, by_milestone hoặc derived" in p for p in problems), problems
+
+
+def test_a_derived_assumption_needs_no_source_and_a_source_is_only_a_note():
+    parsed, problems = parse(with_derived(
+        base_item("A-a", value=2), base_item("A-b", value=3),
+        {"id": "A-d", "description": "d", "unit": "x", "derived": {"product": ["A-a", "A-b"]}},
+        {"id": "A-e", "description": "d", "unit": "x", "derived": {"product": ["A-a", "A-b"]}, "source": "ghi chú"}))
+    assert problems == [] and parsed.items["A-d"].source == "" and parsed.items["A-e"].source == "ghi chú"
+
+
+def test_database_assumptions_may_not_be_derived(tmp_path):
+    def mutate(files):
+        files["assumptions"]["assumptions"] += [base_item("A-one", value=1), base_item("A-two", value=1),
+                                                {"id": "A-heap2", "description": "d", "unit": "x", "derived": {"product": ["A-one", "A-two"]}}]
+        files["assumptions"]["database_assumptions"]["order-db"]["heap_bloat_factor"] = "A-heap2"
+    workspace = make(tmp_path, mutate=mutate)
+    assert run(workspace) == 1
+    assert "dẫn xuất" in report(workspace)
+
+
+def test_workload_may_use_a_derived_assumption_and_the_documents_show_the_formula(tmp_path):
+    def mutate(files):
+        a = files["assumptions"]
+        users = next(i for i in a["assumptions"] if i["id"] == a["workload"]["dau"])
+        a["assumptions"] += [dict(users, id="A-users"), base_item("A-active-ratio", value=0.2),
+                             {"id": "A-dau-derived", "description": "Người dùng hoạt động mỗi ngày", "unit": "người", "derived": {"product": ["A-users", "A-active-ratio"]}}]
+        a["workload"]["dau"] = "A-dau-derived"
+    workspace = make(tmp_path, mutate=mutate)
+    assert run(workspace) == 0
+    text = draft(workspace, "00-context/assumptions.md")
+    assert "| Công thức |" in text and "A-users × A-active-ratio" in text
+    assert "0 lỗi chặn" in report(workspace)
+
+
+def test_without_derived_the_assumptions_md_has_no_formula_column(tmp_path):
+    workspace = make(tmp_path)
+    assert run(workspace) == 0
+    assert "Công thức" not in draft(workspace, "00-context/assumptions.md")
+
+
+def test_a_derived_assumption_missing_a_milestone_the_workload_needs_is_a_blocking_error(tmp_path):
+    def mutate(files):
+        a = files["assumptions"]
+        a["assumptions"] += [base_item("A-users", by_milestone={"1y": 10000, "3y": 50000}), base_item("A-ratio", value=0.2),
+                             {"id": "A-dau-d", "description": "d", "unit": "người", "derived": {"product": ["A-users", "A-ratio"]}}]
+        a["workload"]["dau"] = "A-dau-d"
+    workspace = make(tmp_path, mutate=mutate)
+    before = snapshot(workspace)
+    assert run(workspace) == 1
+    text = report(workspace)
+    assert "workload.dau" in text and "A-dau-d" in text and "launch" in text
+    assert not (workspace / "drafts" / "03-capacity" / "workload-model.md").exists()
+    assert {k: v for k, v in snapshot(workspace).items() if k in before} == before
+
+
+def test_a_derived_rate_missing_a_milestone_a_table_needs_is_a_blocking_error(tmp_path):
+    def mutate(files):
+        files["assumptions"]["assumptions"] += [base_item("A-users", by_milestone={"3y": 50000}), base_item("A-per-user", value=2),
+                                                {"id": "A-rows-d", "description": "d", "unit": "dòng/ngày", "derived": {"product": ["A-users", "A-per-user"]}}]
+        files["tables"]["databases"]["order-db"]["tables"]["orders"]["rows_per_day"] = "A-rows-d"
+    workspace = make(tmp_path, mutate=mutate)
+    assert run(workspace) == 1
+    assert "A-rows-d" in report(workspace) and "không có giá trị cho mốc" in report(workspace)

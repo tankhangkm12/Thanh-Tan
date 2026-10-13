@@ -821,3 +821,13 @@ def test_runs_under_uv_with_its_own_dependencies(tmp_path):
     workspace = make_workspace(tmp_path)
     result = subprocess.run([uv, "run", "--quiet", "--no-project", str(SCRIPT), "--workspace", str(workspace)], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr
+
+
+def test_a_derived_assumption_is_sourced_by_its_formula_column(tmp_path):
+    data = yaml.safe_load((DATA / "capacity" / "assumptions.yaml").read_text(encoding="utf-8"))
+    data["assumptions"] += [{"id": "A-ratio", "description": "Tỉ lệ", "unit": "tỉ lệ", "value": 0.2, "source": "người dùng duyệt ở G1"},
+                            {"id": "A-derived", "description": "Số người dùng hoạt động", "unit": "người dùng", "derived": {"product": ["A-orders-per-day", "A-ratio"]}}]
+    workspace = make_workspace(tmp_path, yaml_text=yaml.safe_dump(data, allow_unicode=True, sort_keys=False))
+    text = (workspace / "drafts" / "00-context" / "assumptions.md").read_text(encoding="utf-8")
+    assert "A-orders-per-day × A-ratio" in text
+    assert run_all(workspace) == []

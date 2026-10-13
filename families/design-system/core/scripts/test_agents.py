@@ -209,7 +209,11 @@ def test_manifest_lists_every_claude_agent_file_and_nothing_else():
 
 def test_antigravity_agents_dir_has_no_claude_format_files():
     # Antigravity discovers <plugin>/agents/*.md on its own; Claude-format files there could hang it (BUILD-PROGRESS.md).
-    assert not list((CORE / "agents").glob("*.md"))
+    # core/agents/ holds only the generated Antigravity files (test_gen_antigravity.py keeps them in step).
+    for file in (CORE / "agents").glob("*.md"):
+        text = file.read_text(encoding="utf-8")
+        assert text.replace("\r\n", "\n").startswith("---\nname: design-"), file.name
+        assert not re.search(r"^tools:\s*(Read|Write|Glob|Grep|Edit|Bash|Agent|Web)", text, re.M), file.name
 
 
 # --- council ----------------------------------------------------------------------------------

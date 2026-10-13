@@ -896,7 +896,7 @@ def test_a_table_without_its_marker_pair_is_an_error_and_the_file_is_left_alone(
     workspace = make(tmp_path, tables_md="# tables\n\nKhông có cặp dấu nào.\n")
     before = tables_md(workspace).read_bytes()
     assert run(workspace) == 1
-    assert "thiếu đúng một cặp dấu" in report(workspace) and "calc:orders" in report(workspace)
+    assert "cần đúng một cặp dấu" in report(workspace) and "calc:orders" in report(workspace)
     assert tables_md(workspace).read_bytes() == before
 
 
@@ -921,6 +921,16 @@ def test_one_missing_pair_leaves_the_whole_file_alone_even_if_another_table_has_
 def test_a_duplicated_pair_is_an_error(tmp_path):
     workspace = make(tmp_path, tables_md=TABLES_MD + TABLES_MD.split("\n\n", 2)[2])
     assert run(workspace) == 1
+
+
+def test_two_pairs_for_one_table_refuse_to_write_any_pair_of_that_file(tmp_path):
+    two_pairs = TABLES_MD + "\n<!-- BEGIN:calc:orders -->\nchờ script\n<!-- END:calc:orders -->\n"
+    workspace = make(tmp_path, tables_md=two_pairs)
+    before = tables_md(workspace).read_bytes()
+    assert run(workspace) == 1
+    assert tables_md(workspace).read_bytes() == before  # neither pair was filled
+    text = report(workspace)
+    assert "cần đúng một cặp dấu" in text and "calc:orders" in text and "thấy 2" in text
 
 
 def test_no_tables_md_yet_is_a_note_not_an_error(tmp_path):

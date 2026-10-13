@@ -1281,7 +1281,8 @@ def apply(outputs: Outputs, drafts: Path, check: bool, problems: Problems) -> tu
         for table, block in items:
             updated, changed_now = fill_block(text, table, block)
             if updated is None:
-                problems.add(f"drafts/{rel}", f"thiếu đúng một cặp dấu <!-- BEGIN:calc:{table} --> ... <!-- END:calc:{table} --> cho bảng {table}")
+                found = sum(1 for m in CALC_BLOCK.finditer(text) if m.group(2) == table)
+                problems.add(f"drafts/{rel}", f"cần đúng một cặp dấu <!-- BEGIN:calc:{table} --> ... <!-- END:calc:{table} --> cho bảng {table}, thấy {found}; không ghi khối nào của file này")
                 broken = True
                 continue
             text, dirty = updated, dirty or changed_now

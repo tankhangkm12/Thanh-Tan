@@ -16,7 +16,8 @@ Blocking errors (exit 1):
   every other file that mentions one of those IDs (FR, NFR, TC and R need no back link);
 - a stack layer file (`02-tech-stack/layers/`) with no TC reference or a TC that is defined nowhere, and a risk row of
   `11-risks/risk-register.md` whose "Thành phần liên quan" cell has neither an SVC / TBL / BKT / EVT / API ID nor a link to a
-  file in `02-tech-stack/` (only when those files exist).
+  file in `02-tech-stack/`. The risk-row rule applies only once `02-tech-stack/layers/` holds at least one .md file (from G4):
+  before that no stack component exists to name, so the rows are not checked (the column itself is still required).
 
 Warnings (never block): an ID that is defined but mentioned in no other file (an orphan).
 
@@ -350,8 +351,9 @@ def names_a_component(doc: Doc, cell: str) -> bool:
 
 
 def check_risk_register(docs: list[Doc]) -> list[Finding]:
-    """Q6: each risk row names the components it touches (see names_a_component)."""
+    """Q6: each risk row names the components it touches (see names_a_component), once the stack layers exist (from G4)."""
     findings = []
+    stack_built = any(doc.rel.startswith(LAYERS_DIR) for doc in docs)
     for doc in docs:
         if doc.rel != RISK_REGISTER:
             continue
@@ -371,7 +373,7 @@ def check_risk_register(docs: list[Doc]) -> list[Finding]:
             if not ident or not ident.startswith("R-") or column is None:
                 continue
             cell = cells[column] if column < len(cells) else ""
-            if not names_a_component(doc, cell):
+            if stack_built and not names_a_component(doc, cell):
                 findings.append(Finding(doc.rel, number, "risk-without-components", f"{ident}: cột \"{RISK_COMPONENTS_COLUMN}\" không có ID SVC/TBL/BKT/EVT/API hay link tới file trong {STACK_DIR}"))
     return findings
 

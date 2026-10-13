@@ -364,6 +364,21 @@ def test_each_risk_row_names_its_components(tmp_path):
     assert flagged == [(7, "R-03"), (8, "R-04"), (11, "R-07"), (12, "R-08"), (13, "R-09"), (14, "R-10"), (15, "R-11")]
 
 
+def test_risk_rows_are_not_checked_before_the_stack_layers_exist(tmp_path):
+    early = "# R\n\n| ID | Mô tả | Thành phần liên quan |\n| --- | --- | --- |\n| R-01 | a |  |\n| R-02 | b | PostgreSQL |\n"
+    # G1: no 02-tech-stack/ at all
+    assert codes(tree(tmp_path / "g1", {"11-risks/risk-register.md": early}))[0] == []
+    # G2/G3: 02-tech-stack/ holds only the selection criteria, no layers/
+    g2 = {"11-risks/risk-register.md": early, "02-tech-stack/selection-criteria.md": "# TC\n\n## TC-1\n"}
+    assert [c for c in codes(tree(tmp_path / "g2", g2))[0] if c.startswith("risk")] == []
+    # an empty layers/ folder or a non-markdown file in it is no layer
+    g3 = dict(g2, **{"02-tech-stack/layers/notes.txt": "x"})
+    assert [c for c in codes(tree(tmp_path / "g3", g3))[0] if c.startswith("risk")] == []
+    # G4: the first layer file turns the rule on
+    g4 = dict(g2, **{"02-tech-stack/layers/data.md": "# D\n\nTC-1\n"})
+    assert sorted(c for c in codes(tree(tmp_path / "g4", g4))[0] if c.startswith("risk")) == ["risk-without-components"] * 2
+
+
 def test_risk_table_without_the_column(tmp_path):
     root = tree(tmp_path, {"11-risks/risk-register.md": "# R\n\n| ID | Mô tả |\n| --- | --- |\n| R-01 | a |\n"})
     assert "risk-without-components-column" in codes(root)[0]

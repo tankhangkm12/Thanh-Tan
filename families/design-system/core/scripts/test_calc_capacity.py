@@ -1256,3 +1256,31 @@ def test_a_derived_rate_missing_a_milestone_a_table_needs_is_a_blocking_error(tm
     workspace = make(tmp_path, mutate=mutate)
     assert run(workspace) == 1
     assert "A-rows-d" in report(workspace) and "không có giá trị cho mốc" in report(workspace)
+
+
+# --- TBL heading against tables.yaml id ----------------------------------------------------------------------------------------------
+
+HEADED = "# tables\n\n### TBL-orders: orders\n\nGhi chú.\n\n<!-- BEGIN:calc:orders -->\nchờ script\n<!-- END:calc:orders -->\n\nHết.\n"
+
+
+def test_a_heading_with_the_yaml_id_and_the_pair_under_it_passes(tmp_path):
+    assert run(make(tmp_path, tables_md=HEADED)) == 0
+
+
+def test_a_heading_id_different_from_the_yaml_id_is_a_blocking_error_and_the_file_is_left_alone(tmp_path):
+    workspace = make(tmp_path, tables_md=HEADED.replace("TBL-orders", "TBL-order"))
+    before = tables_md(workspace).read_bytes()
+    assert run(workspace) == 1
+    assert "TBL-orders" in report(workspace) and "heading" in report(workspace)
+    assert tables_md(workspace).read_bytes() == before
+
+
+def test_a_pair_under_the_heading_of_another_table_is_a_blocking_error(tmp_path):
+    text = "# tables\n\n### TBL-orders: orders\n\nGhi chú.\n\n### TBL-other: other\n\n<!-- BEGIN:calc:orders -->\nchờ script\n<!-- END:calc:orders -->\n"
+    workspace = make(tmp_path, tables_md=text)
+    assert run(workspace) == 1 and "không nằm dưới heading" in report(workspace)
+
+
+def test_a_duplicated_heading_is_a_blocking_error(tmp_path):
+    workspace = make(tmp_path, tables_md=HEADED + "\n### TBL-orders: orders lần hai\n")
+    assert run(workspace) == 1 and "có 2 heading" in report(workspace)

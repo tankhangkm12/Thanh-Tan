@@ -285,3 +285,13 @@ def test_the_sample_has_all_13_parts_and_the_root_readme(sample):
 def test_the_sample_at_gate_g10_has_no_check_report_left_in_the_repo(sample):
     run("check_profile.py", sample, "--gate", "G10", "--templates", str(TEMPLATES))
     assert (sample / "checks").exists() and not (SAMPLE / "checks").exists()
+
+
+@pytest.mark.parametrize("rel", RELS)
+def test_a_required_section_has_something_to_fill_in(rel):
+    """check_profile calls a required section still the template's when every line is the template's own: static text (like the dev rules of
+    implementation-plan.md) must not be marked required. A section to fill in carries a placeholder (<…>, {…}, xx, …, an empty table row)."""
+    lines = cp.read_lines(TEMPLATES / rel)
+    sections = {key: body for key, _, _, body in cp.sections(lines)}
+    static = [key for key in cp.required_headings(lines) if not re.search(r"[<{…]|xx|\.\.\.|\|\s*\|", "\n".join(cp.content_lines(sections.get(key, []))))]
+    assert static == [], f"{rel}: mục bắt buộc chỉ có chữ cố định, người viết giữ nguyên sẽ bị báo 'còn nguyên mẫu': {static}"

@@ -1285,6 +1285,7 @@ def render_cost(inputs: Inputs, cost: dict) -> str:
 class Outputs:
     files: dict[str, str] = field(default_factory=dict)  # path relative to drafts/ -> text
     blocks: dict[tuple[str, str], tuple[str, str]] = field(default_factory=dict)  # (db, table) -> (tables.md path, block text)
+    ids: dict[tuple[str, str], str] = field(default_factory=dict)  # (db, table) -> TBL-xx of tables.yaml
 
 
 def render_all(inputs: Inputs, problems: Problems) -> Outputs:
@@ -1305,7 +1306,28 @@ def render_all(inputs: Inputs, problems: Problems) -> Outputs:
     for db in inputs.databases:
         for t in db.tables:
             out.blocks[(db.name, t.name)] = (f"07-data/databases/{db.name}/tables.md", render_table_block(inputs, db, t, tables[(db.name, t.name)]))
+            out.ids[(db.name, t.name)] = t.id
     return out
+
+
+TBL_HEADING = re.compile(r"^#{1,6}[ 	]+(TBL-[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)*)", re.MULTILINE)
+
+
+def heading_problems(text: str, table: str, table_id: str) -> str | None:
+    """A tables.md that has `### TBL-xx` headings must have the heading of this table's `id`, with its calc pair under it (before the next
+    TBL heading). A file with no TBL heading at all is left to the other checks. Returns the problem text or None."""
+    headings = list(TBL_HEADING.finditer(text))
+    if not headings:
+        return None
+    mine = [h for h in headings if h.group(1) == table_id]
+    if len(mine) != 1:
+        return f"tables.yaml đặt id {table_id} cho bảng {table}, nhưng tables.md có {len(mine)} heading `### {table_id}` (cần đúng một; id ở heading phải trùng id trong tables.yaml)"
+    start = mine[0].end()
+    following = [h.start() for h in headings if h.start() > start]
+    end = min(following) if following else len(text)
+    if not any(m.group(2) == table and start <= m.start() < end for m in CALC_BLOCK.finditer(text)):
+        return f"cặp dấu calc:{table} không nằm dưới heading `### {table_id}` (đặt cặp dấu của bảng ngay dưới heading của chính bảng đó)"
+    return None
 
 
 # --- files --------------------------------------------------------------------------------------------------------------------
@@ -1364,6 +1386,12 @@ def apply(outputs: Outputs, drafts: Path, check: bool, problems: Problems) -> tu
             continue
         text, dirty, broken = current, False, False
         for table, block in items:
+            db_of = next(db for (db, t), (r, _) in outputs.blocks.items() if t == table and r == rel)
+            bad = heading_problems(current, table, outputs.ids[(db_of, table)])
+            if bad:
+                problems.add(f"drafts/{rel}", bad + "; không ghi khối nào của file này")
+                broken = True
+                continue
             updated, changed_now = fill_block(text, table, block)
             if updated is None:
                 found = sum(1 for m in CALC_BLOCK.finditer(text) if m.group(2) == table)

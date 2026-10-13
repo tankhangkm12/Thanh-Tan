@@ -36,6 +36,10 @@ database_assumptions:               # BẮT BUỘC: một khối cho mỗi datab
     toast_column_ratio: A-toast-ratio # 0..1, giả định hằng (0 cần reason); TOAST chưa được mô hình
 ```
 
+### Heading `TBL-xx` của tables.md
+
+Khi `drafts/07-data/databases/<db>/tables.md` đã có heading `### TBL-xx`, mỗi bảng của `tables.yaml` phải có đúng một heading mang đúng `id` của nó, và cặp dấu `BEGIN:calc:<bảng>` / `END:calc:<bảng>` phải nằm dưới heading đó (trước heading TBL kế tiếp). Lệch là lỗi chặn và script không ghi khối nào của file. File chưa có heading TBL nào thì kiểm này bỏ qua.
+
 ### Giả định dẫn xuất (`derived`)
 
 Một giả định là tích của các giả định khác (ví dụ người dùng hoạt động mỗi ngày = số người dùng × tỉ lệ hoạt động) khai bằng `derived` **thay cho** `value` / `by_milestone` (đúng một trong ba):

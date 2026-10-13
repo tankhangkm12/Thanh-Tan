@@ -27,7 +27,7 @@
 
 | Công nghệ | Đơn vị scale | Giới hạn (số + đơn vị) | Ngưỡng lên giai đoạn sau | Đường nâng cấp | Bảo trì mỗi tháng (giờ) | Cơ sở ước tính |
 | --- | --- | --- | --- | --- | --- | --- |
-| Node.js | instance | năng lực mỗi instance ở [compute-sizing.md](../../03-capacity/compute-sizing.md) | mức dùng CPU trên 70% | bản LTS kế tiếp trước ngày hết hỗ trợ | 2 giờ | [lịch phát hành](https://nodejs.org/en/about/previous-releases) |
+| Node.js | instance | năng lực mỗi instance ở [compute-sizing.md](../../03-capacity/compute-sizing.md) | mức dùng CPU trên 70% | bản LTS kế tiếp trước ngày hết hỗ trợ | 2 giờ | [lịch phát hành](https://github.com/nodejs/Release#release-schedule) |
 
 ## Rủi ro
 <!-- required -->

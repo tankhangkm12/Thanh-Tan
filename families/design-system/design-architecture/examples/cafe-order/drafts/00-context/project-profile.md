@@ -35,6 +35,9 @@ Mốc tính số liệu của mức M: launch, 1y, 3y.
 | 05-frontend | có | mức M giữ đủ |
 | 06-backend | có | mọi dự án có |
 | 07-data | có | mọi dự án có |
+| 07-data/object-storage.md | bỏ | dự án không lưu ảnh hay tài liệu, nên không có bucket |
+| 07-data/cache.md | bỏ | tải đỉnh ở [workload-model.md](../03-capacity/workload-model.md) thấp, database đáp ứng trực tiếp nên chưa cần cache |
+| 07-data/messaging.md | bỏ | mọi thao tác đồng bộ, không có event hay hàng đợi |
 | 08-security | có | mức M giữ đủ |
 | 09-infrastructure | có | mức M giữ đủ |
 | 10-process | có | mức M giữ đủ |

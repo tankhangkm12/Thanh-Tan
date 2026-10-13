@@ -18,7 +18,7 @@ Ghi "chưa có file hợp đồng riêng" nếu mọi hợp đồng nằm ngay t
 | --- | --- | --- |
 | Cách đánh phiên bản | <trong đường dẫn, trong header, trong tên event> | |
 | Thay đổi cho phép không đổi phiên bản | <thêm trường tùy chọn> | |
-| Thay đổi phải tăng phiên bản lớn | <xóa trường, đổi nghĩa, đổi kiểu> | |
+| Thay đổi phải tăng phiên bản chính (major) | <xóa trường, đổi nghĩa, đổi kiểu> | |
 | Thời gian giữ phiên bản cũ | <số + đơn vị> | <NFR-xx, C-xx, A-xx, D-xxx, R-xx, TC-xx hoặc link> |
 
 ## Kiểm tra hợp đồng

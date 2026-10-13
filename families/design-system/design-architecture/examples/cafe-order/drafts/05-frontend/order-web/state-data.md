@@ -5,9 +5,9 @@
 
 | Loại state | Ví dụ | Giữ ở đâu | Vòng đời |
 | --- | --- | --- | --- |
-| dữ liệu từ máy chủ | đơn và trạng thái đơn | cache truy vấn trong lớp truy cập dữ liệu, dùng `fetch` có sẵn của trình duyệt | xóa khi đăng xuất |
+| dữ liệu từ máy chủ | đơn và trạng thái đơn | cache truy vấn trong lớp truy cập dữ liệu, dùng `fetch` có sẵn của trình duyệt | xóa khi nhân viên thoát |
 | state giao diện cục bộ | giỏ chưa gửi | state của component | xóa khi rời `/orders/new` hoặc gửi xong |
-| state dùng chung | phiên và vai trò | context của module session | xóa khi đăng xuất |
+| state dùng chung | khóa nhân viên | context của module session | xóa khi nhân viên thoát hoặc đóng tab |
 | state trên URL | mã đơn | tham số route | theo URL |
 
 ## Lấy dữ liệu và cache

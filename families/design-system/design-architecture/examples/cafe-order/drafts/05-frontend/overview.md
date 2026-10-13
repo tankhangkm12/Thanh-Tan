@@ -12,7 +12,7 @@
 
 | App | Chiến lược | Lý do | Quyết định |
 | --- | --- | --- | --- |
-| order-web | CSR (ứng dụng một trang, file tĩnh) | mọi màn hình nằm sau đăng nhập nên không cần SEO; không có máy chủ render để team 3 người (C-002) phải vận hành, và file tĩnh không thêm chi phí hạ tầng (C-001) | D-003 |
+| order-web | CSR (ứng dụng một trang, file tĩnh) | app chỉ phục vụ đặt và theo dõi đơn đã có mã, không cần SEO; không có máy chủ render để team 3 người (C-002) phải vận hành, và file tĩnh không thêm chi phí hạ tầng (C-001) | D-003 |
 
 ## Dùng chung giữa các app
 <!-- required -->

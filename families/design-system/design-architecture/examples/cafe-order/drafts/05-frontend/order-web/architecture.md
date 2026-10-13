@@ -17,7 +17,7 @@
 | ordering | giữ giỏ và gửi đơn | SCR-order-form | giỏ (state cục bộ) | FR-001 |
 | tracking | lấy và làm mới trạng thái đơn | SCR-order-status | đơn (cache truy vấn theo mã đơn) | FR-002 |
 | staff | mở đơn và đổi trạng thái | SCR-staff-update | đơn (cache truy vấn theo mã đơn) | FR-003 |
-| session | giữ phiên đăng nhập và vai trò | SCR-order-form, SCR-order-status, SCR-staff-update | phiên (state dùng chung) | FR-001, FR-002, FR-003 |
+| session | giữ khóa nhân viên trong bộ nhớ và gắn vào request | SCR-staff-update | khóa nhân viên (state dùng chung) | FR-003 |
 
 ## Luồng dữ liệu
 <!-- required -->

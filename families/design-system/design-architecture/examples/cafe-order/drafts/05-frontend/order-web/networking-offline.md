@@ -9,7 +9,7 @@
 | Thử lại | 2 lần, chỉ với API-get-order và API-create-order (có khóa idempotency), chờ 1 giây rồi 2 giây | NFR-001 |
 | Khóa idempotency khi thử lại | API-create-order dùng khóa do client sinh một lần mỗi lần bấm đặt, theo [api.md](../../06-backend/services/order-service/api.md) | |
 | Hủy request khi rời màn hình | có | |
-| Xử lý lỗi | theo error model của `cross-cutting.md` | |
+| Xử lý lỗi | theo error model của [cross-cutting.md](../../06-backend/cross-cutting.md) | |
 
 ## Offline và đồng bộ
 <!-- required -->

@@ -5,9 +5,9 @@
 
 | API | Mô tả | Yêu cầu (FR) | Xác thực |
 | --- | --- | --- | --- |
-| API-create-order | Tạo đơn | FR-001 | khách đã đăng nhập |
-| API-get-order | Lấy đơn | FR-002 | khách chủ đơn |
-| API-update-status | Đổi trạng thái đơn | FR-003 | nhân viên |
+| API-create-order | Tạo đơn | FR-001 | không (khách ẩn danh, giới hạn tần suất theo IP) |
+| API-get-order | Lấy đơn | FR-002 | mã tra cứu có chữ ký, hoặc khóa nhân viên |
+| API-update-status | Đổi trạng thái đơn | FR-003 | khóa nhân viên |
 
 ## Chi tiết từng API
 <!-- required -->
@@ -17,20 +17,20 @@
 | Mục | Giá trị | Cơ sở |
 | --- | --- | --- |
 | Yêu cầu vào | danh sách món (mã món, số lượng), ghi chú tối đa 200 byte | A-note-bytes |
-| Phản hồi thành công | 201, mã đơn | |
+| Phản hồi thành công | 201, mã tra cứu (mã đơn kèm chữ ký) | |
 | Lỗi | 400 khi danh sách rỗng, theo error model chung | |
 | Idempotency | khóa do client gửi, giữ 86.400 giây | D-001 |
-| Giới hạn tần suất | 5 request/giây/người dùng | NFR-003 |
+| Giới hạn tần suất | 5 request/giây/IP | NFR-003 |
 
 ### API-get-order: GET /orders/{id}
 
 | Mục | Giá trị | Cơ sở |
 | --- | --- | --- |
-| Yêu cầu vào | mã đơn | |
+| Yêu cầu vào | mã tra cứu (khách) hoặc mã đơn thường kèm khóa nhân viên | |
 | Phản hồi thành công | 200, trạng thái và các món | |
-| Lỗi | 404 khi không có đơn | |
+| Lỗi | 404 khi không có đơn hoặc chữ ký sai | |
 | Idempotency | không áp dụng (chỉ đọc) | |
-| Giới hạn tần suất | 5 request/giây/người dùng | NFR-003 |
+| Giới hạn tần suất | 5 request/giây/IP | NFR-003 |
 
 ### API-update-status: PATCH /orders/{id}/status
 
@@ -58,6 +58,7 @@
 - [FL-003](../../../04-flows/FL-003-cap-nhat-trang-thai.md)
 - [requirements-trace.md](../../../00-context/requirements-trace.md)
 - [data.md](data.md)
+- [cross-cutting.md](../../cross-cutting.md)
 - [architecture.md](../../../05-frontend/order-web/architecture.md)
 - [auth-session.md](../../../05-frontend/order-web/auth-session.md)
 - [networking-offline.md](../../../05-frontend/order-web/networking-offline.md)

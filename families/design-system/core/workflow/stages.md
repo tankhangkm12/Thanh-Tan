@@ -49,7 +49,7 @@ Mức đã duyệt ở G0 quyết định phần nào bắt buộc (bảng "Hồ
 | --- | --- | --- | --- | --- |
 | 00-context, 02-tech-stack, 04-flows, 06-backend, 07-data | có | có | có | có |
 | 03-capacity | rút gọn | có | có | có |
-| 01-system | tối thiểu: `architecture-style.md`, `containers.md` | có | có | có |
+| 01-system | tối thiểu: `architecture-style.md`, `containers.md`; thêm `integrations.md` khi có hệ thống ngoài (thanh toán, mail, SMS…) | có | có | có |
 | 11-risks | rút gọn: chỉ rủi ro ≥ 8 điểm | có | có | có |
 | 12-roadmap | chỉ `implementation-plan.md` | thêm `scaling-stages.md`, `upgrade-roadmap.md` | có | có |
 | 05-frontend, 08-security, 09-infrastructure, 10-process | bỏ | có | có | có |
@@ -109,7 +109,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 - **Đầu vào:** context, TC đã duyệt.
 - **Việc:** Designer viết `brief.md` với phương án trung lập (kiểu kiến trúc và giai đoạn scale); hội đồng bỏ phiếu độc lập (3 hoặc 5 phiếu theo mức); `tally_votes.py` đếm; người dùng quyết; sau đó Designer viết `01-system`.
 - **Điều kiện qua gate:** quyết định có đủ phiếu đúng định dạng; `decision.md` ghi đề xuất, tỉ lệ, thiểu số, rủi ro và quyết định của người dùng; mỗi quyết định sinh rủi ro vào sổ rủi ro (Q6); người dùng duyệt. Trọng tâm: Q3, Q5, Q6, Q8.
-- **File tạo ra:** `01-system/system-context.md`, `containers.md`, `architecture-style.md`, `integrations.md` (mức S: tối thiểu `architecture-style.md` và `containers.md`); `.agent-workspace/decisions/D-xxx-<tên>/` (`brief.md`, `votes/`, `tally.md`, `decision.md`), `decisions/decision-log.md`.
+- **File tạo ra:** `01-system/system-context.md`, `containers.md`, `architecture-style.md`, `integrations.md` (mức S: tối thiểu `architecture-style.md` và `containers.md`; `integrations.md` bắt buộc khi dự án có hệ thống ngoài, chỉ được bỏ khi không có hệ thống ngoài nào, lý do ở cột "Lý do (Q8)" của `project-profile.md`); `.agent-workspace/decisions/D-xxx-<tên>/` (`brief.md`, `votes/`, `tally.md`, `decision.md`), `decisions/decision-log.md`.
 - **Script:** `call_council_cli.py`, `tally_votes.py`, `check_links.py`, `check_numbers.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G4. Stack và phiên bản

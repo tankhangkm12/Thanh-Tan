@@ -37,7 +37,7 @@ Hồ sơ ghi: quy mô người dùng và dữ liệu dự kiến, mức độ qu
 
 | Mức | Ví dụ dự án | Phần bắt buộc | Hội đồng | Mốc tính số liệu |
 | --- | --- | --- | --- | --- |
-| S | Công cụ nội bộ, MVP | context (`00-context`), system tối thiểu (`architecture-style.md`, `containers.md`), stack, capacity rút gọn, luồng chính, backend, data, rủi ro rút gọn (chỉ rủi ro ≥ 8 điểm), `implementation-plan.md` | 3 phiếu, chỉ cho stack và kiểu kiến trúc | Lúc ra mắt, 1 năm |
+| S | Công cụ nội bộ, MVP | context (`00-context`), system tối thiểu (`architecture-style.md`, `containers.md`; thêm `integrations.md` khi dự án có hệ thống ngoài), stack, capacity rút gọn, luồng chính, backend, data, rủi ro rút gọn (chỉ rủi ro ≥ 8 điểm), `implementation-plan.md` | 3 phiếu, chỉ cho stack và kiểu kiến trúc | Lúc ra mắt, 1 năm |
 | M | Sản phẩm thật, một team | Như S + system đầy đủ, frontend đầy đủ, security, infra, process, rủi ro đầy đủ, `scaling-stages.md`, `upgrade-roadmap.md` | 3 phiếu | Ra mắt, 1 năm, 3 năm |
 | L | Nhiều team, nhiều client | Toàn bộ 13 phần, chi tiết từng service | 3 phiếu, 5 cho quyết định khó đảo ngược | Ra mắt, 1, 3, 5 năm |
 | XL | Phân tán, tải lớn, yêu cầu tuân thủ cao | Toàn bộ + spike bắt buộc cho stack, DR chi tiết | 5 phiếu | Ra mắt, 1, 3, 5 năm + đỉnh tải |

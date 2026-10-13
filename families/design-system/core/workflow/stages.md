@@ -77,7 +77,7 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 | G6 | Luồng chính | Luồng, trước khi thiết kế chi tiết |
 | G7 | Thiết kế chi tiết | Từng service, database, app frontend |
 | G8 | Bảo mật, hạ tầng, quy trình | Từng phần |
-| G9 | Rủi ro và roadmap | Sổ rủi ro; rủi ro từ 15 điểm đã được xử lý |
+| G9 | Rủi ro và roadmap | Sổ rủi ro (mở từ G1, hoàn thiện ở đây); rủi ro từ 15 điểm đã được xử lý |
 | G10 | Kiểm tra chéo và phát hành | Tính lại toàn bộ số, mọi script sạch, phát hành vN |
 
 ## G0. Khởi tạo và hồ sơ dự án
@@ -91,9 +91,9 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 ## G1. Context
 
 - **Đầu vào:** `inputs/ba/`, hồ sơ dự án đã duyệt.
-- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
+- **Việc:** Designer viết phần còn lại của `00-context` (đối chiếu BA, hỏi lại qua `questions.md` khi mơ hồ). Designer cũng mở sổ rủi ro `11-risks/risk-register.md` với các rủi ro sớm sinh ra từ NFR và ràng buộc (điểm, dấu hiệu sớm, giảm thiểu, dự phòng theo cột trong PLAN); cột "Thành phần liên quan" để trống đến khi có stack (script chưa đòi, xem `check_links.py`). Giả định ghi vào `capacity/assumptions.yaml`; `assumptions.md` do `calc_capacity.py --assumptions-only` sinh từ yaml (Orchestrator chạy), không sửa tay.
 - **Điều kiện qua gate:** FR, NFR có chỉ số bằng số, ràng buộc (`C-xx`, định nghĩa ở `00-context/constraints.md`) và giả định (`A-xx`, ở `00-context/assumptions.md`) đều có ID; không có từ mơ hồ thiếu số (Q1, Q4); người dùng duyệt. Trọng tâm: Q1, Q4, Q6, Q8.
-- **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
+- **File tạo ra:** `00-context/requirements-trace.md`, `quality-attributes.md`, `constraints.md`, `assumptions.md` (sinh từ yaml), `glossary.md`; `11-risks/risk-register.md` (mở sổ); `.agent-workspace/capacity/assumptions.yaml` (nguồn duy nhất của giả định).
 - **Script:** `calc_capacity.py --assumptions-only`, `check_links.py`, `check_numbers.py` (gồm kiểm yaml và `assumptions.md` không lệch), `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).
 
 ## G2. Tiêu chí lựa chọn (TC)
@@ -154,8 +154,8 @@ Tiêu chí chung: đổi sau khi có dữ liệu production thì phải migrate 
 
 ## G9. Rủi ro và roadmap
 
-- **Đầu vào:** toàn bộ quyết định và rủi ro đã sinh ra từ G3 trở đi.
-- **Việc:** Designer hợp nhất sổ rủi ro và viết roadmap (mức S: sổ rủi ro rút gọn chỉ ghi rủi ro ≥ 8 điểm, roadmap chỉ `implementation-plan.md`); rủi ro từ 15 điểm trở lên phải được xử lý hoặc được người dùng chấp nhận rõ ràng.
+- **Đầu vào:** sổ rủi ro mở từ G1, toàn bộ quyết định và rủi ro đã sinh ra từ G3 trở đi.
+- **Việc:** Designer hoàn thiện sổ rủi ro (đã mở từ G1 và được bổ sung ở mỗi gate): hợp nhất, chấm lại điểm và viết roadmap (mức S: sổ rủi ro rút gọn chỉ ghi rủi ro ≥ 8 điểm, roadmap chỉ `implementation-plan.md`); rủi ro từ 15 điểm trở lên phải được xử lý hoặc được người dùng chấp nhận rõ ràng.
 - **Điều kiện qua gate:** không còn rủi ro ≥ 15 điểm chưa xử lý; rủi ro ≥ 15 được chấp nhận thì ghi ở `risks/acceptance.md` (Q6); người dùng duyệt sổ rủi ro. Trọng tâm: Q3, Q6, Q8.
 - **File tạo ra:** `11-risks/risk-register.md`, `12-roadmap/` (`implementation-plan.md` mọi mức; `scaling-stages.md`, `upgrade-roadmap.md` từ mức M); `.agent-workspace/risks/acceptance.md`.
 - **Script:** `check_trace.py`, `check_links.py`, `check_numbers.py`, `check_versions.py`, `check_profile.py`, `check_workspace.py`, `promote_drafts.py` (sau khi bạn duyệt gate).

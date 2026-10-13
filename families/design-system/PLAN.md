@@ -231,7 +231,7 @@ Mỗi công nghệ trong stack được chốt đến phiên bản cụ thể �
 
 ## Quản lý rủi ro
 
-Rủi ro được ghi ngay khi nó xuất hiện, không đợi đến cuối: mỗi brief quyết định, mỗi dòng phiên bản, mỗi bảng sizing và mỗi khoảng trống kỹ năng đều phải khai rủi ro vào sổ (tiêu chí Q6).
+Rủi ro được ghi ngay khi nó xuất hiện, không đợi đến cuối: mỗi brief quyết định, mỗi dòng phiên bản, mỗi bảng sizing và mỗi khoảng trống kỹ năng đều phải khai rủi ro vào sổ (tiêu chí Q6). Sổ được mở ở G1 với rủi ro sớm sinh ra từ NFR và ràng buộc, bổ sung ở mỗi gate sau đó và hoàn thiện ở G9.
 
 **Mỗi dòng trong `11-risks/risk-register.md`**
 
@@ -367,7 +367,7 @@ Quy trình có 11 gate theo thứ tự cố định; mỗi gate chỉ qua khi đ
 | G6 | Luồng chính | Luồng, trước khi thiết kế chi tiết |
 | G7 | Thiết kế chi tiết | Từng service, từng database, từng app frontend (có thể quay lại G5 để tính lại capacity theo kiểu dữ liệu thật) |
 | G8 | Bảo mật, hạ tầng, quy trình | Từng phần |
-| G9 | Rủi ro và roadmap | Sổ rủi ro; rủi ro từ 15 điểm đã được xử lý |
+| G9 | Rủi ro và roadmap | Sổ rủi ro (mở từ G1, hoàn thiện ở đây); rủi ro từ 15 điểm đã được xử lý |
 | G10 | Kiểm tra chéo và phát hành | Tính lại toàn bộ số, mọi script sạch, phát hành vN |
 
 G5 tính capacity sơ bộ, G7 tính lại theo kiểu dữ liệu thật, G10 tính lại lần cuối trước khi phát hành.

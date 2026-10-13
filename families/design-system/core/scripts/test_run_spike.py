@@ -240,13 +240,15 @@ def test_a_timeout_stops_the_container_and_is_an_error(env):
 
 def test_without_a_working_engine_nothing_is_written_and_an_earlier_result_stays(env):
     assert env.run().returncode == 0
-    before = env.result.read_text(encoding="utf-8")
     proc = env.run(mode="info_fail")
-    # --engine-prefix skips the search, so use the real search with an engine that cannot be found
+    # --engine-prefix skips the search, so this is a normal run that rewrites the result (seconds differ): take "before" after it, right
+    # before the one call that must not write
     assert proc.returncode in (0, 1)
+    before = env.result.read_bytes()
+    mtime = env.result.stat().st_mtime_ns
     proc = env.run("--engine", "podman", engine=False)  # no --engine-prefix: look for a real podman
     if "không có Docker hay Podman chạy được" in proc.stdout:
-        assert proc.returncode == 1 and env.result.read_text(encoding="utf-8") == before
+        assert proc.returncode == 1 and env.result.read_bytes() == before and env.result.stat().st_mtime_ns == mtime
         assert "LỖI (không chạy)" in env.report()
 
 

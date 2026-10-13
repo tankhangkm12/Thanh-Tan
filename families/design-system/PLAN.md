@@ -109,7 +109,7 @@ architecture/
 │   ├── cross-cutting.md           # authN/Z, error model, logging, idempotency
 │   ├── repo-structure.md
 │   ├── contracts/
-│   └── services/<service>/        # modules/ nếu là modular monolith
+│   └── services/<service>/        # mỗi service hoặc module (modular monolith) một thư mục; xem "Đơn vị triển khai" ở responsibility.md
 │       ├── responsibility.md
 │       ├── api.md
 │       ├── events.md

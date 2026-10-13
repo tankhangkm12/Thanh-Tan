@@ -101,10 +101,12 @@ def test_writing_restores_a_broken_target(mirror):
     assert gen.problems(gen.render_all(), target) == []
 
 
-def test_line_endings_do_not_matter(mirror):
+@pytest.mark.parametrize("ending", [b"\n", b"\r\n"])
+def test_line_endings_do_not_matter(mirror, ending):
+    """Whatever the checkout wrote (LF, or CRLF with autocrlf), the sources and the target are compared the same way."""
     source, target = mirror
     for file in [*source.glob("*.md"), *(source / "council").glob("*.md"), *target.glob("*.md")]:
-        file.write_bytes(file.read_bytes().replace(b"\n", b"\r\n"))
+        file.write_bytes(file.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", ending))
     assert gen.problems(gen.render_all(), target) == []
 
 

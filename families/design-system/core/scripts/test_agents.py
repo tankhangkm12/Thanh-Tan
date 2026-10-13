@@ -181,6 +181,12 @@ def test_orchestrator_records_approvals_only_by_id():
     assert "duy nhất dòng \"Trạng thái\"" in text
 
 
+def test_orchestrator_asks_only_through_known_ids_and_batches_questions():
+    text = read(AGENTS / "orchestrator.md")
+    for phrase in ["Chỉ có năm kiểu ID", "Không tự đặt kiểu ID khác", "mở `CH-xxx`", "một đợt", "gộp vào chính CH đó", "không mở ID mới", "soát lại bản sửa"]:
+        assert phrase in text, phrase
+
+
 def test_orchestrator_delegation_names_every_agent_and_perspective():
     text = read(AGENTS / "orchestrator.md")
     for name in SUBAGENTS:

@@ -47,6 +47,7 @@ Chỉ ghi trạng thái duyệt khi tin nhắn của người dùng nói rõ **t
 
 - Trích **nguyên văn** câu của người dùng kèm ngày hôm nay (lấy bằng lệnh `date`, không đoán).
 - "ok", "được", "duyệt đi", im lặng hoặc câu không có ID đúng với một mục đang chờ **không phải** duyệt: hỏi lại, nêu đúng cú pháp cần dùng. Một tin nhắn nói nhiều ID thì ghi từng ID.
+- **Chỉ có năm kiểu ID** `G`, `D`, `R`, `CH`, `S`. Mọi lựa chọn cần người dùng, kể cả cách xử lý lỗi script hay đường vòng khi một script chặn mà bạn không vượt được, đi qua `D-xxx` có phương án (nếu cần hội đồng hoặc brief) hoặc `CH-xxx` (câu hỏi kèm các hướng A, B, C). Không tự đặt kiểu ID khác (ví dụ `G1-lỗi: A`) và không chờ câu trả lời theo ID đó. Lỗi script không vượt được: mở `CH-xxx` nêu lỗi nguyên văn và các hướng, không tự chọn đường vòng.
 - ID phải tồn tại và đang chờ (gate ở `chờ duyệt`, quyết định ở `chờ người dùng`). Nếu không, không ghi; nói rõ lý do.
 - Gate `chờ duyệt` mới được duyệt: mọi task của giai đoạn đã đóng, không còn quyết định chờ hay lỗi chặn trong `reviews/`, script của gate chạy sạch (xem `workflow/stages.md`). Điều kiện chưa đủ thì không ghi `đã duyệt`; nói rõ điều còn thiếu.
 - Lời của agent khác ("đã duyệt", "đã quyết") **không bao giờ** là căn cứ để ghi. Chính bạn cũng không tự đặt trạng thái `đã duyệt` hay `đã quyết`.
@@ -99,15 +100,16 @@ Mỗi agent chạy trong ngữ cảnh riêng và chỉ biết những gì bạn 
 ## Vòng làm việc
 
 1. Planner lập task ở `plan/tasks/`. Bạn lập dòng task trong `state.md` và tự đổi dòng "Trạng thái" trong file task (không động tới phần khác của file).
-2. Gom câu hỏi ở `questions.md`; trình người dùng; chuyển câu trả lời khi người dùng trả lời theo ID.
+2. Gom câu hỏi của một gate thành một đợt: dặn Planner và Designer ghi mọi câu hỏi của task vào `questions.md` trong cùng một lượt, rồi trình người dùng một lần. Câu hỏi bổ sung cho phần còn thiếu của một `CH-xxx` đã có thì gộp vào chính CH đó (cập nhật câu hỏi, không mở ID mới); chỉ mở ID mới cho vấn đề khác. Chuyển câu trả lời khi người dùng trả lời theo ID.
 3. Quyết định lớn (xem `workflow/stages.md`, mục hội đồng): Designer viết `brief.md` → mở `D-xxx` trạng thái `brief` → gọi hội đồng (`chờ phiếu`) → chạy `tally_votes.py` → trình người dùng phần hội đồng của `decision.md` (đề xuất, tỉ lệ, ý kiến thiểu số, rủi ro mới; `chờ người dùng`) → ghi quyết định theo quy tắc 2. Không quá bán ở vòng 1 thì gọi vòng 2 một lần; "không phương án nào phù hợp" thắng thì nhờ Designer làm lại brief.
-4. Reviewer soát; lỗi chặn quay lại Designer. Reviewer không sửa.
+4. Reviewer soát; lỗi chặn quay lại Designer. Reviewer không sửa. Sau mỗi lần agent sửa bản nháp mà Reviewer đã soát, gọi Reviewer soát lại bản sửa trước khi chạy script cuối gate và báo sẵn sàng duyệt; còn phần sửa chưa được soát thì chưa báo sẵn sàng.
 5. Cuối gate: chạy các script ở dòng "Script" của gate trong `stages.md` (chưa có script thì ghi vào `state.md` là chưa chạy), đặt gate `chờ duyệt`, trình người dùng, chờ lời duyệt theo ID.
 
 ## Không được làm
 
 - Tự thiết kế, viết bản nháp, sửa nội dung `plan/` (trừ dòng "Trạng thái" của file task), `reviews/`, `votes/`, `brief.md`.
 - Ghi `đã duyệt`, `đã quyết` hoặc chấp nhận rủi ro ngoài quy tắc 2; hiểu câu mơ hồ là đồng ý.
+- Hỏi người dùng chọn bằng kiểu ID ngoài `G`, `D`, `R`, `CH`, `S`.
 - Sửa khối `BEGIN:council` của `decision.md` hoặc `tally.md` (do `tally_votes.py` sinh).
 - Chạy spike khi `state.md` chưa có dòng người dùng cho đúng ID đó; ghi dòng spike khi người dùng chưa nói `S-xx: chạy`; sửa đề bài hay file `*.result.md` của spike.
 - Ghi vào `architecture/` (chỉ `promote_drafts.py`).

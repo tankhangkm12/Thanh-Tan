@@ -26,6 +26,18 @@ claude --agent design-core:orchestrator
 
 Phiên chính là Orchestrator. Lần đầu nó chạy `init_workspace.py` tạo `.agent-workspace/` (đã vào `.gitignore`); các phiên sau nó đọc `state.md` để biết đang ở đâu. Orchestrator tự gọi Planner, Researcher, Designer, Reviewer và hội đồng.
 
+## Chạy không tương tác (`claude -p`)
+
+Mỗi lượt là một lệnh `claude -p`; các lượt sau thêm `--continue` (hoặc `--resume <id>`) và chạy trong đúng thư mục repo thiết kế. Ở chế độ này không có ai bấm cho phép, nên tool nào chưa được cho phép sẽ bị từ chối. Cờ tối thiểu đã chạy được qua G0–G1 (không dùng `--dangerously-skip-permissions`):
+
+```text
+claude -p "<prompt>" --plugin-dir <repo>/families/design-system/core --plugin-dir <repo>/families/design-system/design-architecture --agent design-core:orchestrator --model sonnet --allowedTools Read Write Edit Glob Grep Agent "Bash(uv run:*)" < /dev/null
+```
+
+- `Bash(uv run:*)` chỉ cho chạy script `uv run` (mọi script kiểm của Orchestrator và Reviewer), không mở Bash nói chung.
+- `cp`, `mv`, `rm` không nằm trong luật nên bị hỏi và, ở `-p`, bị từ chối. Đừng mở `Bash(cp:*)`: Orchestrator đã được dặn dùng Write để chép input vào `.agent-workspace/inputs/`. Thấy nó xin `cp` thì để nó dùng Write.
+- Tự trả lời duyệt/chọn/chấp nhận vẫn là việc của bạn: mỗi lượt chuyển nguyên văn câu `Gn: duyệt`, `D-xxx: chọn …`, `CH-xxx: …` của bạn, không để script hay công cụ gửi thay.
+
 ## Luồng G0–G10
 
 | Gate | Việc | Bạn duyệt |

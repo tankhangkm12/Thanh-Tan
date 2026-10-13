@@ -39,6 +39,14 @@ claude -p "<prompt>" --plugin-dir <repo>/families/design-system/core --plugin-di
 - Luật `Bash(uv run:*)` chỉ khớp lệnh `uv run <script> ...` đứng một mình. Lệnh ghép (`&&`, `;`, `|`, `cd ... &&`, gán biến đầu lệnh, heredoc) bị từ chối, nên Orchestrator và Reviewer được dặn mỗi lần Bash chỉ một lệnh `uv run`; thấy chúng xin lệnh ghép thì chúng sẽ tự viết lại thành lệnh đơn, tốn thêm lượt.
 - Tự trả lời duyệt/chọn/chấp nhận vẫn là việc của bạn: mỗi lượt chuyển nguyên văn câu `Gn: duyệt`, `D-xxx: chọn …`, `CH-xxx: …` của bạn, không để script hay công cụ gửi thay.
 
+## Chọn model cho Reviewer
+
+Mặc định giữ nguyên: Orchestrator chọn Reviewer ở G0 (khác Designer) và bạn duyệt trong danh mục model. Đánh đổi khi bạn tự chọn:
+
+- **haiku:** rẻ mỗi lượt, nhưng ở lần thử NoteNest nó bỏ sót lỗi ở vòng đầu rồi bắt thêm dần ở các vòng sau (G1 cần 4 báo cáo soát R-003 đến R-006; lỗi "bỏ `messaging.md` chưa có rủi ro" chỉ bị bắt ở vòng sau). Mỗi vòng thêm là một lượt Designer sửa và một lượt soát lại, nên tổng chi phí gate có thể không rẻ hơn.
+- **sonnet:** đắt hơn mỗi lượt, kỳ vọng bắt đủ hơn ngay vòng đầu và cần ít vòng hơn. Chưa đo trong lần thử NoteNest (chỉ chạy Reviewer bằng haiku), nên đây là kỳ vọng, chưa phải số liệu.
+- Gate nhiều nội dung hoặc nhiều con số (G1, G5, G10) nên dùng model mạnh hơn cho Reviewer; gate nhỏ và đã có script kiểm chặt thì haiku đủ. Lỗi mà script bắt được (liên kết, số thiếu nguồn, mục thiếu) không phụ thuộc model.
+
 ## Luồng G0–G10
 
 | Gate | Việc | Bạn duyệt |

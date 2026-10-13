@@ -33,19 +33,19 @@ Tên plugin có tiền tố nhóm (`dev-*` cho software-dev). Marketplace Claude
 
 ## Chuẩn tài liệu của plugin
 
-Mọi nhóm và mọi plugin phải có hướng dẫn sử dụng theo ba tầng dưới đây. Chuẩn này **bắt buộc** cho cả nhóm tạo sau này (ví dụ marketing); nhóm chưa có core thì chưa bị kiểm, và bị kiểm từ lúc có `families/<nhóm>/core/workflow.yaml`.
+Mọi nhóm và mọi plugin phải có hướng dẫn sử dụng theo ba tầng dưới đây. Chuẩn này **bắt buộc** cho cả nhóm tạo sau này (ví dụ marketing); nhóm chưa có core thì chưa bị kiểm, và bị kiểm từ lúc có `USAGE.md` (ở một trong hai chỗ dưới đây) hoặc `families/<nhóm>/core/workflow.yaml` (có file này mà thiếu `USAGE.md` là lỗi).
 
 | Tầng | File | Nội dung bắt buộc |
 |---|---|---|
-| Toàn repo | `README.md` ở gốc | Không có khuôn prompt. Chỉ link tới `families/<nhóm>/USAGE.md` của **mọi** nhóm đã có core (ở bảng nhóm) |
-| Core của nhóm | `families/<nhóm>/USAGE.md` | Mục có tiêu đề đúng `## Khuôn yêu cầu task`, trong đó có ít nhất một khối code chứa khuôn. Khuôn là đầu vào của bước xác nhận (bước đầu của workflow nhóm) |
+| Toàn repo | `README.md` ở gốc | Không có khuôn prompt. Chỉ link tới `USAGE.md` của **mọi** nhóm đã có core (ở bảng nhóm), đúng chỗ file đó nằm |
+| Core của nhóm | `families/<nhóm>/USAGE.md` **hoặc** `families/<nhóm>/core/USAGE.md` (một trong hai, có cả hai là lỗi) | Mục có tiêu đề đúng `## Khuôn yêu cầu task`, trong đó có ít nhất một khối code chứa khuôn. Khuôn là đầu vào của bước xác nhận (bước đầu của workflow nhóm) |
 | Plugin con | `families/<nhóm>/<plugin>/README.md` | Mục `## Dùng cùng <tên core>` (ví dụ `## Dùng cùng dev-core`): dữ liệu cần thêm khi tạo task và ví dụ done-when cho gate của plugin. Plugin con **chỉ thêm**, không có khuôn riêng và không thay khuôn của core. Plugin còn là khung thì mục này nói một câu rằng chưa có phần bổ sung |
 
 - **Tên tiêu đề là bắt buộc; nội dung khuôn do từng nhóm quyết.** Kiểm tự động chỉ xem tiêu đề `## Khuôn yêu cầu task` và khối code dưới nó, không xem các nhãn trong khuôn. Khuôn của software-dev (6 dòng: Loại, Mục tiêu, Xong khi, Trong phạm vi, Ngoài phạm vi, Tài liệu) không áp cho nhóm khác.
 - Hướng dẫn chỉ nói về quy trình và môi trường làm việc, không đưa quy ước code, kiến trúc hay stack vào khuôn và ví dụ; ví dụ done-when dùng chỗ trống như `<lệnh test của dự án>`.
 - `<tên core>` là `name` trong `.claude-plugin/plugin.json` của `families/<nhóm>/core/`.
-- Link tương đối trong các file thuộc chuẩn (README gốc, `families/*/README.md`, `families/*/USAGE.md`, README của từng plugin) phải trỏ tới file hoặc thư mục có thật; phần sau dấu `#` không được kiểm.
-- Cưỡng chế bằng `tools/docs_standard.py` (chạy riêng: `uv run tools/docs_standard.py`; test: `tools/test_docs_standard.py`). Lỗi nêu rõ tên file: thiếu `USAGE.md`, thiếu mục khuôn hoặc khuôn không có khối code, thiếu mục "Dùng cùng ..." ở plugin con, README gốc thiếu link, link hỏng.
+- Link tương đối trong các file thuộc chuẩn (README gốc, `families/*/README.md`, mọi `USAGE.md` của nhóm, README của từng plugin) phải trỏ tới file hoặc thư mục có thật; phần sau dấu `#` không được kiểm.
+- Cưỡng chế bằng `tools/docs_standard.py` (chạy riêng: `uv run tools/docs_standard.py`; test: `tools/test_docs_standard.py`). Lỗi nêu rõ tên file: thiếu `USAGE.md`, có hai `USAGE.md`, thiếu mục khuôn hoặc khuôn không có khối code, thiếu mục "Dùng cùng ..." ở plugin con, README gốc thiếu link, link hỏng.
 
 ## Foundation ↔ nhóm: hợp đồng workflow
 

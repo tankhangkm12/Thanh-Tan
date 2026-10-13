@@ -167,9 +167,60 @@ def test_main_exit_codes(repo, capsys):
     assert "families/xx/USAGE.md" in capsys.readouterr().out
 
 
+def move_usage_to_core(repo: Path) -> None:
+    family = repo / ds.FAMILIES_DIR / FAMILY
+    write(family / ds.CORE_DIR / ds.USAGE_FILE, USAGE)
+    (family / ds.USAGE_FILE).unlink()
+    root = repo / ds.ROOT_README
+    root.write_text(root.read_text(encoding="utf-8").replace("xx/USAGE.md", "xx/core/USAGE.md"), encoding="utf-8")
+
+
+def test_a_family_is_recognised_by_a_usage_in_its_core_without_a_workflow_file(repo):
+    move_usage_to_core(repo)
+    (repo / ds.FAMILIES_DIR / FAMILY / ds.CORE_DIR / ds.WORKFLOW_FILE).unlink()
+    assert ds.core_families(repo) == {FAMILY: CORE_NAME}
+    assert ds.check(repo) == []
+
+
+def test_a_usage_in_the_core_needs_the_template_section(repo):
+    move_usage_to_core(repo)
+    write(repo / ds.FAMILIES_DIR / FAMILY / ds.CORE_DIR / ds.USAGE_FILE, "# Usage\n")
+    findings = ds.check(repo)
+    assert rules(findings) == [ds.Rule.MISSING_TEMPLATE]
+    assert "families/xx/core/USAGE.md" in str(findings[0])
+
+
+def test_a_usage_in_the_core_must_be_linked_from_the_root_readme_by_that_path(repo):
+    move_usage_to_core(repo)
+    root = repo / ds.ROOT_README
+    root.write_text(root.read_text(encoding="utf-8").replace("xx/core/USAGE.md", "xx/USAGE.md"), encoding="utf-8")
+    assert set(rules(ds.check(repo))) == {ds.Rule.MISSING_ROOT_LINK, ds.Rule.BROKEN_LINK}
+
+
+def test_links_in_a_core_usage_are_checked(repo):
+    move_usage_to_core(repo)
+    write(repo / ds.FAMILIES_DIR / FAMILY / ds.CORE_DIR / ds.USAGE_FILE, USAGE + "\n[gone](nowhere.md)\n")
+    findings = ds.check(repo)
+    assert rules(findings) == [ds.Rule.BROKEN_LINK]
+    assert "families/xx/core/USAGE.md" in str(findings[0])
+
+
+def test_a_family_with_both_usage_files_is_a_finding(repo):
+    family = repo / ds.FAMILIES_DIR / FAMILY
+    write(family / ds.CORE_DIR / ds.USAGE_FILE, USAGE)
+    findings = ds.check(repo)
+    assert rules(findings) == [ds.Rule.DUPLICATE_USAGE]
+    assert "families/xx/USAGE.md and families/xx/core/USAGE.md" in str(findings[0])
+
+
+def test_a_workflow_file_without_any_usage_is_still_missing_usage(repo):
+    (repo / ds.FAMILIES_DIR / FAMILY / ds.USAGE_FILE).unlink()
+    assert ds.Rule.MISSING_USAGE in rules(ds.check(repo))
+
+
 def test_the_real_repository_follows_the_standard():
     assert ds.check(REPO) == []
 
 
 def test_the_real_software_dev_family_is_checked():
-    assert ds.core_families(REPO) == {"software-dev": "dev-core"}
+    assert ds.core_families(REPO) == {"software-dev": "dev-core", "design-system": "design-core"}

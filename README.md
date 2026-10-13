@@ -9,7 +9,7 @@ Trung tâm của nhiều **nhóm plugin** cho Claude Code và Antigravity CLI. M
 | Nhóm | Trạng thái | Plugin |
 |---|---|---|
 | [software-dev](families/software-dev/README.md) ([hướng dẫn sử dụng](families/software-dev/USAGE.md)) | MVP (`dev-core` dùng được) | `dev-core`, `dev-design`, `dev-backend`, `dev-frontend`, `dev-infra` |
-| [design-system](families/design-system/README.md) | Khung (Giai đoạn 1), chưa có nội dung | `design-core`, `design-architecture` |
+| [design-system](families/design-system/README.md) ([hướng dẫn sử dụng](families/design-system/core/USAGE.md)) | Khung (Giai đoạn 1), chưa có nội dung | `design-core`, `design-architecture` |
 | [marketing](families/marketing/README.md) | Dự kiến, chưa xây | — |
 
 Kiến trúc và quy tắc phụ thuộc: [docs/architecture.md](docs/architecture.md).
